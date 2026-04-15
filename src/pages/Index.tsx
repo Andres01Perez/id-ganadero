@@ -24,7 +24,7 @@ const Index = () => {
         <img
           src={heroBpp}
           alt="JPS Ganadería"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           draggable={false}
         />
       </div>
@@ -32,9 +32,9 @@ const Index = () => {
       {/* Bottom — expands when input is shown */}
       <div
         className="w-full bg-primary flex flex-col items-center justify-start transition-all duration-500 ease-in-out"
-        style={{ height: showInput ? "70dvh" : "30dvh" }}
+        style={{ height: showInput ? "70dvh" : "20dvh" }}
       >
-        <div className="w-full flex items-center justify-center pt-12 px-6">
+        <div className="w-full flex items-center justify-center px-6">
           {!showInput ? (
             <button
               onClick={() => setShowInput(true)}
