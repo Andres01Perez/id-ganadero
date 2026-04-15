@@ -1,15 +1,21 @@
 
 
-## Plan: Ajustar layout y formato de imagen en Index.tsx
+## Plan: Notificación de actualización PWA
 
-### Cambios en `src/pages/Index.tsx`:
+### Qué se hará
+Cuando el service worker detecte una nueva versión de la app, se mostrará una tarjeta/banner flotante informando al usuario que hay una actualización disponible, con un botón para recargar la app con la nueva versión.
 
-1. **Imagen hero → `object-contain`** (línea 27): cambiar `object-cover` a `object-contain` para que la imagen se ajuste responsivamente sin recortarse
+### Cambios
 
-2. **Proporción 80%-20%**: cambiar las alturas del hero y la sección dorada:
-   - Hero (sin input): `70dvh` → `80dvh`
-   - Sección dorada (sin input): `30dvh` → `20dvh`
-   - Con input: mantener `30dvh` / `70dvh` para que el teclado tenga espacio
+1. **Crear componente `src/components/PwaUpdatePrompt.tsx`**
+   - Usa `registerSW` de `virtual:pwa-register` para detectar actualizaciones
+   - Muestra un banner fijo en la parte inferior con fondo negro, borde dorado, texto "Nueva actualización disponible" y botón "Actualizar" en dorado
+   - Al hacer clic en "Actualizar", llama a `updateServiceWorker(true)` que recarga la app con la nueva versión
 
-3. **Botón centrado verticalmente** en la sección dorada: cambiar `justify-start` + `pt-12` a `justify-center` + quitar el `pt-12`, para que el botón quede centrado en el 20% dorado
+2. **Modificar `src/App.tsx`**
+   - Importar y renderizar `<PwaUpdatePrompt />` dentro del layout principal
+
+### Archivos
+- `src/components/PwaUpdatePrompt.tsx` — nuevo componente
+- `src/App.tsx` — agregar el componente
 
