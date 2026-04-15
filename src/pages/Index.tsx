@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import heroLogo from "@/assets/hero-logo.png";
+import heroLogo from "@/assets/hero-logo.webp";
 
 const Index = () => {
   const [showInput, setShowInput] = useState(false);
