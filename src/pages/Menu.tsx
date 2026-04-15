@@ -1,60 +1,20 @@
 import { useNavigate } from "react-router-dom";
 import heroLogo from "@/assets/hero-logo.png";
+import fincasImg from "@/assets/menu/fincas.png";
+import machosImg from "@/assets/menu/machos.png";
+import hembrasImg from "@/assets/menu/hembras.png";
+import criasImg from "@/assets/menu/crias.png";
+import embrionesImg from "@/assets/menu/embriones.png";
+import generalidadesImg from "@/assets/menu/generalidades.png";
 
 const menuItems = [
-  { label: "Fincas", path: "/fincas" },
-  { label: "Machos", path: "/machos" },
-  { label: "Hembras", path: "/hembras" },
-  { label: "Crías", path: "/crias" },
-  { label: "Embriones", path: "/embriones" },
-  { label: "Generalidades", path: "/generalidades" },
+  { label: "Fincas", path: "/fincas", img: fincasImg },
+  { label: "Machos", path: "/machos", img: machosImg },
+  { label: "Hembras", path: "/hembras", img: hembrasImg },
+  { label: "Crías", path: "/crias", img: criasImg },
+  { label: "Embriones", path: "/embriones", img: embrionesImg },
+  { label: "Generalidades", path: "/generalidades", img: generalidadesImg },
 ];
-
-const CircleButton = ({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) => {
-  const id = `curve-${label.replace(/\s/g, "")}`;
-  return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
-    >
-      <svg
-        width="120"
-        height="40"
-        viewBox="0 0 120 40"
-        className="overflow-visible"
-      >
-        <defs>
-          <path id={id} d="M10,35 Q60,-5 110,35" fill="none" />
-        </defs>
-        <text
-          fill="#5c4a1e"
-          fontSize="13"
-          fontWeight="700"
-          letterSpacing="1.5"
-          textAnchor="middle"
-        >
-          <textPath href={`#${id}`} startOffset="50%">
-            {label.toUpperCase()}
-          </textPath>
-        </text>
-      </svg>
-      <div className="w-[100px] h-[100px] rounded-full border-2 border-[#b79f60] overflow-hidden bg-white flex items-center justify-center">
-        <img
-          src="https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=200&h=200&fit=crop"
-          alt={label}
-          className="w-full h-full object-cover"
-          draggable={false}
-        />
-      </div>
-    </button>
-  );
-};
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -76,13 +36,20 @@ const Menu = () => {
 
       {/* Menu section */}
       <div className="flex-1 bg-white px-4 py-6">
-        <div className="grid grid-cols-2 gap-6 max-w-sm mx-auto place-items-center">
+        <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto place-items-center">
           {menuItems.map((item) => (
-            <CircleButton
+            <button
               key={item.path}
-              label={item.label}
               onClick={() => navigate(item.path)}
-            />
+              className="active:scale-95 transition-transform"
+            >
+              <img
+                src={item.img}
+                alt={item.label}
+                className="w-[140px] h-auto"
+                draggable={false}
+              />
+            </button>
           ))}
         </div>
       </div>
