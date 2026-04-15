@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
+import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 
 const queryClient = new QueryClient();
 
