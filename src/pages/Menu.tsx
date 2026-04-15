@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import heroLogo from "@/assets/hero-logo.png";
 
 const menuItems = [
+  { label: "Fincas", path: "/fincas" },
   { label: "Machos", path: "/machos" },
   { label: "Hembras", path: "/hembras" },
   { label: "Crías", path: "/crias" },
@@ -29,14 +30,10 @@ const CircleButton = ({
         className="overflow-visible"
       >
         <defs>
-          <path
-            id={id}
-            d="M10,35 Q60,-5 110,35"
-            fill="none"
-          />
+          <path id={id} d="M10,35 Q60,-5 110,35" fill="none" />
         </defs>
         <text
-          fill="hsl(43,50%,54%)"
+          fill="#5c4a1e"
           fontSize="13"
           fontWeight="700"
           letterSpacing="1.5"
@@ -47,9 +44,9 @@ const CircleButton = ({
           </textPath>
         </text>
       </svg>
-      <div className="w-[100px] h-[100px] rounded-full border-2 border-primary overflow-hidden bg-card flex items-center justify-center">
+      <div className="w-[100px] h-[100px] rounded-full border-2 border-[#b79f60] overflow-hidden bg-white flex items-center justify-center">
         <img
-          src={`https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=200&h=200&fit=crop`}
+          src="https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=200&h=200&fit=crop"
           alt={label}
           className="w-full h-full object-cover"
           draggable={false}
@@ -63,7 +60,7 @@ const Menu = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col">
       {/* Hero */}
       <div className="w-full h-[30dvh] overflow-hidden flex items-center justify-center bg-background">
         <img
@@ -74,10 +71,13 @@ const Menu = () => {
         />
       </div>
 
-      {/* Circular menu */}
-      <div className="flex-1 px-4 py-6">
+      {/* Divider */}
+      <div className="w-full h-[3px] bg-[#b79f60]" />
+
+      {/* Menu section */}
+      <div className="flex-1 bg-white px-4 py-6">
         <div className="grid grid-cols-2 gap-6 max-w-sm mx-auto place-items-center">
-          {menuItems.slice(0, 4).map((item) => (
+          {menuItems.map((item) => (
             <CircleButton
               key={item.path}
               label={item.label}
@@ -85,25 +85,20 @@ const Menu = () => {
             />
           ))}
         </div>
-        {/* Last item centered */}
-        <div className="flex justify-center mt-6">
-          <CircleButton
-            label={menuItems[4].label}
-            onClick={() => navigate(menuItems[4].path)}
-          />
-        </div>
       </div>
 
       {/* Logout */}
-      <button
-        onClick={() => {
-          localStorage.removeItem("cedula");
-          navigate("/");
-        }}
-        className="mb-8 mx-auto block text-muted-foreground text-sm underline"
-      >
-        Cerrar sesión
-      </button>
+      <div className="bg-white pb-8">
+        <button
+          onClick={() => {
+            localStorage.removeItem("cedula");
+            navigate("/");
+          }}
+          className="mx-auto block text-gray-600 text-sm underline"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </div>
   );
 };
