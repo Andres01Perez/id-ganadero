@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import heroLogo from "@/assets/hero-logo.webp";
+import heroLogo from "@/assets/hero-menu.webp";
 import fincasImg from "@/assets/menu/fincas.webp";
 import machosImg from "@/assets/menu/machos.webp";
 import hembrasImg from "@/assets/menu/hembras.webp";
