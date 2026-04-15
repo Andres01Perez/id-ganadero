@@ -19,7 +19,7 @@ const Index = () => {
       {/* Hero — shrinks when input is shown */}
       <div
         className="w-full bg-background flex items-center justify-center overflow-hidden transition-all duration-500 ease-in-out"
-        style={{ height: showInput ? "30dvh" : "70dvh" }}
+        style={{ height: showInput ? "30dvh" : "80dvh" }}
       >
         <img
           src={heroBpp}
