@@ -1,30 +1,35 @@
 
 
-## Plan: Optimizar imágenes — Convertir PNG a WebP
+## Plan: Perfeccionar fuente, imágenes y textos
 
-### Diagnóstico
-Las 6 imágenes del menú pesan ~5MB total (la más pesada: machos.png = 1.1MB). Esto causa carga lenta, especialmente en móviles con datos.
+### Cambios
 
-### Solución: Conversión a WebP
-WebP reduce el tamaño ~70-80% sin pérdida visible de calidad. Las imágenes se convierten una vez y quedan estáticas en el proyecto.
+1. **Fuente Fira Sans Condensed**
+   - Agregar los `<link>` de Google Fonts en `index.html`
+   - Agregar `font-family: 'Fira Sans Condensed', sans-serif` al `body` en `src/index.css`
 
-**No usamos lazy loading** porque las 6 imágenes son visibles al mismo tiempo en la pantalla del menú — no hay beneficio en cargarlas diferidas.
+2. **Imagen de inicio (BPP)**
+   - Copiar `user-uploads://ID_GANADERO-11_BPP.webp` a `src/assets/hero-bpp.webp`
+   - En `Index.tsx`: reemplazar el import de `hero-logo.webp` por `hero-bpp.webp`
+   - Cambiar `object-contain` a `object-cover` para que la imagen llene el hero
 
-### Implementación
+3. **Imágenes del menú**
+   - Copiar las 6 imágenes webp subidas a `src/assets/menu/` (reemplazando las actuales):
+     - `ID_GANADERO-02_FINCAS.webp` → `fincas.webp`
+     - `ID_GANADERO-03_MACHOS.webp` → `machos.webp`
+     - `ID_GANADERO-04_HEMBRAS.webp` → `hembras.webp`
+     - `ID_GANADERO-05_CRIAS.webp` → `crias.webp`
+     - `ID_GANADERO-08_EMBRIONES.webp` → `embriones.webp`
+     - `ID_GANADERO-07_GENERALIDADES.webp` → `generalidades.webp`
 
-1. **Convertir las 7 imágenes** (6 menú + hero) de PNG a WebP usando `cwebp` con calidad 80
-2. **Actualizar imports en `Menu.tsx`** — cambiar `.png` → `.webp`
-3. **Actualizar import en `Index.tsx`** — hero-logo `.png` → `.webp`
-4. **Eliminar los PNG originales** para no duplicar peso
+4. **Texto de etiquetas en el menú**
+   - Agregar debajo de cada imagen del menú un `<span>` con el nombre (Fincas, Machos, Hembras, Crías, Embriones, Generalidades) en Fira Sans Condensed, bold, color dorado (`#b79f60`), centrado
 
-### Resultado esperado
-- De ~5.5MB total a ~1-1.5MB total
-- Carga notablemente más rápida en móvil
-- Sin cambio visual perceptible
-
-### Archivos a modificar
-- `src/assets/menu/*.png` → convertir a `.webp` y eliminar PNG
-- `src/assets/hero-logo.png` → convertir a `.webp` y eliminar PNG
-- `src/pages/Menu.tsx` — actualizar imports
-- `src/pages/Index.tsx` — actualizar import del hero
+### Archivos a modificar/crear
+- `index.html` — agregar Google Fonts links
+- `src/index.css` — aplicar font-family global
+- `src/pages/Index.tsx` — nueva imagen hero
+- `src/pages/Menu.tsx` — agregar labels de texto bajo cada imagen
+- `src/assets/hero-bpp.webp` — nueva imagen
+- `src/assets/menu/*.webp` — 6 imágenes reemplazadas
 
