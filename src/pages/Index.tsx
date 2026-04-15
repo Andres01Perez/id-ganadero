@@ -45,11 +45,11 @@ const Index = () => {
               value={cedula}
               onChange={(e) => setCedula(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              className="flex-1 h-14 rounded-xl bg-background text-foreground text-center text-lg font-medium placeholder:text-muted-foreground px-4 outline-none ring-2 ring-background/50 focus:ring-foreground/30 transition-all"
+              className="flex-1 h-14 rounded-xl bg-white text-black text-center text-lg font-medium placeholder:text-gray-400 px-4 outline-none ring-2 ring-white/50 focus:ring-black/30 transition-all"
             />
             <button
               onClick={handleLogin}
-              className="h-14 px-6 rounded-xl bg-background text-foreground font-bold text-lg tracking-wide transition-all hover:scale-[1.02] active:scale-95"
+              className="h-14 px-6 rounded-xl bg-white text-black font-bold text-lg tracking-wide transition-all hover:scale-[1.02] active:scale-95"
             >
               →
             </button>
