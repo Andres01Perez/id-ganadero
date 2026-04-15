@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import heroLogo from "@/assets/hero-logo.webp";
+import heroBpp from "@/assets/hero-bpp.webp";
 
 const Index = () => {
   const [showInput, setShowInput] = useState(false);
@@ -22,9 +22,9 @@ const Index = () => {
         style={{ height: showInput ? "30dvh" : "70dvh" }}
       >
         <img
-          src={heroLogo}
+          src={heroBpp}
           alt="JPS Ganadería"
-          className="w-full h-full object-contain p-8"
+          className="w-full h-full object-cover"
           draggable={false}
         />
       </div>

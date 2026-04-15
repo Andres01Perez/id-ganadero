@@ -41,7 +41,7 @@ const Menu = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className="active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
             >
               <img
                 src={item.img}
@@ -49,6 +49,9 @@ const Menu = () => {
                 className="w-[140px] h-auto"
                 draggable={false}
               />
+              <span className="text-[#b79f60] font-bold text-sm uppercase tracking-wide">
+                {item.label}
+              </span>
             </button>
           ))}
         </div>
