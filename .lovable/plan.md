@@ -1,25 +1,36 @@
 
 
-## Plan: Actualizar Vista 1 y crear Vista 2 (Menú)
+## Plan: Actualizar Vista Menú + Convertir a PWA
 
-### Vista 1 — Cambios
-1. **Reemplazar imagen hero** — Copiar `image-2.png` a `src/assets/hero-logo.png` (la imagen del toro con logo JPS)
-2. **Cambiar colores del botón e input** — Fondo blanco (`#FFFFFF`) y texto negro para:
-   - Botón "Iniciar Sesión"
-   - Input de cédula
-   - Botón flecha (→)
+### 1. Menú — Cambios de diseño
 
-### Vista 2 — Menú con diseño circular
-1. **Hero superior** con imagen destacada (reutilizar la imagen del toro o una sección de ella)
-2. **Botones circulares** con:
-   - Imagen de vaca dentro del círculo (usaremos placeholder images por ahora)
-   - Texto curvado en la parte superior del círculo usando SVG `<textPath>` para el efecto de texto arqueado
-   - 5 categorías: Machos, Hembras, Crías, Embriones, Generalidades
-3. **Layout**: Scroll vertical con los círculos distribuidos en grid
-4. Botón de cerrar sesión al final
+**Archivo: `src/pages/Menu.tsx`**
+- Agregar "Fincas" como primer ítem en `menuItems` (ruta `/fincas`)
+- Dividir visualmente hero y menú con una línea divisora color `#b79f60`
+- Cambiar el fondo de la sección del menú a **blanco**
+- Con 6 ítems, el grid 2x3 queda simétrico (3 filas, 2 columnas) — eliminar el caso especial del último ítem centrado
+- Cambiar color del texto curvado SVG a negro o dorado oscuro para contraste con fondo blanco
+- Cambiar texto "Cerrar sesión" a color oscuro para visibilidad
 
-### Archivos a modificar
-- `src/assets/hero-logo.png` — reemplazar con `image-2.png`
-- `src/pages/Index.tsx` — cambiar colores botón/input a blanco/negro
-- `src/pages/Menu.tsx` — rediseñar con hero + círculos con texto curvado SVG
+**Archivo: `src/App.tsx`**
+- Agregar ruta `/fincas` con PlaceholderPage
+
+### 2. PWA — Instalable desde el navegador
+
+Dado que no necesitas soporte offline complejo, usaremos el enfoque simple: un `manifest.json` + meta tags, sin service worker ni `vite-plugin-pwa`. Esto permite instalar la app desde el navegador ("Agregar a pantalla de inicio").
+
+**Archivo: `public/manifest.json`**
+- Crear manifest con nombre "JPS Ganadería", colores del tema (#0a0a0a fondo, #b79f60 tema), `display: "standalone"`, iconos placeholder
+
+**Archivo: `index.html`**
+- Agregar `<link rel="manifest">`, meta tags para mobile (`theme-color`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, viewport)
+
+**Archivo: `public/icons/`**
+- Crear iconos PWA básicos (192x192, 512x512) — por ahora placeholders que podrás reemplazar con el logo real
+
+### Archivos a crear/modificar
+- `src/pages/Menu.tsx` — nuevo ítem Fincas, divisor dorado, fondo blanco sección menú
+- `src/App.tsx` — ruta `/fincas`
+- `public/manifest.json` — nuevo
+- `index.html` — meta tags PWA
 
