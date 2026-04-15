@@ -31,7 +31,7 @@ const Index = () => {
 
       {/* Bottom — expands when input is shown */}
       <div
-        className="w-full bg-primary flex flex-col items-center justify-start transition-all duration-500 ease-in-out"
+        className="w-full bg-primary flex flex-col items-center justify-center transition-all duration-500 ease-in-out"
         style={{ height: showInput ? "70dvh" : "20dvh" }}
       >
         <div className="w-full flex items-center justify-center px-6">
