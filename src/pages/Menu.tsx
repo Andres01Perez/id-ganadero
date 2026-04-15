@@ -32,7 +32,7 @@ const Menu = () => {
       </div>
 
       {/* Divider */}
-      <div className="w-full h-[3px] bg-[#b79f60]" />
+      <div className="w-full h-[15px] bg-[#b79f60]" />
 
       {/* Menu section */}
       <div className="flex-1 bg-white px-4 py-6">
