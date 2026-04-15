@@ -31,7 +31,7 @@ const Index = () => {
         {!showInput ? (
           <button
             onClick={() => setShowInput(true)}
-            className="w-full max-w-sm h-14 rounded-xl bg-background text-foreground text-lg font-bold tracking-wider uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95"
+            className="w-full max-w-sm h-14 rounded-xl bg-white text-black text-lg font-bold tracking-wider uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95"
           >
             Iniciar Sesión
           </button>
