@@ -1,138 +1,82 @@
 
 
-## Plan: Fundación de auth + roles para JPS Ganadería
+## Plan: Versionado de PWA + auto-actualización sin reinstalar
 
-### Decisiones aplicadas
-- **App single-tenant** (solo JPS). Sin `tenant_id`, sin subdominios, sin branding dinámico.
-- **Auth real con Supabase Auth**, pero ocultando el email al usuario:
-  - Front muestra **selector de "Nombre" + campo "Contraseña"**
-  - Cada usuario tiene un `display_name` (ej. "Juan Pérez") que mapea a un email sintético `juanperez@yopmail.com`
-  - Los usuarios **no pueden auto-registrarse** — solo se crean desde el panel admin
-- **Roles:** `super_admin` (yo, el desarrollador), `admin` (cliente JPS), `operario` (ganaderos en campo)
+### Problema actual
+- La PWA ya tiene `registerType: "autoUpdate"` y existe `PwaUpdatePrompt.tsx`, pero:
+  - No hay versión visible en ningún lado (no sabes qué versión corre el celular)
+  - El service worker cachea `index.html` y assets — al publicar nuevas versiones el celular puede seguir mostrando la vieja hasta que el SW detecte el cambio
+  - El prompt de actualización solo aparece si se dispara `onNeedRefresh`, pero nunca verificas activamente si hay update
+- Necesitas: ver cambios de login/usuarios en el celular sin desinstalar
 
-### Esta fase = SOLO infraestructura de auth + roles
-No tocamos módulos de negocio (Fincas/Machos/etc.) hasta tener la base sólida.
+### Estrategia
 
----
+**1. Versionado automático desde Git**
+- Inyectar versión + hash de commit en build time vía `vite.config.ts` usando `define`
+- Fuente: variables de entorno (`__APP_VERSION__`, `__APP_COMMIT__`, `__APP_BUILD_DATE__`)
+- En local/Lovable: usa `package.json` version + timestamp
+- En GitHub Actions / build de producción: usa `git rev-parse --short HEAD`
+- Sin scripts externos: todo dentro de `vite.config.ts` con `child_process.execSync` (con try/catch fallback a "dev")
 
-### Arquitectura de datos
+**2. Footer de versión visible**
+- Crear `src/components/VersionFooter.tsx` — pequeño texto al pie en `/menu` y `/admin`
+- Formato: `v0.1.0 · a3f8485` (versión · commit corto)
+- Discreto, color tenue, no estorba diseño negro+dorado
 
-```text
-auth.users (gestionado por Supabase)
-    │
-    │ id (uuid)
-    ▼
-┌──────────────────────────┐     ┌──────────────────────────┐
-│ profiles                 │     │ user_roles               │
-│ id (= auth.users.id) PK  │     │ id PK                    │
-│ display_name TEXT UNIQUE │     │ user_id FK → auth.users  │
-│ email TEXT (sintético)   │     │ role app_role            │
-│ created_by FK → users    │     │ UNIQUE(user_id, role)    │
-│ active BOOLEAN           │     └──────────────────────────┘
-│ created_at, updated_at   │
-└──────────────────────────┘
-```
+**3. Auto-update agresivo (lo más importante)**
+- Mejorar `PwaUpdatePrompt.tsx`:
+  - Llamar `registerSW` con `onNeedRefresh` Y `onOfflineReady`
+  - Agregar `immediate: true` y polling cada 60s (`updateInterval`) para que detecte actualizaciones sin esperar a que el usuario reinicie la app
+  - Al hacer clic en "Actualizar": llama `updateServiceWorker(true)` que hace skipWaiting + reload completo
+- Ajustar `vite.config.ts` workbox:
+  - `skipWaiting: true` y `clientsClaim: true` — el nuevo SW toma control inmediatamente
+  - `cleanupOutdatedCaches: true` — borra caches viejos
+  - Mantener `navigateFallbackDenylist: [/^\/~oauth/]`
 
-**Enum `app_role`:** `'super_admin' | 'admin' | 'operario'`
+**4. Modal de actualización (mejor UX que el toast actual)**
+- Reemplazar el banner inferior por un `AlertDialog` (ya existe `src/components/ui/alert-dialog.tsx`) centrado:
+  - Título: "Nueva versión disponible"
+  - Descripción: "Versión X.X.X lista. Actualiza para ver los últimos cambios."
+  - Botón principal: "Actualizar ahora" (dorado)
+  - Botón secundario: "Después" (cierra modal, vuelve a aparecer en próximo polling)
 
-**Funciones security-definer:**
-- `has_role(_user_id uuid, _role app_role) → boolean` — chequeo de rol sin recursión RLS
-- `is_admin_or_super(_user_id uuid) → boolean` — helper para policies
+### Archivos a tocar
 
-**RLS:**
-- `profiles`: usuario puede leer su propio profile; admin/super_admin leen todos; solo admin/super_admin insert/update/delete
-- `user_roles`: usuario puede leer sus propios roles; solo super_admin asigna roles
+**Modificar:**
+1. `vite.config.ts`
+   - Agregar `define` con `__APP_VERSION__`, `__APP_COMMIT__`, `__APP_BUILD_DATE__` (lee de `package.json` + `git rev-parse`)
+   - Workbox: `skipWaiting: true`, `clientsClaim: true`, `cleanupOutdatedCaches: true`
+   - VitePWA: agregar versión en el manifest description
 
----
+2. `src/vite-env.d.ts`
+   - Declarar las globals `__APP_VERSION__: string`, `__APP_COMMIT__: string`, `__APP_BUILD_DATE__: string`
 
-### Flujo de login (cómo se ve en el front)
+3. `src/components/PwaUpdatePrompt.tsx`
+   - Refactor a modal `AlertDialog`
+   - Polling cada 60s con `updateInterval`
+   - Mostrar versión nueva en el modal
+   - Manejo correcto de `onRegisteredSW` para chequeo periódico
 
-1. Usuario abre la app → ve selector dropdown con todos los `display_name` activos (consulta pública limitada via edge function)
-2. Selecciona "Juan Pérez" → aparece campo de contraseña
-3. Digita contraseña → el cliente llama `supabase.auth.signInWithPassword({ email: "juanperez@yopmail.com", password })`
-4. Sesión persistida via Supabase Auth (JWT, refresh tokens, todo nativo)
-5. `useAuth` hook expone user + roles → routing redirige según rol
+4. `src/pages/Menu.tsx` y `src/pages/Admin.tsx`
+   - Agregar `<VersionFooter />` al final
 
-**Listado de nombres para el dropdown:** edge function pública `list-display-names` que devuelve solo `[{ id, display_name }]` de profiles activos. Sin exponer emails ni roles.
+**Crear:**
+5. `src/components/VersionFooter.tsx`
+   - Componente simple que lee las globals y muestra `v{version} · {commit}`
 
----
+### Flujo end-to-end
+1. Haces cambios → push a GitHub (ya conectado vía Lovable)
+2. Lovable publica → build inyecta versión nueva + commit hash en el bundle
+3. Tu celular (con la PWA instalada) hace polling cada 60s al `/sw.js`
+4. Detecta versión nueva → muestra modal "Nueva versión disponible"
+5. Tocas "Actualizar ahora" → SW skipWaiting + reload → ves los cambios sin reinstalar
+6. Footer ahora muestra la versión nueva
 
-### Creación de usuarios (solo admin/super_admin)
+### Notas técnicas
+- `git rev-parse` en `vite.config.ts` se ejecuta en build server. Si falla (no hay git), fallback a `"local"`.
+- Bumps de versión: por ahora manual en `package.json`. Si quieres automatizarlo después con `standard-version` o tags de git, lo agregamos en otra fase.
+- El polling de 60s solo corre cuando la app está abierta — no consume batería en background.
 
-Edge function `admin-create-user` (requiere JWT con rol admin/super_admin):
-1. Recibe `{ display_name, password, role }`
-2. Genera email sintético: `slugify(display_name) + "@yopmail.com"` (ej. "Juan Pérez" → `juanperez@yopmail.com`)
-3. Valida unicidad de `display_name`
-4. Crea user en Supabase Auth via service role key
-5. Inserta row en `profiles` y `user_roles`
-6. Devuelve confirmación
-
----
-
-### Cambios en el front
-
-1. **Refactor `src/pages/Index.tsx`** — reemplazar el flujo actual cédula→localStorage por:
-   - Dropdown de selección de nombre (carga via edge function)
-   - Campo de contraseña
-   - Llamada real a Supabase Auth
-   - Eliminar `localStorage.setItem("cedula", ...)`
-
-2. **Crear `src/hooks/useAuth.tsx`** — hook con `user`, `session`, `roles`, `signOut()`. Usa `onAuthStateChange` + lectura de `user_roles`.
-
-3. **Crear `src/components/ProtectedRoute.tsx`** — wrapper que requiere sesión activa y opcionalmente un rol específico.
-
-4. **Actualizar `src/App.tsx`** — envolver rutas autenticadas en `ProtectedRoute`. Rutas: `/` (login público), `/menu` y módulos (requieren auth), `/admin` (requiere `admin` o `super_admin`).
-
-5. **Actualizar `src/pages/Menu.tsx`** — usar `useAuth` para mostrar nombre del usuario y para `signOut()` real (no `localStorage.removeItem`).
-
-6. **Crear `src/pages/Admin.tsx`** (placeholder) — pantalla protegida que confirme que el sistema de roles funciona. Botón "Crear usuario" llamando a `admin-create-user`. Lo expandimos en la siguiente fase.
-
----
-
-### Edge functions a crear
-
-- `list-display-names` (pública) — devuelve nombres para el dropdown del login
-- `admin-create-user` (protegida, requiere admin/super_admin) — crea usuario + profile + rol
-
----
-
-### Bootstrap del primer super_admin
-
-Como aún no hay nadie con rol `super_admin` para crear el primer usuario, el flujo será:
-1. Ejecutar la migración (crea tablas + funciones, vacías)
-2. Tú me das un `display_name` y contraseña deseados
-3. Lo creo manualmente vía SQL en la migración de seed (un solo INSERT a `auth.users` no es posible vía SQL puro, así que lo haremos vía un seed script o tú ejecutas el signup una vez en el dashboard de Supabase y yo te asigno el rol via SQL)
-
-**Opción más simple:** te indico cómo crear tu user en Supabase Dashboard (Authentication → Add user) con email `tunombre@yopmail.com` y password. Luego una migración inserta tu profile + rol `super_admin` referenciando ese user_id.
-
----
-
-### Resumen de archivos
-
-**SQL (migración):**
-- Enum `app_role`
-- Tabla `profiles` + RLS
-- Tabla `user_roles` + RLS
-- Funciones `has_role`, `is_admin_or_super`
-- Trigger `handle_new_user` (auto-crea profile vacío al signup, aunque solo admin lo invoca)
-
-**Edge functions:**
-- `supabase/functions/list-display-names/index.ts`
-- `supabase/functions/admin-create-user/index.ts`
-
-**Front:**
-- `src/hooks/useAuth.tsx` (nuevo)
-- `src/components/ProtectedRoute.tsx` (nuevo)
-- `src/pages/Index.tsx` (refactor completo del login)
-- `src/pages/Menu.tsx` (usa useAuth)
-- `src/pages/Admin.tsx` (nuevo, placeholder)
-- `src/App.tsx` (rutas protegidas)
-
----
-
-### Antes de implementar necesito saber
-
-1. **Tu super_admin:** ¿qué `display_name` quieres? (ej. "Andrés Dev" → `andresdev@yopmail.com`). Tú creas el user en el Dashboard de Supabase y la migración te asigna el rol.
-2. **¿Mantenemos el branding actual** (negro + dorado #b79f60, hero JPS) intacto? Asumo que sí.
-3. **¿Confirmas el nombre del campo "Contraseña"** o prefieres "PIN" en el front (sigue siendo password en el backend, solo cambia la etiqueta)?
+### Pregunta antes de implementar
+¿Bumpeamos `package.json` a `0.1.0` ahora como punto de partida, o lo dejas en `0.0.0` y subes manualmente cuando quieras marcar releases?
 
