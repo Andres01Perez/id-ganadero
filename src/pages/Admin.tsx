@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import VersionFooter from "@/components/VersionFooter";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -123,6 +124,7 @@ const Admin = () => {
         >
           Cerrar sesión
         </button>
+        <VersionFooter />
       </div>
     </div>
   );
