@@ -68,7 +68,7 @@ const Menu = () => {
   const { signOut } = useAuth();
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-16">
+    <div className="min-h-[100dvh] bg-background pb-24">
       <header className="relative h-44 overflow-hidden">
         <img
           src={menuHeader}
@@ -98,9 +98,11 @@ const Menu = () => {
         </div>
       </div>
 
-      <BottomTabBar />
-      <div className="fixed bottom-[64px] left-0 right-0 z-50 bg-black/95 backdrop-blur border-t border-gold/20 pb-[env(safe-area-inset-bottom)]">
-        <VersionFooter />
+      <div className="fixed bottom-0 left-0 right-0 z-40">
+        <BottomTabBar />
+        <div className="bg-black border-t border-gold/20 pb-[env(safe-area-inset-bottom)]">
+          <VersionFooter />
+        </div>
       </div>
     </div>
   );
