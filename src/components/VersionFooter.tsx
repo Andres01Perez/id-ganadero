@@ -3,7 +3,7 @@ const VersionFooter = () => {
   const commit = typeof __APP_COMMIT__ !== "undefined" ? __APP_COMMIT__ : "local";
 
   return (
-    <div className="w-full text-center py-2 text-[10px] text-gray-400 select-none">
+    <div className="w-full text-center pt-2 text-[10px] text-muted-foreground/60 select-none tracking-wider font-mono-num">
       v{version} · {commit}
     </div>
   );
