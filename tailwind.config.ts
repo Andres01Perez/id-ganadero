@@ -14,8 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ['"Playfair Display"', "Georgia", "serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ['"Fira Sans Condensed"', "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -51,15 +50,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        leather: {
-          DEFAULT: "hsl(var(--leather))",
-          deep: "hsl(var(--leather-deep))",
-        },
         gold: {
           DEFAULT: "hsl(var(--gold))",
           soft: "hsl(var(--gold-soft))",
           deep: "hsl(var(--gold-deep))",
         },
+        beige: "hsl(var(--beige))",
+        ink: "hsl(var(--ink))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

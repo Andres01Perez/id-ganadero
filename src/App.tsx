@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Admin from "./pages/Admin";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import CategoriaAnimales from "./pages/CategoriaAnimales";
+import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import NotFound from "./pages/NotFound";
 import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 import { AuthProvider } from "./hooks/useAuth";
@@ -41,42 +43,26 @@ const App = () => (
               }
             />
             <Route
+              path="/categoria/:tipo"
+              element={
+                <ProtectedRoute>
+                  <CategoriaAnimales />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/animal/:id"
+              element={
+                <ProtectedRoute>
+                  <HojaVidaAnimal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/fincas"
               element={
                 <ProtectedRoute>
                   <PlaceholderPage title="Fincas" />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/machos"
-              element={
-                <ProtectedRoute>
-                  <PlaceholderPage title="Machos" />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/hembras"
-              element={
-                <ProtectedRoute>
-                  <PlaceholderPage title="Hembras" />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/crias"
-              element={
-                <ProtectedRoute>
-                  <PlaceholderPage title="Crías" />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/embriones"
-              element={
-                <ProtectedRoute>
-                  <PlaceholderPage title="Embriones" />
                 </ProtectedRoute>
               }
             />
