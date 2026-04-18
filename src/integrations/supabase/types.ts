@@ -21,10 +21,7 @@ export type Database = {
           color: string | null
           created_at: string
           created_by: string | null
-          donadora_id: string | null
-          estado_embrion: Database["public"]["Enums"]["embrion_estado"] | null
           fecha_nacimiento: string | null
-          fecha_transferencia: string | null
           finca_id: string | null
           foto_principal_url: string | null
           id: string
@@ -33,7 +30,6 @@ export type Database = {
           numero_registro: string | null
           padre_id: string | null
           raza: string | null
-          receptora_id: string | null
           sexo: Database["public"]["Enums"]["animal_sexo"] | null
           tipo: Database["public"]["Enums"]["animal_tipo"]
           updated_at: string
@@ -44,10 +40,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
-          donadora_id?: string | null
-          estado_embrion?: Database["public"]["Enums"]["embrion_estado"] | null
           fecha_nacimiento?: string | null
-          fecha_transferencia?: string | null
           finca_id?: string | null
           foto_principal_url?: string | null
           id?: string
@@ -56,7 +49,6 @@ export type Database = {
           numero_registro?: string | null
           padre_id?: string | null
           raza?: string | null
-          receptora_id?: string | null
           sexo?: Database["public"]["Enums"]["animal_sexo"] | null
           tipo: Database["public"]["Enums"]["animal_tipo"]
           updated_at?: string
@@ -67,10 +59,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
-          donadora_id?: string | null
-          estado_embrion?: Database["public"]["Enums"]["embrion_estado"] | null
           fecha_nacimiento?: string | null
-          fecha_transferencia?: string | null
           finca_id?: string | null
           foto_principal_url?: string | null
           id?: string
@@ -79,19 +68,11 @@ export type Database = {
           numero_registro?: string | null
           padre_id?: string | null
           raza?: string | null
-          receptora_id?: string | null
           sexo?: Database["public"]["Enums"]["animal_sexo"] | null
           tipo?: Database["public"]["Enums"]["animal_tipo"]
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "animales_donadora_id_fkey"
-            columns: ["donadora_id"]
-            isOneToOne: false
-            referencedRelation: "animales"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "animales_finca_id_fkey"
             columns: ["finca_id"]
@@ -109,13 +90,6 @@ export type Database = {
           {
             foreignKeyName: "animales_padre_id_fkey"
             columns: ["padre_id"]
-            isOneToOne: false
-            referencedRelation: "animales"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "animales_receptora_id_fkey"
-            columns: ["receptora_id"]
             isOneToOne: false
             referencedRelation: "animales"
             referencedColumns: ["id"]
@@ -313,6 +287,67 @@ export type Database = {
           {
             foreignKeyName: "dietas_animal_id_fkey"
             columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      embriones_detalle: {
+        Row: {
+          animal_id: string
+          created_at: string
+          donadora_id: string | null
+          estado_embrion: Database["public"]["Enums"]["embrion_estado"] | null
+          fecha_transferencia: string | null
+          id: string
+          notas: string | null
+          receptora_id: string | null
+          responsable_id: string
+          updated_at: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          donadora_id?: string | null
+          estado_embrion?: Database["public"]["Enums"]["embrion_estado"] | null
+          fecha_transferencia?: string | null
+          id?: string
+          notas?: string | null
+          receptora_id?: string | null
+          responsable_id: string
+          updated_at?: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          donadora_id?: string | null
+          estado_embrion?: Database["public"]["Enums"]["embrion_estado"] | null
+          fecha_transferencia?: string | null
+          id?: string
+          notas?: string | null
+          receptora_id?: string | null
+          responsable_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "embriones_detalle_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: true
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embriones_detalle_donadora_id_fkey"
+            columns: ["donadora_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "embriones_detalle_receptora_id_fkey"
+            columns: ["receptora_id"]
             isOneToOne: false
             referencedRelation: "animales"
             referencedColumns: ["id"]
