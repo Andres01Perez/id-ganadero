@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import heroLogo from "@/assets/hero-menu.webp";
+import { useAuth } from "@/hooks/useAuth";
 import fincasImg from "@/assets/menu/fincas.webp";
 import machosImg from "@/assets/menu/machos.webp";
 import hembrasImg from "@/assets/menu/hembras.webp";
@@ -18,6 +19,8 @@ const menuItems = [
 
 const Menu = () => {
   const navigate = useNavigate();
+  const { displayName, roles, signOut } = useAuth();
+  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
@@ -57,14 +60,25 @@ const Menu = () => {
         </div>
       </div>
 
-      {/* Logout */}
-      <div className="bg-white pb-8">
+      {/* Footer */}
+      <div className="bg-white pb-8 pt-2 flex flex-col items-center gap-2">
+        {displayName && (
+          <span className="text-gray-500 text-xs">Hola, {displayName}</span>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() => navigate("/admin")}
+            className="text-[#b79f60] text-sm font-semibold underline"
+          >
+            Panel admin
+          </button>
+        )}
         <button
-          onClick={() => {
-            localStorage.removeItem("cedula");
+          onClick={async () => {
+            await signOut();
             navigate("/");
           }}
-          className="mx-auto block text-gray-600 text-sm underline"
+          className="text-gray-600 text-sm underline"
         >
           Cerrar sesión
         </button>
