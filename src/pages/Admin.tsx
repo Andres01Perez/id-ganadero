@@ -171,7 +171,6 @@ const Admin = () => {
           <h1 className="text-lg font-bold text-gold">Panel Admin</h1>
           <p className="text-xs opacity-70">{displayName} · {roles.join(", ")}</p>
         </div>
-        <img src={jpsLogo} alt="" className="h-9 w-9 object-contain" />
       </header>
 
       <div className="max-w-md mx-auto p-4">
