@@ -1,30 +1,22 @@
 
 
-## Ajustes de tipografía en arco del Menu
+## Eliminar espacio del SVG entre texto y círculo
 
-Comparando con la plantilla adjunta:
-- El texto se ve **más grande** (≈14px vs 11px actual)
-- Las letras están **más juntas** (letter-spacing ≈1px vs 2px actual)
-- El arco tiene el **mismo ancho que el círculo** (96px), no más ancho
+### Causa
+El SVG tiene `viewBox="0 0 96 36"` (alto 36) pero el texto del arco se renderiza cerca de y=32. Eso deja ~22px de espacio vacío arriba del texto dentro del SVG, que empuja el círculo hacia abajo. El `-mb-1` (4px) actual no compensa esos ~22px.
 
-### Cambios en `src/pages/Menu.tsx` (CircleButton, líneas 38-50)
+### Solución en `src/pages/Menu.tsx` (líneas 38-50)
 
-**SVG container**: cambiar de `w-28 h-8` (112px) a `w-24 h-9` (96px) para que coincida con el ancho del círculo (también `w-24`). Ajustar `viewBox` a `0 0 96 36`.
+**Reducir altura del SVG al mínimo necesario para el texto**:
+- `viewBox`: `0 0 96 36` → `0 0 96 18`
+- Path: `M 6 32 A 42 42 0 0 1 90 32` → `M 6 14 A 42 42 0 0 1 90 14` (mover el arco hacia arriba dentro del nuevo viewBox)
+- Container: `w-24 h-9` → `w-24 h-[18px]`
+- Quitar `-mb-1` (ya no hace falta)
 
-**Path del arco**: ajustar coordenadas para el nuevo viewBox — `M 6 32 A 42 42 0 0 1 90 32` (radio menor, curvatura suave que abraza el círculo).
-
-**Estilos de texto**:
-- `fontSize: 11` → `fontSize: 14`
-- `letterSpacing: 2` → `letterSpacing: 1`
-- Mantener `fontWeight: 700`
-
-**Gap**: cambiar `gap-1` a `gap-0` o `-mb-1` para que el texto quede pegado al borde superior del círculo como en la plantilla.
-
-### Resultado esperado
-Texto en arco más prominente, letras compactas siguiendo la curva superior del círculo dorado, igual que la plantilla "FINCAS / MACHOS / HEMBRAS / CRIAS / EMBRIONES".
+Con esto el SVG ocupa solo el alto del texto, y el círculo queda pegado debajo como en la plantilla.
 
 ### Archivo
 | Archivo | Cambio |
 |---|---|
-| `src/pages/Menu.tsx` | Ajustar dimensiones SVG, viewBox, path del arco, fontSize y letterSpacing |
+| `src/pages/Menu.tsx` | Reducir alto del SVG y reposicionar el arco |
 
