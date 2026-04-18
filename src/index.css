@@ -4,60 +4,58 @@
 
 @layer base {
   :root {
-    /* Roble muy oscuro / cuero */
-    --background: 25 18% 7%;
-    --foreground: 38 30% 92%;
+    /* Beige #EDE9DD */
+    --background: 45 25% 90%;
+    --foreground: 0 0% 0%;
 
-    --card: 25 15% 11%;
-    --card-foreground: 38 30% 92%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
 
-    --popover: 25 15% 11%;
-    --popover-foreground: 38 30% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    /* Dorado JPS */
-    --primary: 38 55% 52%;
-    --primary-foreground: 25 18% 7%;
+    /* Dorado JPS #B79F60 */
+    --primary: 41 35% 55%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 25 15% 16%;
-    --secondary-foreground: 38 30% 92%;
+    --secondary: 45 15% 82%;
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 25 12% 18%;
-    --muted-foreground: 38 15% 65%;
+    --muted: 45 15% 85%;
+    --muted-foreground: 0 0% 35%;
 
-    --accent: 25 25% 22%;
-    --accent-foreground: 38 45% 75%;
+    --accent: 41 35% 55%;
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 75% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 18% 22%;
-    --input: 30 18% 22%;
-    --ring: 38 55% 52%;
+    --border: 41 35% 55%;
+    --input: 45 15% 80%;
+    --ring: 41 35% 55%;
 
     --radius: 0.75rem;
 
     /* Tokens extendidos */
-    --leather: 25 25% 18%;
-    --leather-deep: 25 30% 12%;
-    --gold: 38 55% 52%;
-    --gold-soft: 38 45% 65%;
-    --gold-deep: 38 60% 38%;
+    --gold: 41 35% 55%;
+    --gold-soft: 41 40% 70%;
+    --gold-deep: 41 40% 40%;
+    --beige: 45 25% 90%;
+    --ink: 0 0% 0%;
 
     /* Gradientes y sombras */
-    --gradient-leather: linear-gradient(180deg, hsl(25 22% 14%) 0%, hsl(25 18% 8%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(38 60% 58%) 0%, hsl(38 50% 42%) 100%);
-    --gradient-overlay: linear-gradient(180deg, hsl(25 18% 7% / 0) 0%, hsl(25 18% 7% / 0.9) 100%);
-    --shadow-gold: 0 4px 20px -4px hsl(38 55% 52% / 0.35);
-    --shadow-leather: 0 8px 32px -8px hsl(25 30% 4% / 0.6);
+    --gradient-gold: linear-gradient(135deg, hsl(41 40% 60%) 0%, hsl(41 35% 50%) 100%);
+    --shadow-gold: 0 6px 20px -6px hsl(41 35% 30% / 0.4);
+    --shadow-soft: 0 4px 16px -4px hsl(0 0% 0% / 0.12);
 
-    --sidebar-background: 25 18% 9%;
-    --sidebar-foreground: 38 30% 88%;
-    --sidebar-primary: 38 55% 52%;
-    --sidebar-primary-foreground: 25 18% 7%;
-    --sidebar-accent: 25 15% 16%;
-    --sidebar-accent-foreground: 38 30% 88%;
-    --sidebar-border: 30 18% 22%;
-    --sidebar-ring: 38 55% 52%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 45 25% 90%;
+    --sidebar-primary: 41 35% 55%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 45 25% 90%;
+    --sidebar-border: 41 35% 55%;
+    --sidebar-ring: 41 35% 55%;
   }
 }
 
@@ -68,41 +66,41 @@
 
   html, body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Fira Sans Condensed', system-ui, sans-serif;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, .font-serif {
-    font-family: 'Playfair Display', Georgia, serif;
-    letter-spacing: -0.01em;
-  }
-
-  .font-mono-num {
-    font-family: 'Fira Sans Condensed', sans-serif;
-    font-variant-numeric: tabular-nums;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fira Sans Condensed', system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.01em;
   }
 }
 
 @layer utilities {
-  .bg-leather {
-    background: var(--gradient-leather);
-  }
   .bg-gold-gradient {
     background: var(--gradient-gold);
+  }
+  .bg-gold-solid {
+    background-color: hsl(var(--gold));
   }
   .shadow-gold {
     box-shadow: var(--shadow-gold);
   }
-  .shadow-leather {
-    box-shadow: var(--shadow-leather);
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
   }
   .text-gold {
     color: hsl(var(--gold));
   }
-  .text-gold-soft {
-    color: hsl(var(--gold-soft));
+  .text-gold-deep {
+    color: hsl(var(--gold-deep));
   }
   .border-gold {
-    border-color: hsl(var(--gold) / 0.4);
+    border-color: hsl(var(--gold));
+  }
+  .tracking-jps {
+    letter-spacing: 0.18em;
   }
 }
