@@ -1,7 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import menuHeader from "@/assets/menu-header.jpg";
+import menuHeader from "@/assets/menu-header.webp";
 import jpsLogo from "@/assets/jps-logo.webp";
+import iconFincas from "@/assets/menu-icons/fincas.webp";
+import iconHembras from "@/assets/menu-icons/hembras.webp";
+import iconCrias from "@/assets/menu-icons/crias.webp";
+import iconEmbriones from "@/assets/menu-icons/embriones.webp";
+import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
 import { LogOut, Shield } from "lucide-react";
 
@@ -9,16 +14,16 @@ type CircleItem = {
   label: string;
   to: string;
   icon?: string;
-  solid?: boolean;
+  image?: string;
 };
 
 const items: CircleItem[] = [
-  { label: "Fincas", to: "/fincas", icon: "🏡" },
+  { label: "Fincas", to: "/fincas", image: iconFincas },
   { label: "Machos", to: "/categoria/macho", icon: "🐂" },
-  { label: "Hembras", to: "/categoria/hembra", icon: "🐄" },
-  { label: "Crías", to: "/categoria/cria", icon: "🐃" },
-  { label: "Embriones", to: "/categoria/embrion", icon: "🥚" },
-  { label: "Generalidades", to: "/generalidades", solid: true },
+  { label: "Hembras", to: "/categoria/hembra", image: iconHembras },
+  { label: "Crías", to: "/categoria/cria", image: iconCrias },
+  { label: "Embriones", to: "/categoria/embrion", image: iconEmbriones },
+  { label: "Generalidades", to: "/generalidades", image: iconGeneralidades },
 ];
 
 const CircleButton = ({ item }: { item: CircleItem }) => {
@@ -40,13 +45,9 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
         </text>
       </svg>
 
-      <div
-        className={`w-24 h-24 rounded-full border-[3px] border-gold flex items-center justify-center shadow-soft overflow-hidden ${
-          item.solid ? "bg-gold-solid" : "bg-card"
-        }`}
-      >
-        {item.solid ? (
-          <img src={jpsLogo} alt="" className="w-14 h-14 object-contain" />
+      <div className="w-24 h-24 rounded-full border-[3px] border-gold flex items-center justify-center shadow-soft overflow-hidden bg-card">
+        {item.image ? (
+          <img src={item.image} alt={item.label} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <span className="text-3xl" aria-hidden>
             {item.icon}
@@ -69,6 +70,7 @@ const Menu = () => {
           src={menuHeader}
           alt="Ganadería JPS"
           className="w-full h-full object-cover"
+          loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
         <div className="absolute top-3 right-3 flex items-center gap-2">
