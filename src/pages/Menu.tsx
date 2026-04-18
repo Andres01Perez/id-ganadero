@@ -24,7 +24,7 @@ const items: CircleItem[] = [
   { label: "Hembras", to: "/categoria/hembra", image: iconHembras },
   { label: "Crías", to: "/categoria/cria", image: iconCrias },
   { label: "Embriones", to: "/categoria/embrion", image: iconEmbriones },
-  { label: "Generalidades", to: "/generalidades", image: iconGeneralidades },
+  { label: "Otros", to: "/generalidades", image: iconGeneralidades },
 ];
 
 const CircleButton = ({ item }: { item: CircleItem }) => {
@@ -35,11 +35,14 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
       onClick={() => navigate(item.to)}
       className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
     >
-      <svg viewBox="0 0 120 40" className="w-28 h-8">
+      <svg viewBox="0 0 120 40" className="w-28 h-8 overflow-visible">
         <defs>
           <path id={id} d="M 10 35 A 50 50 0 0 1 110 35" fill="transparent" />
         </defs>
-        <text className="fill-foreground" style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700 }}>
+        <text
+          fill="hsl(var(--foreground))"
+          style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700 }}
+        >
           <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
             {item.label.toUpperCase()}
           </textPath>
