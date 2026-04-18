@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Beef, Milk, Baby, Egg, type LucideIcon } from "lucide-react";
+import { Beef, Milk, Rabbit, Egg, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = {
@@ -11,7 +11,7 @@ type Tab = {
 const tabs: Tab[] = [
   { label: "Machos", to: "/categoria/macho", icon: Beef },
   { label: "Hembras", to: "/categoria/hembra", icon: Milk },
-  { label: "Crías", to: "/categoria/cria", icon: Baby },
+  { label: "Crías", to: "/categoria/cria", icon: Rabbit },
   { label: "Embriones", to: "/categoria/embrion", icon: Egg },
 ];
 
