@@ -6,6 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import VersionFooter from "@/components/VersionFooter";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type DisplayUser = { id: string; display_name: string };
 
@@ -100,21 +107,18 @@ const Index = () => {
             </div>
 
             <div className="space-y-3">
-              <select
-                value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-                disabled={loadingUsers}
-                className="w-full h-12 rounded-lg bg-neutral-900 text-gold-soft text-base px-3 border border-gold/40 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 transition-all"
-              >
-                <option value="">
-                  {loadingUsers ? "Cargando..." : "— Selecciona tu nombre —"}
-                </option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.display_name}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedId} onValueChange={setSelectedId} disabled={loadingUsers}>
+                <SelectTrigger className="w-full h-12 rounded-lg bg-neutral-900 text-gold-soft text-base px-3 border border-gold/40 focus:border-gold focus:ring-2 focus:ring-gold/30">
+                  <SelectValue placeholder={loadingUsers ? "Cargando..." : "— Selecciona tu nombre —"} />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-gold/40 text-gold-soft z-[60]">
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id} className="focus:bg-gold/20 focus:text-gold">
+                      {u.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <input
                 type="password"
