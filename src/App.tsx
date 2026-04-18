@@ -10,7 +10,6 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import NotFound from "./pages/NotFound";
-import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -21,7 +20,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PwaUpdatePrompt />
       <BrowserRouter>
         <AuthProvider>
           <Routes>
