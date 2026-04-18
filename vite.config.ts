@@ -4,7 +4,6 @@ import path from "path";
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { componentTagger } from "lovable-tagger";
-import { VitePWA } from "vite-plugin-pwa";
 
 // Read version from package.json
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
@@ -38,46 +37,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    VitePWA({
-      registerType: "autoUpdate",
-      devOptions: {
-        enabled: false,
-      },
-      workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
-      },
-      manifest: {
-        name: "JPS Ganadería",
-        short_name: "JPS",
-        description: `Control de ganadería JPS · v${APP_VERSION}`,
-        start_url: "/",
-        display: "standalone",
-        background_color: "#0a0a0a",
-        theme_color: "#b79f60",
-        icons: [
-          {
-            src: "/icons/icon-192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/icons/icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/icons/icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
-    }),
   ].filter(Boolean),
   resolve: {
     alias: {
