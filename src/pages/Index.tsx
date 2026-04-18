@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import heroLogin from "@/assets/hero-login.jpg";
+import heroImage from "@/assets/jps-login-hero.png";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import VersionFooter from "@/components/VersionFooter";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 type DisplayUser = { id: string; display_name: string };
 
@@ -14,6 +15,7 @@ const Index = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -62,80 +64,82 @@ const Index = () => {
   };
 
   return (
-    <div
-      className="min-h-[100dvh] w-full flex flex-col relative bg-background overflow-hidden"
-    >
-      {/* Imagen de fondo */}
-      <div className="absolute inset-0 z-0">
+    <div className="min-h-[100dvh] w-full flex flex-col bg-black overflow-hidden">
+      {/* Hero compuesto: vaca + logo JPS embebido */}
+      <div className="flex-1 relative">
         <img
-          src={heroLogin}
-          alt=""
-          aria-hidden
+          src={heroImage}
+          alt="JPS Ganadería"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
       </div>
 
-      {/* Contenido */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-between px-6 py-10">
-        {/* Branding */}
-        <div className="w-full max-w-sm pt-4 text-center animate-fade-in">
-          <div className="inline-block px-4 py-1 mb-3 border border-gold/40 rounded-full text-gold text-[10px] tracking-[0.3em] uppercase">
-            JPS Ganadería
-          </div>
-          <h1 className="font-serif text-5xl text-gold leading-tight">
-            ID Ganadero
-          </h1>
-          <p className="mt-3 text-sm text-gold-soft/80 italic">
-            Tradición, control y precisión
-          </p>
-        </div>
+      {/* Banda dorada inferior - botón de inicio */}
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full bg-gold-solid text-ink py-5 text-center tracking-jps font-semibold text-base uppercase active:brightness-95 transition-all"
+      >
+        Iniciar Sesión
+      </button>
 
-        {/* Card de login */}
-        <div className="w-full max-w-sm bg-card/95 backdrop-blur-md border border-gold/30 rounded-2xl p-6 shadow-leather animate-scale-in">
-          <h2 className="font-serif text-xl text-gold mb-1">Bienvenido</h2>
-          <p className="text-xs text-muted-foreground mb-5">
-            Selecciona tu nombre e ingresa tu contraseña
-          </p>
+      {/* Modal de login: fondo negro, acentos dorados */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="bottom"
+          className="bg-black border-t-2 border-gold rounded-t-3xl p-6 pb-10 max-h-[80vh]"
+        >
+          <div className="mx-auto max-w-sm">
+            <div className="text-center mb-5">
+              <div className="inline-block px-4 py-1 mb-3 border border-gold/60 rounded-full text-gold text-[10px] tracking-[0.3em] uppercase">
+                JPS Ganadería
+              </div>
+              <h2 className="text-gold text-2xl font-semibold">Bienvenido</h2>
+              <p className="text-xs text-gold-soft/80 mt-1">
+                Selecciona tu nombre e ingresa tu contraseña
+              </p>
+            </div>
 
-          <div className="space-y-3">
-            <select
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-              disabled={loadingUsers}
-              className="w-full h-12 rounded-lg bg-leather text-foreground text-base px-3 border border-border focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20 transition-all"
-            >
-              <option value="">
-                {loadingUsers ? "Cargando..." : "— Selecciona tu nombre —"}
-              </option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.display_name}
+            <div className="space-y-3">
+              <select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                disabled={loadingUsers}
+                className="w-full h-12 rounded-lg bg-neutral-900 text-gold-soft text-base px-3 border border-gold/40 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 transition-all"
+              >
+                <option value="">
+                  {loadingUsers ? "Cargando..." : "— Selecciona tu nombre —"}
                 </option>
-              ))}
-            </select>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.display_name}
+                  </option>
+                ))}
+              </select>
 
-            <input
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              className="w-full h-12 rounded-lg bg-leather text-foreground text-base px-3 border border-border placeholder:text-muted-foreground focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20 transition-all"
-            />
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                className="w-full h-12 rounded-lg bg-neutral-900 text-gold-soft text-base px-3 border border-gold/40 placeholder:text-neutral-500 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 transition-all"
+              />
 
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full h-12 rounded-lg bg-gold-gradient text-primary-foreground font-semibold tracking-wide uppercase text-sm shadow-gold transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
-            >
-              {loading ? "Ingresando…" : "Entrar"}
-            </button>
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="w-full h-12 rounded-lg bg-gold-solid text-ink font-semibold tracking-wide uppercase text-sm shadow-gold transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+              >
+                {loading ? "Ingresando…" : "Entrar"}
+              </button>
+            </div>
+
+            <div className="mt-6 opacity-70">
+              <VersionFooter />
+            </div>
           </div>
-        </div>
-
-        <VersionFooter />
-      </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
