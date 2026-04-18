@@ -1,21 +1,144 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import VersionFooter from "@/components/VersionFooter";
+import jpsLogo from "@/assets/jps-logo.webp";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, ArrowLeft } from "lucide-react";
+
+type Animal = {
+  id: string;
+  codigo: string;
+  nombre: string | null;
+  tipo: string;
+  foto_principal_url: string | null;
+};
+
+// Redimensiona una imagen a max 800x800 manteniendo aspecto, devuelve Blob jpeg
+const resizeImage = (file: File, maxSize = 800): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSize) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("No canvas"));
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("blob"))), "image/jpeg", 0.85);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+
+const AnimalPhotoRow = ({ animal, onUpdated }: { animal: Animal; onUpdated: () => void }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const blob = await resizeImage(file, 800);
+      const path = `${animal.id}/${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("animal-fotos")
+        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("animal-fotos").getPublicUrl(path);
+      const { error: dbErr } = await supabase
+        .from("animales")
+        .update({ foto_principal_url: pub.publicUrl })
+        .eq("id", animal.id);
+      if (dbErr) throw dbErr;
+      toast.success("Foto actualizada");
+      onUpdated();
+    } catch (err) {
+      console.error(err);
+      toast.error("No se pudo subir la foto");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 bg-card rounded-xl p-3 shadow-soft">
+      <div className="w-14 h-14 rounded-full border-2 border-gold bg-white overflow-hidden flex items-center justify-center shrink-0">
+        {animal.foto_principal_url ? (
+          <img src={animal.foto_principal_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <img src={jpsLogo} alt="" className="w-7 h-7 object-contain opacity-60" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm truncate">{animal.nombre ?? "Sin nombre"}</p>
+        <p className="text-xs text-muted-foreground truncate">
+          {animal.codigo} · {animal.tipo}
+        </p>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="h-9 px-3 rounded-lg bg-gold-solid text-ink text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        {uploading ? "..." : "Foto"}
+      </button>
+    </div>
+  );
+};
 
 const Admin = () => {
   const navigate = useNavigate();
   const { displayName, roles, signOut } = useAuth();
   const [displayNameInput, setDisplayNameInput] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"operario" | "admin" | "super_admin">(
-    "operario"
-  );
+  const [role, setRole] = useState<"operario" | "admin" | "super_admin">("operario");
   const [submitting, setSubmitting] = useState(false);
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [loadingAnimals, setLoadingAnimals] = useState(false);
 
   const isSuper = roles.includes("super_admin");
+
+  const loadAnimals = async () => {
+    setLoadingAnimals(true);
+    const { data, error } = await supabase
+      .from("animales")
+      .select("id, codigo, nombre, tipo, foto_principal_url")
+      .eq("activo", true)
+      .order("codigo");
+    if (error) toast.error("No se pudieron cargar animales");
+    else setAnimals(data ?? []);
+    setLoadingAnimals(false);
+  };
+
+  useEffect(() => {
+    loadAnimals();
+  }, []);
 
   const handleCreate = async () => {
     if (!displayNameInput.trim() || !password) {
@@ -23,20 +146,13 @@ const Admin = () => {
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke(
-      "admin-create-user",
-      {
-        body: {
-          display_name: displayNameInput.trim(),
-          password,
-          role,
-        },
-      }
-    );
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { display_name: displayNameInput.trim(), password, role },
+    });
     setSubmitting(false);
 
-    if (error || (data as any)?.error) {
-      toast.error((data as any)?.error ?? error?.message ?? "Error");
+    if (error || (data as { error?: string })?.error) {
+      toast.error((data as { error?: string })?.error ?? error?.message ?? "Error");
       return;
     }
     toast.success(`Usuario "${displayNameInput}" creado`);
@@ -46,81 +162,101 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground p-6">
-      <div className="max-w-md mx-auto space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-primary">Panel Admin</h1>
-            <p className="text-sm text-foreground/60">
-              {displayName} · {roles.join(", ")}
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      <header className="bg-black text-white px-4 py-4 flex items-center gap-3">
+        <button onClick={() => navigate("/menu")} aria-label="Volver">
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div className="flex-1">
+          <h1 className="text-lg font-bold text-gold">Panel Admin</h1>
+          <p className="text-xs opacity-70">{displayName} · {roles.join(", ")}</p>
+        </div>
+        <img src={jpsLogo} alt="" className="h-9 w-9 object-contain" />
+      </header>
+
+      <div className="max-w-md mx-auto p-4">
+        <Tabs defaultValue="animales" className="w-full">
+          <TabsList className="grid grid-cols-2 w-full bg-secondary">
+            <TabsTrigger value="animales">Animales</TabsTrigger>
+            <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="animales" className="space-y-3 mt-4">
+            <p className="text-xs text-muted-foreground">
+              Sube una foto por animal. Se redimensiona automáticamente a 800×800px.
             </p>
-          </div>
-          <button
-            onClick={() => navigate("/menu")}
-            className="text-sm underline text-foreground/70"
-          >
-            ← Menú
-          </button>
-        </header>
+            {loadingAnimals ? (
+              <p className="text-center text-sm text-muted-foreground py-6">Cargando…</p>
+            ) : animals.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-6">
+                No hay animales registrados todavía.
+              </p>
+            ) : (
+              animals.map((a) => (
+                <AnimalPhotoRow key={a.id} animal={a} onUpdated={loadAnimals} />
+              ))
+            )}
+          </TabsContent>
 
-        <section className="bg-card border border-border rounded-xl p-5 space-y-4">
-          <h2 className="text-lg font-semibold">Crear nuevo usuario</h2>
+          <TabsContent value="usuarios" className="mt-4">
+            <section className="bg-card border border-border rounded-xl p-5 space-y-4">
+              <h2 className="text-lg font-semibold">Crear nuevo usuario</h2>
 
-          <div className="space-y-2">
-            <label className="text-sm text-foreground/70">
-              Nombre visible
-            </label>
-            <input
-              value={displayNameInput}
-              onChange={(e) => setDisplayNameInput(e.target.value)}
-              placeholder="Ej. Juan Pérez"
-              className="w-full h-12 rounded-lg bg-background border border-border px-3 outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Nombre visible</label>
+                <input
+                  value={displayNameInput}
+                  onChange={(e) => setDisplayNameInput(e.target.value)}
+                  placeholder="Ej. Juan Pérez"
+                  className="w-full h-12 rounded-lg bg-background border border-border px-3 outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-foreground/70">Contraseña</label>
-            <input
-              type="text"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 4 caracteres"
-              className="w-full h-12 rounded-lg bg-background border border-border px-3 outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Contraseña</label>
+                <input
+                  type="text"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 4 caracteres"
+                  className="w-full h-12 rounded-lg bg-background border border-border px-3 outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-foreground/70">Rol</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
-              className="w-full h-12 rounded-lg bg-background border border-border px-3 outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value="operario">Operario</option>
-              <option value="admin" disabled={!isSuper}>
-                Admin {isSuper ? "" : "(solo super_admin)"}
-              </option>
-              <option value="super_admin" disabled={!isSuper}>
-                Super Admin {isSuper ? "" : "(solo super_admin)"}
-              </option>
-            </select>
-          </div>
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Rol</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as typeof role)}
+                  className="w-full h-12 rounded-lg bg-background border border-border px-3 outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="operario">Operario</option>
+                  <option value="admin" disabled={!isSuper}>
+                    Admin {isSuper ? "" : "(solo super_admin)"}
+                  </option>
+                  <option value="super_admin" disabled={!isSuper}>
+                    Super Admin {isSuper ? "" : "(solo super_admin)"}
+                  </option>
+                </select>
+              </div>
 
-          <button
-            onClick={handleCreate}
-            disabled={submitting}
-            className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-bold disabled:opacity-60"
-          >
-            {submitting ? "Creando…" : "Crear usuario"}
-          </button>
-        </section>
+              <button
+                onClick={handleCreate}
+                disabled={submitting}
+                className="w-full h-12 rounded-lg bg-gold-solid text-ink font-bold disabled:opacity-60"
+              >
+                {submitting ? "Creando…" : "Crear usuario"}
+              </button>
+            </section>
+          </TabsContent>
+        </Tabs>
 
         <button
           onClick={async () => {
             await signOut();
             navigate("/");
           }}
-          className="block mx-auto text-sm underline text-foreground/60"
+          className="block mx-auto text-sm underline text-muted-foreground mt-6"
         >
           Cerrar sesión
         </button>

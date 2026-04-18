@@ -1,102 +1,110 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import fincasImg from "@/assets/menu/fincas.jpg";
-import machosImg from "@/assets/menu/machos.jpg";
-import hembrasImg from "@/assets/menu/hembras.jpg";
-import criasImg from "@/assets/menu/crias.jpg";
-import embrionesImg from "@/assets/menu/embriones.jpg";
-import otrosImg from "@/assets/menu/otros.jpg";
-import VersionFooter from "@/components/VersionFooter";
+import menuHeader from "@/assets/menu-header.jpg";
+import jpsLogo from "@/assets/jps-logo.webp";
+import BottomTabBar from "@/components/BottomTabBar";
 import { LogOut, Shield } from "lucide-react";
 
-const menuItems = [
-  { label: "Fincas", path: "/fincas", img: fincasImg, desc: "Predios y ubicaciones" },
-  { label: "Machos", path: "/categoria/macho", img: machosImg, desc: "Toros reproductores" },
-  { label: "Hembras", path: "/categoria/hembra", img: hembrasImg, desc: "Vientres" },
-  { label: "Crías", path: "/categoria/cria", img: criasImg, desc: "Terneros" },
-  { label: "Embriones", path: "/categoria/embrion", img: embrionesImg, desc: "Reproducción asistida" },
-  { label: "Otros", path: "/categoria/otro", img: otrosImg, desc: "Generalidades" },
+type CircleItem = {
+  label: string;
+  to: string;
+  icon?: string;
+  solid?: boolean;
+};
+
+const items: CircleItem[] = [
+  { label: "Fincas", to: "/fincas", icon: "🏡" },
+  { label: "Machos", to: "/categoria/macho", icon: "🐂" },
+  { label: "Hembras", to: "/categoria/hembra", icon: "🐄" },
+  { label: "Crías", to: "/categoria/cria", icon: "🐃" },
+  { label: "Embriones", to: "/categoria/embrion", icon: "🥚" },
+  { label: "Generalidades", to: "/generalidades", solid: true },
 ];
 
-const Menu = () => {
+const CircleButton = ({ item }: { item: CircleItem }) => {
   const navigate = useNavigate();
-  const { displayName, roles, signOut } = useAuth();
+  const id = `arc-${item.label.replace(/\s+/g, "-")}`;
+  return (
+    <button
+      onClick={() => navigate(item.to)}
+      className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+    >
+      <svg viewBox="0 0 120 40" className="w-28 h-8">
+        <defs>
+          <path id={id} d="M 10 35 A 50 50 0 0 1 110 35" fill="transparent" />
+        </defs>
+        <text className="fill-foreground" style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700 }}>
+          <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
+            {item.label.toUpperCase()}
+          </textPath>
+        </text>
+      </svg>
+
+      <div
+        className={`w-24 h-24 rounded-full border-[3px] border-gold flex items-center justify-center shadow-soft overflow-hidden ${
+          item.solid ? "bg-gold-solid" : "bg-card"
+        }`}
+      >
+        {item.solid ? (
+          <img src={jpsLogo} alt="" className="w-14 h-14 object-contain" />
+        ) : (
+          <span className="text-3xl" aria-hidden>
+            {item.icon}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+};
+
+const Menu = () => {
+  const { signOut, roles } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
-  const firstName = displayName?.split(" ")[0] ?? "";
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background">
-      {/* Header */}
-      <header className="px-5 pt-8 pb-5 bg-leather border-b border-gold/20">
-        <div className="max-w-md mx-auto">
-          <p className="text-[10px] tracking-[0.3em] uppercase text-gold-soft/70">
-            JPS Ganadería
-          </p>
-          <h1 className="font-serif text-3xl text-gold mt-1">
-            Hola, <span className="italic">{firstName || "Operario"}</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            ¿Qué vas a registrar hoy?
-          </p>
-        </div>
-      </header>
-
-      {/* Grid de categorías */}
-      <main className="flex-1 px-4 py-6">
-        <div className="max-w-md mx-auto grid grid-cols-2 gap-3">
-          {menuItems.map((item, i) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className="group relative aspect-[4/5] rounded-xl overflow-hidden border border-gold/20 shadow-leather active:scale-[0.97] transition-all animate-fade-in"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <img
-                src={item.img}
-                alt={item.label}
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-3 text-left">
-                <h3 className="font-serif text-lg text-gold leading-tight">
-                  {item.label}
-                </h3>
-                <p className="text-[10px] text-gold-soft/70 mt-0.5 uppercase tracking-wider">
-                  {item.desc}
-                </p>
-              </div>
-              <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-gold/70 shadow-gold" />
-            </button>
-          ))}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="px-5 py-5 border-t border-gold/15 bg-leather/50">
-        <div className="max-w-md mx-auto flex flex-col items-center gap-3">
+    <div className="min-h-[100dvh] bg-background pb-16">
+      <header className="relative h-44 overflow-hidden">
+        <img
+          src={menuHeader}
+          alt="Ganadería JPS"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
+        <div className="absolute top-3 right-3 flex items-center gap-2">
           {isAdmin && (
             <button
               onClick={() => navigate("/admin")}
-              className="flex items-center gap-2 text-gold text-sm font-medium hover:text-gold-soft transition-colors"
+              className="h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
+              aria-label="Admin"
             >
-              <Shield className="w-4 h-4" />
-              Panel administrativo
+              <Shield className="h-4 w-4" />
             </button>
           )}
-          <button
-            onClick={async () => {
-              await signOut();
-              navigate("/");
-            }}
-            className="flex items-center gap-2 text-muted-foreground text-xs hover:text-foreground transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Cerrar sesión
-          </button>
-          <VersionFooter />
+          <img src={jpsLogo} alt="JPS" className="h-14 w-14 object-contain drop-shadow-lg" />
         </div>
-      </footer>
+        <button
+          onClick={signOut}
+          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
+          aria-label="Cerrar sesión"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </header>
+
+      <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-sm">
+        Control Genético JPS
+      </div>
+
+      <div className="px-6 py-8">
+        <div className="grid grid-cols-2 gap-y-7 gap-x-4 justify-items-center">
+          {items.map((item) => (
+            <CircleButton key={item.to} item={item} />
+          ))}
+        </div>
+      </div>
+
+      <BottomTabBar />
     </div>
   );
 };
