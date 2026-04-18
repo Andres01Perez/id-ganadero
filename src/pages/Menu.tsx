@@ -45,9 +45,14 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
         </text>
       </svg>
 
-      <div className="w-24 h-24 rounded-full border-[3px] border-gold flex items-center justify-center shadow-soft overflow-hidden bg-card">
+      <div className="w-24 h-24 rounded-full border-[3px] border-gold shadow-soft overflow-hidden bg-card flex items-center justify-center">
         {item.image ? (
-          <img src={item.image} alt={item.label} className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={item.image}
+            alt={item.label}
+            className="w-full h-full object-cover scale-110"
+            loading="lazy"
+          />
         ) : (
           <span className="text-3xl" aria-hidden>
             {item.icon}
