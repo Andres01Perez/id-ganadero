@@ -8,6 +8,7 @@ import iconCrias from "@/assets/menu-icons/crias.webp";
 import iconEmbriones from "@/assets/menu-icons/embriones.webp";
 import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
+import VersionFooter from "@/components/VersionFooter";
 import { LogOut } from "lucide-react";
 
 type CircleItem = {
@@ -67,7 +68,7 @@ const Menu = () => {
   const { signOut } = useAuth();
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-16">
+    <div className="min-h-[100dvh] bg-background pb-24">
       <header className="relative h-44 overflow-hidden">
         <img
           src={menuHeader}
@@ -97,7 +98,12 @@ const Menu = () => {
         </div>
       </div>
 
-      <BottomTabBar />
+      <div className="fixed bottom-0 left-0 right-0 z-40">
+        <BottomTabBar fixed={false} />
+        <div className="bg-black border-t border-gold/20 pb-[env(safe-area-inset-bottom)]">
+          <VersionFooter />
+        </div>
+      </div>
     </div>
   );
 };
