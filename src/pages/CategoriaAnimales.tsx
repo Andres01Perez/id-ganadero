@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import listaHeader from "@/assets/lista-header.jpg";
+import bannerHembras from "@/assets/banner-hembras.webp";
 import jpsLogo from "@/assets/jps-logo.webp";
 import BottomTabBar from "@/components/BottomTabBar";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -29,6 +30,7 @@ const CategoriaAnimales = () => {
 
   const validTipo = tipo && tipo in titles ? tipo : "hembra";
   const title = titles[validTipo];
+  const headerImg = validTipo === "hembra" ? bannerHembras : listaHeader;
 
   useEffect(() => {
     (async () => {
@@ -52,7 +54,7 @@ const CategoriaAnimales = () => {
     <div className="min-h-[100dvh] bg-background pb-20">
       {/* Header foto */}
       <header className="relative h-36 overflow-hidden">
-        <img src={listaHeader} alt="" className="w-full h-full object-cover" loading="eager" />
+        <img src={headerImg} alt="" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />
         <button
           onClick={() => navigate("/menu")}
