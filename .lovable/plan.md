@@ -1,50 +1,37 @@
 
 
-## Plan: Reemplazo de imágenes (assets estáticos)
+## Plan: BottomTabBar estilo Instagram con íconos
 
-### Archivos a copiar a `src/assets/menu-icons/`
-| Origen (user-uploads) | Destino |
-|---|---|
-| `OPCION_MENU_FINCAS.webp` | `src/assets/menu-icons/fincas.webp` |
-| `OPCION_MENU_HEMBRAS.webp` | `src/assets/menu-icons/hembras.webp` |
-| `OPCION_MENU_CRIAS.webp` | `src/assets/menu-icons/crias.webp` |
-| `OPCION_MENU_EMBRIONES.webp` | `src/assets/menu-icons/embriones.webp` |
-| `OPCION_MENU_GENERALIDADES.webp` | `src/assets/menu-icons/generalidades.webp` |
+### Cambios en `src/components/BottomTabBar.tsx`
 
-**Nota Machos**: no se subió `OPCION_MENU_MACHOS.webp`. Por ahora dejo el círculo de Machos con el emoji 🐂 actual hasta que lo envíes.
+Reescribir el componente para que cada tab muestre **ícono encima + label debajo** (estilo Instagram/app móvil nativa), manteniendo el tema negro+dorado del proyecto.
 
-### Archivos a copiar a `src/assets/`
-| Origen | Destino | Uso |
+**Íconos lucide-react** (no hay íconos exactos de "toro/vaca/cría/embrión", usamos los que mejor representan visualmente):
+
+| Tab | Ícono lucide | Razón |
 |---|---|---|
-| `banner_vista_menu.webp` | `src/assets/menu-header.webp` (reemplaza el `.jpg`) | Header de `/menu` |
-| `banner_hembras.webp` | `src/assets/banner-hembras.webp` (nuevo) | Header solo de `/categoria/hembra` |
+| Machos | `Beef` | Único ícono bovino disponible en lucide |
+| Hembras | `Milk` | Asociación visual con vaca lechera/hembra |
+| Crías | `Baby` | Representa cría/recién nacido |
+| Embriones | `Egg` | Representa embrión/gestación |
 
-### Cambios de código
+**Estructura nueva por tab** (estilo Instagram):
+```text
+┌──────────┐
+│  [icon]  │  ← 22px, color dorado
+│ Label    │  ← 10px, uppercase tracking
+└──────────┘
+```
 
-**1. `src/pages/Menu.tsx`**
-- Importar las 5 imágenes nuevas de `menu-icons/`
-- Cambiar el array `items`: reemplazar el campo `icon: "🏡" / "🐄" / "🐃" / "🥚"` y `solid: true` por `image: <importedAsset>` para FINCAS, HEMBRAS, CRÍAS, EMBRIONES, GENERALIDADES
-- MACHOS conserva `icon: "🐂"` 
-- Componente `CircleButton`: si el item tiene `image`, renderiza `<img>` cubriendo el círculo (`object-cover w-full h-full`). Si tiene `icon`, mantiene el emoji
-- El círculo de GENERALIDADES deja de usar `bg-gold-solid + jps-logo`, ahora usa la imagen `generalidades.webp` con el mismo borde dorado que los demás
-- Reemplazar `import menuHeader from "@/assets/menu-header.jpg"` → `"@/assets/menu-header.webp"` y borrar el `.jpg` viejo
+**Estilo visual**:
+- Fondo sigue `bg-black border-t border-gold/40`
+- Cada tab: `flex flex-col items-center gap-1 py-2`
+- Inactivo: ícono y texto en `text-gold-soft`
+- Activo: barra superior dorada de 2px (estilo Instagram) + ícono y texto en `text-gold` (sin fondo blanco completo, más limpio tipo IG)
+- Tamaño ícono: 22px (ligeramente más grande para que se sienta como app móvil)
+- Label: `text-[10px]` para que quepa cómodo bajo el ícono
+- `active:scale-95` para feedback táctil
 
-**2. `src/pages/CategoriaAnimales.tsx`**
-- Importar `bannerHembras` desde `@/assets/banner-hembras.webp`
-- Importar `listaHeader` (sigue igual) como fallback
-- Lógica: `const headerImg = validTipo === "hembra" ? bannerHembras : listaHeader;`
-- Usar `headerImg` en el `<img>` del header
-
-### Limpieza
-- Borrar `src/assets/menu-header.jpg` (reemplazado por `.webp`)
-- NO borrar `lista-header.jpg` (sigue usándose para machos/crías/embriones)
-- NO tocar `jps-logo.webp` ni `jps-login-hero.png`
-
-### Performance
-- Todas las nuevas imágenes ya vienen en WebP optimizado del usuario
-- Se importan como módulos ES6 → Vite las hashea y cachea permanentemente
-- El header del menú lleva `loading="eager"` (above-the-fold), los íconos del grid pueden quedar igual (ya están en bundle)
-
-### Próximo plan (no incluido aquí)
-Sistema CMS de imágenes editables desde super_admin con tabla `site_images` + bucket + hook `useSiteImage` con fallback a estos assets.
+### Nota
+Si prefieres que mantenga el fondo blanco actual cuando está activo (en lugar de la barra superior), lo cambio. La barra superior es lo más cercano al estilo Instagram puro.
 
