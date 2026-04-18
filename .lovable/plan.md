@@ -1,46 +1,57 @@
 
 
-## Plan: Reorganizar logo JPS y acceso a Admin
+## Plan: Botón de actualización forzada en VersionFooter
 
-### 1. Eliminar logo del header en Menu (`src/pages/Menu.tsx`)
-- Quitar el `<img src={jpsLogo} ... />` del header (línea ~92)
-- Quitar el import de `jpsLogo`
-- El botón de Admin (Shield) sigue ahí mientras lo movemos al BottomTabBar
-- Mantener el botón de logout a la izquierda
+### Problema actual
+El SW antiguo instalado en tu celular probablemente no tiene la lógica de `PwaUpdatePrompt`, por eso no aparece el modal. Necesitamos un mecanismo manual para forzar la actualización desde la UI.
 
-### 2. Eliminar logo del header en Admin (`src/pages/Admin.tsx`)
-- Quitar el `<img src={jpsLogo} ... />` del header negro (línea ~178)
-- Mantener el import porque sigue usándose como placeholder en `AnimalPhotoRow` (cuando un animal no tiene foto)
+### Solución
+Convertir `VersionFooter` en un botón clickeable que:
+1. Al tocarlo → fuerza chequeo de updates del SW
+2. Si encuentra update → recarga la app con la nueva versión
+3. Si no encuentra → limpia caches y recarga de todos modos (nuclear option, garantiza traer lo último del servidor)
 
-### 3. Agregar tab "Admin" al BottomTabBar (`src/components/BottomTabBar.tsx`)
-Convertir la barra de 4 a 5 columnas, con el tab Admin **condicional** (solo visible para usuarios con rol `admin` o `super_admin`).
+### Cambios
 
-**Nuevo layout:**
-```text
-┌─────────┬─────────┬─────────┬───────────┬────────┐
-│ Machos  │ Hembras │  Crías  │ Embriones │ Admin* │
-└─────────┴─────────┴─────────┴───────────┴────────┘
-                                          *solo admin
+**1. `src/components/VersionFooter.tsx`** — convertir a botón interactivo
+- Importar `registerSW` de `virtual:pwa-register` para tener acceso al control del SW
+- Estado local: `checking` (mostrar "Buscando..." mientras chequea)
+- Al hacer clic:
+  - Llamar `registration.update()` para forzar chequeo
+  - Esperar ~1.5s
+  - Si hay nueva versión disponible (waiting worker) → `skipWaiting` + recargar
+  - Si no → ejecutar "hard refresh": desregistrar todos los SW + borrar todos los caches (`caches.delete`) + `window.location.reload()`
+- Mostrar toast con `sonner` indicando el resultado: "Buscando actualizaciones...", "Actualizando a nueva versión", o "Ya tienes la última versión"
+- Mantener el aspecto visual actual (texto pequeño dorado) pero con `cursor-pointer`, `hover:text-gold` y `active:scale-95` para feedback táctil
+- Agregar ícono pequeño `RefreshCw` de lucide-react (12px) al lado de la versión
+
+**2. Verificar que `VersionFooter` esté visible debajo del BottomTabBar en Menu**
+Revisar `src/pages/Menu.tsx` para confirmar dónde se renderiza. Si está dentro del scroll, moverlo a posición fija debajo del tab bar para que siempre se vea.
+
+### Detalle técnico del "hard refresh"
+```typescript
+// 1. Desregistrar todos los SW
+const regs = await navigator.serviceWorker.getRegistrations();
+await Promise.all(regs.map(r => r.unregister()));
+
+// 2. Borrar todos los caches
+const cacheNames = await caches.keys();
+await Promise.all(cacheNames.map(n => caches.delete(n)));
+
+// 3. Recargar desde servidor (no caché)
+window.location.reload();
 ```
 
-**Cambios técnicos:**
-- Importar `useAuth` para leer `roles`
-- Importar ícono `Shield` de lucide-react
-- Construir `tabs` dinámicamente: si `isAdmin` agregar `{ label: "Admin", to: "/admin", icon: Shield }`
-- Cambiar `grid-cols-4` a `grid-cols-5` (cuando es admin) o mantener `grid-cols-4` (cuando no)
-- Usar clase dinámica: `grid-cols-${tabs.length}` no funciona con Tailwind JIT, así que usar condicional explícito: `isAdmin ? "grid-cols-5" : "grid-cols-4"`
+Esto garantiza que aunque el SW viejo esté roto, el siguiente reload traiga TODO desde el servidor y registre el SW nuevo con la lógica de `PwaUpdatePrompt`. Una vez hecho esto una vez, los updates futuros sí funcionarán automáticamente con el modal.
 
-### 4. Quitar botón Shield del header de Menu
-Ya que Admin ahora vive en el BottomTabBar, eliminar el botón flotante Shield del header de `Menu.tsx` (líneas ~84-90) para evitar duplicación. Quitar también el `useNavigate` y la lógica `isAdmin` si no se usan en otro lado del componente.
-
-### Resumen de archivos
+### Archivos
 | Archivo | Cambio |
 |---|---|
-| `src/pages/Menu.tsx` | Eliminar logo header + botón Shield admin |
-| `src/pages/Admin.tsx` | Eliminar logo del header negro |
-| `src/components/BottomTabBar.tsx` | Agregar tab Admin condicional (solo admin/super_admin) |
+| `src/components/VersionFooter.tsx` | Convertir a botón con lógica de update forzada + hard refresh |
+| `src/pages/Menu.tsx` | Verificar/ajustar posición del footer debajo del BottomTabBar |
 
-### Notas
-- El logo sigue mostrándose en: Login, headers de otras páginas (CategoriaAnimales, HojaVidaAnimal, etc.) y como placeholder en `AnimalPhotoRow`
-- El acceso a Admin queda protegido a nivel de UI (solo visible para admins) y a nivel de ruta (ya existe `ProtectedRoute`)
+### Notas importantes
+- En el **preview de Lovable** el botón hará el hard refresh pero no registrará SW nuevo (porque está bloqueado por el guard en `main.tsx`). Esto es correcto.
+- En **producción (`id-ganadero.lovable.app`)** funcionará completo: chequeo + activación de SW nuevo + recarga.
+- Después de usar el botón **una vez** en producción, tu PWA tendrá el SW nuevo con `PwaUpdatePrompt`, y de ahí en adelante los updates futuros mostrarán el modal automáticamente cada 60s sin necesidad del botón.
 
