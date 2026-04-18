@@ -1,57 +1,30 @@
 
 
-## Plan: Botón de actualización forzada en VersionFooter
+## Ajustes de tipografía en arco del Menu
 
-### Problema actual
-El SW antiguo instalado en tu celular probablemente no tiene la lógica de `PwaUpdatePrompt`, por eso no aparece el modal. Necesitamos un mecanismo manual para forzar la actualización desde la UI.
+Comparando con la plantilla adjunta:
+- El texto se ve **más grande** (≈14px vs 11px actual)
+- Las letras están **más juntas** (letter-spacing ≈1px vs 2px actual)
+- El arco tiene el **mismo ancho que el círculo** (96px), no más ancho
 
-### Solución
-Convertir `VersionFooter` en un botón clickeable que:
-1. Al tocarlo → fuerza chequeo de updates del SW
-2. Si encuentra update → recarga la app con la nueva versión
-3. Si no encuentra → limpia caches y recarga de todos modos (nuclear option, garantiza traer lo último del servidor)
+### Cambios en `src/pages/Menu.tsx` (CircleButton, líneas 38-50)
 
-### Cambios
+**SVG container**: cambiar de `w-28 h-8` (112px) a `w-24 h-9` (96px) para que coincida con el ancho del círculo (también `w-24`). Ajustar `viewBox` a `0 0 96 36`.
 
-**1. `src/components/VersionFooter.tsx`** — convertir a botón interactivo
-- Importar `registerSW` de `virtual:pwa-register` para tener acceso al control del SW
-- Estado local: `checking` (mostrar "Buscando..." mientras chequea)
-- Al hacer clic:
-  - Llamar `registration.update()` para forzar chequeo
-  - Esperar ~1.5s
-  - Si hay nueva versión disponible (waiting worker) → `skipWaiting` + recargar
-  - Si no → ejecutar "hard refresh": desregistrar todos los SW + borrar todos los caches (`caches.delete`) + `window.location.reload()`
-- Mostrar toast con `sonner` indicando el resultado: "Buscando actualizaciones...", "Actualizando a nueva versión", o "Ya tienes la última versión"
-- Mantener el aspecto visual actual (texto pequeño dorado) pero con `cursor-pointer`, `hover:text-gold` y `active:scale-95` para feedback táctil
-- Agregar ícono pequeño `RefreshCw` de lucide-react (12px) al lado de la versión
+**Path del arco**: ajustar coordenadas para el nuevo viewBox — `M 6 32 A 42 42 0 0 1 90 32` (radio menor, curvatura suave que abraza el círculo).
 
-**2. Verificar que `VersionFooter` esté visible debajo del BottomTabBar en Menu**
-Revisar `src/pages/Menu.tsx` para confirmar dónde se renderiza. Si está dentro del scroll, moverlo a posición fija debajo del tab bar para que siempre se vea.
+**Estilos de texto**:
+- `fontSize: 11` → `fontSize: 14`
+- `letterSpacing: 2` → `letterSpacing: 1`
+- Mantener `fontWeight: 700`
 
-### Detalle técnico del "hard refresh"
-```typescript
-// 1. Desregistrar todos los SW
-const regs = await navigator.serviceWorker.getRegistrations();
-await Promise.all(regs.map(r => r.unregister()));
+**Gap**: cambiar `gap-1` a `gap-0` o `-mb-1` para que el texto quede pegado al borde superior del círculo como en la plantilla.
 
-// 2. Borrar todos los caches
-const cacheNames = await caches.keys();
-await Promise.all(cacheNames.map(n => caches.delete(n)));
+### Resultado esperado
+Texto en arco más prominente, letras compactas siguiendo la curva superior del círculo dorado, igual que la plantilla "FINCAS / MACHOS / HEMBRAS / CRIAS / EMBRIONES".
 
-// 3. Recargar desde servidor (no caché)
-window.location.reload();
-```
-
-Esto garantiza que aunque el SW viejo esté roto, el siguiente reload traiga TODO desde el servidor y registre el SW nuevo con la lógica de `PwaUpdatePrompt`. Una vez hecho esto una vez, los updates futuros sí funcionarán automáticamente con el modal.
-
-### Archivos
+### Archivo
 | Archivo | Cambio |
 |---|---|
-| `src/components/VersionFooter.tsx` | Convertir a botón con lógica de update forzada + hard refresh |
-| `src/pages/Menu.tsx` | Verificar/ajustar posición del footer debajo del BottomTabBar |
-
-### Notas importantes
-- En el **preview de Lovable** el botón hará el hard refresh pero no registrará SW nuevo (porque está bloqueado por el guard en `main.tsx`). Esto es correcto.
-- En **producción (`id-ganadero.lovable.app`)** funcionará completo: chequeo + activación de SW nuevo + recarga.
-- Después de usar el botón **una vez** en producción, tu PWA tendrá el SW nuevo con `PwaUpdatePrompt`, y de ahí en adelante los updates futuros mostrarán el modal automáticamente cada 60s sin necesidad del botón.
+| `src/pages/Menu.tsx` | Ajustar dimensiones SVG, viewBox, path del arco, fontSize y letterSpacing |
 
