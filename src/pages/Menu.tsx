@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import menuHeader from "@/assets/menu-header.webp";
 import jpsLogo from "@/assets/jps-logo.webp";
 import iconFincas from "@/assets/menu-icons/fincas.webp";
+import iconMachos from "@/assets/menu-icons/machos.webp";
 import iconHembras from "@/assets/menu-icons/hembras.webp";
 import iconCrias from "@/assets/menu-icons/crias.webp";
 import iconEmbriones from "@/assets/menu-icons/embriones.webp";
@@ -19,7 +20,7 @@ type CircleItem = {
 
 const items: CircleItem[] = [
   { label: "Fincas", to: "/fincas", image: iconFincas },
-  { label: "Machos", to: "/categoria/macho", icon: "🐂" },
+  { label: "Machos", to: "/categoria/macho", image: iconMachos },
   { label: "Hembras", to: "/categoria/hembra", image: iconHembras },
   { label: "Crías", to: "/categoria/cria", image: iconCrias },
   { label: "Embriones", to: "/categoria/embrion", image: iconEmbriones },
