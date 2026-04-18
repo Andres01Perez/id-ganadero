@@ -6,6 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import VersionFooter from "@/components/VersionFooter";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type DisplayUser = { id: string; display_name: string };
 
