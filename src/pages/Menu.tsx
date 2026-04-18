@@ -99,7 +99,7 @@ const Menu = () => {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-40">
-        <BottomTabBar />
+        <BottomTabBar fixed={false} />
         <div className="bg-black border-t border-gold/20 pb-[env(safe-area-inset-bottom)]">
           <VersionFooter />
         </div>
