@@ -29,26 +29,11 @@ const items: CircleItem[] = [
 
 const CircleButton = ({ item }: { item: CircleItem }) => {
   const navigate = useNavigate();
-  const id = `arc-${item.label.replace(/\s+/g, "-")}`;
   return (
     <button
       onClick={() => navigate(item.to)}
-      className="flex flex-col items-center gap-0 active:scale-95 transition-transform"
+      className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
     >
-      <svg viewBox="0 0 96 18" className="w-24 h-[18px] overflow-visible">
-        <defs>
-          <path id={id} d="M 6 14 A 42 42 0 0 1 90 14" fill="transparent" />
-        </defs>
-        <text
-          fill="hsl(var(--foreground))"
-          style={{ fontSize: 14, letterSpacing: 1, fontWeight: 700 }}
-        >
-          <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
-            {item.label.toUpperCase()}
-          </textPath>
-        </text>
-      </svg>
-
       <div className="w-24 h-24 rounded-full border-[3px] border-gold shadow-soft overflow-hidden bg-card flex items-center justify-center">
         {item.image ? (
           <img
@@ -63,6 +48,9 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
           </span>
         )}
       </div>
+      <span className="text-sm font-bold tracking-jps uppercase text-foreground">
+        {item.label}
+      </span>
     </button>
   );
 };
