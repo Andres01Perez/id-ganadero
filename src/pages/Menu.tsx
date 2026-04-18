@@ -8,6 +8,7 @@ import iconCrias from "@/assets/menu-icons/crias.webp";
 import iconEmbriones from "@/assets/menu-icons/embriones.webp";
 import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
+import VersionFooter from "@/components/VersionFooter";
 import { LogOut } from "lucide-react";
 
 type CircleItem = {
@@ -98,6 +99,9 @@ const Menu = () => {
       </div>
 
       <BottomTabBar />
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+        <VersionFooter />
+      </div>
     </div>
   );
 };
