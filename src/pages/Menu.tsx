@@ -7,6 +7,7 @@ import hembrasImg from "@/assets/menu/hembras.webp";
 import criasImg from "@/assets/menu/crias.webp";
 import embrionesImg from "@/assets/menu/embriones.webp";
 import generalidadesImg from "@/assets/menu/generalidades.webp";
+import VersionFooter from "@/components/VersionFooter";
 
 const menuItems = [
   { label: "Fincas", path: "/fincas", img: fincasImg },
@@ -82,6 +83,7 @@ const Menu = () => {
         >
           Cerrar sesión
         </button>
+        <VersionFooter />
       </div>
     </div>
   );

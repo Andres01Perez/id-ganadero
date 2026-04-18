@@ -1,31 +1,69 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { registerSW } from "virtual:pwa-register";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Poll the SW for updates every 60s while app is open
+const UPDATE_INTERVAL_MS = 60 * 1000;
 
 const PwaUpdatePrompt = () => {
   const [needRefresh, setNeedRefresh] = useState(false);
+  const updateRef = useRef<((reload?: boolean) => Promise<void>) | null>(null);
 
-  const updateServiceWorker = registerSW({
-    onNeedRefresh() {
-      setNeedRefresh(true);
-    },
-  });
+  useEffect(() => {
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        setNeedRefresh(true);
+      },
+      onRegisteredSW(swUrl, registration) {
+        if (!registration) return;
+        // Periodic check for updates
+        setInterval(() => {
+          registration.update().catch(() => {
+            /* network error, ignore */
+          });
+        }, UPDATE_INTERVAL_MS);
+      },
+    });
+    updateRef.current = updateSW;
+  }, []);
 
-  if (!needRefresh) return null;
+  const version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "";
 
   return (
-    <div className="fixed bottom-6 left-4 right-4 z-50 rounded-xl border-2 border-[#b79f60] bg-[#0a0a0a] p-4 shadow-2xl">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-[#b79f60]">
-          Nueva actualización disponible
-        </p>
-        <button
-          onClick={() => updateServiceWorker(true)}
-          className="shrink-0 rounded-lg bg-[#b79f60] px-4 py-2 text-sm font-bold text-[#0a0a0a] active:opacity-80"
-        >
-          Actualizar
-        </button>
-      </div>
-    </div>
+    <AlertDialog open={needRefresh} onOpenChange={setNeedRefresh}>
+      <AlertDialogContent className="bg-[#0a0a0a] border-2 border-[#b79f60]">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-[#b79f60]">
+            Nueva versión disponible
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-white/80">
+            Hay una actualización lista{version ? ` (v${version})` : ""}. Actualiza
+            para ver los últimos cambios.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-transparent border-white/30 text-white hover:bg-white/10">
+            Después
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => updateRef.current?.(true)}
+            className="bg-[#b79f60] text-[#0a0a0a] font-bold hover:bg-[#a08a4f]"
+          >
+            Actualizar ahora
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 
