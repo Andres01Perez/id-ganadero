@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Beef, Milk, Rabbit, Egg, type LucideIcon } from "lucide-react";
+import { Beef, Milk, Rabbit, Egg, Shield, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 type Tab = {
   label: string;
@@ -8,7 +9,7 @@ type Tab = {
   icon: LucideIcon;
 };
 
-const tabs: Tab[] = [
+const baseTabs: Tab[] = [
   { label: "Machos", to: "/categoria/macho", icon: Beef },
   { label: "Hembras", to: "/categoria/hembra", icon: Milk },
   { label: "Crías", to: "/categoria/cria", icon: Rabbit },
@@ -17,9 +18,16 @@ const tabs: Tab[] = [
 
 const BottomTabBar = () => {
   const { pathname } = useLocation();
+  const { roles } = useAuth();
+  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+
+  const tabs: Tab[] = isAdmin
+    ? [...baseTabs, { label: "Admin", to: "/admin", icon: Shield }]
+    : baseTabs;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black border-t border-gold/40 shadow-soft">
-      <div className="grid grid-cols-4">
+      <div className={cn("grid", isAdmin ? "grid-cols-5" : "grid-cols-4")}>
         {tabs.map((t) => {
           const active = pathname === t.to || pathname.startsWith(t.to + "/");
           const Icon = t.icon;

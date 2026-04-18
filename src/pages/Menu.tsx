@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import menuHeader from "@/assets/menu-header.webp";
-import jpsLogo from "@/assets/jps-logo.webp";
 import iconFincas from "@/assets/menu-icons/fincas.webp";
 import iconMachos from "@/assets/menu-icons/machos.webp";
 import iconHembras from "@/assets/menu-icons/hembras.webp";
@@ -9,7 +8,7 @@ import iconCrias from "@/assets/menu-icons/crias.webp";
 import iconEmbriones from "@/assets/menu-icons/embriones.webp";
 import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 type CircleItem = {
   label: string;
@@ -65,9 +64,7 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
 };
 
 const Menu = () => {
-  const { signOut, roles } = useAuth();
-  const navigate = useNavigate();
-  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+  const { signOut } = useAuth();
 
   return (
     <div className="min-h-[100dvh] bg-background pb-16">
@@ -79,18 +76,6 @@ const Menu = () => {
           loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-          {isAdmin && (
-            <button
-              onClick={() => navigate("/admin")}
-              className="h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
-              aria-label="Admin"
-            >
-              <Shield className="h-4 w-4" />
-            </button>
-          )}
-          <img src={jpsLogo} alt="JPS" className="h-14 w-14 object-contain drop-shadow-lg" />
-        </div>
         <button
           onClick={signOut}
           className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
