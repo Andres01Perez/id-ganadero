@@ -33,15 +33,15 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
   return (
     <button
       onClick={() => navigate(item.to)}
-      className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+      className="flex flex-col items-center gap-0 active:scale-95 transition-transform"
     >
-      <svg viewBox="0 0 120 40" className="w-28 h-8 overflow-visible">
+      <svg viewBox="0 0 96 36" className="w-24 h-9 overflow-visible -mb-1">
         <defs>
-          <path id={id} d="M 10 35 A 50 50 0 0 1 110 35" fill="transparent" />
+          <path id={id} d="M 6 32 A 42 42 0 0 1 90 32" fill="transparent" />
         </defs>
         <text
           fill="hsl(var(--foreground))"
-          style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700 }}
+          style={{ fontSize: 14, letterSpacing: 1, fontWeight: 700 }}
         >
           <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
             {item.label.toUpperCase()}
