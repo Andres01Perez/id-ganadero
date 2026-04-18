@@ -1,40 +1,37 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import heroBpp from "@/assets/hero-bpp.webp";
+import heroLogin from "@/assets/hero-login.jpg";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import VersionFooter from "@/components/VersionFooter";
 
 type DisplayUser = { id: string; display_name: string };
 
 const Index = () => {
-  const [showInput, setShowInput] = useState(false);
   const [users, setUsers] = useState<DisplayUser[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Si ya hay sesión, ir directo al menú
   useEffect(() => {
     if (user) navigate("/menu", { replace: true });
   }, [user, navigate]);
 
-  // Cargar lista de nombres cuando se abre el input
   useEffect(() => {
-    if (!showInput || users.length > 0) return;
     (async () => {
-      const { data, error } = await supabase.functions.invoke(
-        "list-display-names"
-      );
+      const { data, error } = await supabase.functions.invoke("list-display-names");
       if (error) {
         toast.error("No se pudo cargar la lista de usuarios");
-        return;
+      } else {
+        setUsers((data?.users as DisplayUser[]) ?? []);
       }
-      setUsers((data?.users as DisplayUser[]) ?? []);
+      setLoadingUsers(false);
     })();
-  }, [showInput, users.length]);
+  }, []);
 
   const handleLogin = async () => {
     const selected = users.find((u) => u.id === selectedId);
@@ -47,7 +44,6 @@ const Index = () => {
       return;
     }
     setLoading(true);
-    // Reconstruir email sintético desde display_name
     const slug = selected.display_name
       .toLowerCase()
       .normalize("NFD")
@@ -55,10 +51,7 @@ const Index = () => {
       .replace(/[^a-z0-9]+/g, "");
     const email = `${slug}@yopmail.com`;
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
 
     if (error) {
@@ -69,62 +62,79 @@ const Index = () => {
   };
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col overflow-hidden select-none">
-      <div
-        className="w-full bg-background flex items-center justify-center overflow-hidden transition-all duration-500 ease-in-out"
-        style={{ height: showInput ? "30dvh" : "80dvh" }}
-      >
+    <div
+      className="min-h-[100dvh] w-full flex flex-col relative bg-background overflow-hidden"
+    >
+      {/* Imagen de fondo */}
+      <div className="absolute inset-0 z-0">
         <img
-          src={heroBpp}
-          alt="JPS Ganadería"
-          className="w-full h-full object-contain"
-          draggable={false}
+          src={heroLogin}
+          alt=""
+          aria-hidden
+          className="w-full h-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
       </div>
 
-      <div
-        className="w-full bg-primary flex flex-col items-center justify-center transition-all duration-500 ease-in-out px-6 gap-3"
-        style={{ height: showInput ? "70dvh" : "20dvh" }}
-      >
-        {!showInput ? (
-          <button
-            onClick={() => setShowInput(true)}
-            className="w-full max-w-sm h-14 rounded-xl bg-white text-black text-lg font-bold tracking-wider uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95"
-          >
-            Iniciar Sesión
-          </button>
-        ) : (
-          <div className="w-full max-w-sm flex flex-col gap-3 animate-fade-in">
+      {/* Contenido */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-between px-6 py-10">
+        {/* Branding */}
+        <div className="w-full max-w-sm pt-4 text-center animate-fade-in">
+          <div className="inline-block px-4 py-1 mb-3 border border-gold/40 rounded-full text-gold text-[10px] tracking-[0.3em] uppercase">
+            JPS Ganadería
+          </div>
+          <h1 className="font-serif text-5xl text-gold leading-tight">
+            ID Ganadero
+          </h1>
+          <p className="mt-3 text-sm text-gold-soft/80 italic">
+            Tradición, control y precisión
+          </p>
+        </div>
+
+        {/* Card de login */}
+        <div className="w-full max-w-sm bg-card/95 backdrop-blur-md border border-gold/30 rounded-2xl p-6 shadow-leather animate-scale-in">
+          <h2 className="font-serif text-xl text-gold mb-1">Bienvenido</h2>
+          <p className="text-xs text-muted-foreground mb-5">
+            Selecciona tu nombre e ingresa tu contraseña
+          </p>
+
+          <div className="space-y-3">
             <select
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
-              className="w-full h-14 rounded-xl bg-white text-black text-center text-lg font-medium px-4 outline-none ring-2 ring-white/50 focus:ring-black/30 transition-all"
+              disabled={loadingUsers}
+              className="w-full h-12 rounded-lg bg-leather text-foreground text-base px-3 border border-border focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20 transition-all"
             >
-              <option value="">— Selecciona tu nombre —</option>
+              <option value="">
+                {loadingUsers ? "Cargando..." : "— Selecciona tu nombre —"}
+              </option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.display_name}
                 </option>
               ))}
             </select>
+
             <input
               type="password"
-              inputMode="text"
               placeholder="Contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              className="w-full h-14 rounded-xl bg-white text-black text-center text-lg font-medium placeholder:text-gray-400 px-4 outline-none ring-2 ring-white/50 focus:ring-black/30 transition-all"
+              className="w-full h-12 rounded-lg bg-leather text-foreground text-base px-3 border border-border placeholder:text-muted-foreground focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/20 transition-all"
             />
+
             <button
               onClick={handleLogin}
               disabled={loading}
-              className="w-full h-14 rounded-xl bg-white text-black font-bold text-lg tracking-wide transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+              className="w-full h-12 rounded-lg bg-gold-gradient text-primary-foreground font-semibold tracking-wide uppercase text-sm shadow-gold transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
             >
               {loading ? "Ingresando…" : "Entrar"}
             </button>
           </div>
-        )}
+        </div>
+
+        <VersionFooter />
       </div>
     </div>
   );

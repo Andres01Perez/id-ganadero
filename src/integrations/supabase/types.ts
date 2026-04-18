@@ -14,6 +14,622 @@ export type Database = {
   }
   public: {
     Tables: {
+      animales: {
+        Row: {
+          activo: boolean
+          codigo: string
+          color: string | null
+          created_at: string
+          created_by: string | null
+          donadora_id: string | null
+          estado_embrion: Database["public"]["Enums"]["embrion_estado"] | null
+          fecha_nacimiento: string | null
+          fecha_transferencia: string | null
+          finca_id: string | null
+          foto_principal_url: string | null
+          id: string
+          madre_id: string | null
+          nombre: string | null
+          numero_registro: string | null
+          padre_id: string | null
+          raza: string | null
+          receptora_id: string | null
+          sexo: Database["public"]["Enums"]["animal_sexo"] | null
+          tipo: Database["public"]["Enums"]["animal_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          donadora_id?: string | null
+          estado_embrion?: Database["public"]["Enums"]["embrion_estado"] | null
+          fecha_nacimiento?: string | null
+          fecha_transferencia?: string | null
+          finca_id?: string | null
+          foto_principal_url?: string | null
+          id?: string
+          madre_id?: string | null
+          nombre?: string | null
+          numero_registro?: string | null
+          padre_id?: string | null
+          raza?: string | null
+          receptora_id?: string | null
+          sexo?: Database["public"]["Enums"]["animal_sexo"] | null
+          tipo: Database["public"]["Enums"]["animal_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          donadora_id?: string | null
+          estado_embrion?: Database["public"]["Enums"]["embrion_estado"] | null
+          fecha_nacimiento?: string | null
+          fecha_transferencia?: string | null
+          finca_id?: string | null
+          foto_principal_url?: string | null
+          id?: string
+          madre_id?: string | null
+          nombre?: string | null
+          numero_registro?: string | null
+          padre_id?: string | null
+          raza?: string | null
+          receptora_id?: string | null
+          sexo?: Database["public"]["Enums"]["animal_sexo"] | null
+          tipo?: Database["public"]["Enums"]["animal_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animales_donadora_id_fkey"
+            columns: ["donadora_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animales_finca_id_fkey"
+            columns: ["finca_id"]
+            isOneToOne: false
+            referencedRelation: "fincas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animales_madre_id_fkey"
+            columns: ["madre_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animales_padre_id_fkey"
+            columns: ["padre_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animales_receptora_id_fkey"
+            columns: ["receptora_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aspiraciones: {
+        Row: {
+          animal_id: string
+          cantidad_ovocitos: number | null
+          created_at: string
+          fecha: string
+          id: string
+          notas: string | null
+          responsable_id: string
+        }
+        Insert: {
+          animal_id: string
+          cantidad_ovocitos?: number | null
+          created_at?: string
+          fecha: string
+          id?: string
+          notas?: string | null
+          responsable_id: string
+        }
+        Update: {
+          animal_id?: string
+          cantidad_ovocitos?: number | null
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          responsable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aspiraciones_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          accion: string
+          cambios: Json | null
+          created_at: string
+          id: string
+          registro_id: string
+          tabla: string
+          usuario_display_name: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          accion: string
+          cambios?: Json | null
+          created_at?: string
+          id?: string
+          registro_id: string
+          tabla: string
+          usuario_display_name?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          accion?: string
+          cambios?: Json | null
+          created_at?: string
+          id?: string
+          registro_id?: string
+          tabla?: string
+          usuario_display_name?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      chequeos_veterinarios: {
+        Row: {
+          animal_id: string
+          created_at: string
+          diagnostico: string | null
+          estado: string | null
+          fecha: string
+          id: string
+          notas: string | null
+          responsable_id: string
+          veterinario: string | null
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          diagnostico?: string | null
+          estado?: string | null
+          fecha: string
+          id?: string
+          notas?: string | null
+          responsable_id: string
+          veterinario?: string | null
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          diagnostico?: string | null
+          estado?: string | null
+          fecha?: string
+          id?: string
+          notas?: string | null
+          responsable_id?: string
+          veterinario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chequeos_veterinarios_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ciclos_calor: {
+        Row: {
+          animal_id: string
+          created_at: string
+          fecha: string
+          fecha_proximo_estimado: string | null
+          id: string
+          notas: string | null
+          responsable_id: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          fecha: string
+          fecha_proximo_estimado?: string | null
+          id?: string
+          notas?: string | null
+          responsable_id: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          fecha?: string
+          fecha_proximo_estimado?: string | null
+          id?: string
+          notas?: string | null
+          responsable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclos_calor_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dietas: {
+        Row: {
+          animal_id: string
+          cantidad_kg_dia: number | null
+          created_at: string
+          fecha_fin: string | null
+          fecha_inicio: string
+          id: string
+          notas: string | null
+          responsable_id: string
+          tipo_alimento: string
+        }
+        Insert: {
+          animal_id: string
+          cantidad_kg_dia?: number | null
+          created_at?: string
+          fecha_fin?: string | null
+          fecha_inicio: string
+          id?: string
+          notas?: string | null
+          responsable_id: string
+          tipo_alimento: string
+        }
+        Update: {
+          animal_id?: string
+          cantidad_kg_dia?: number | null
+          created_at?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          id?: string
+          notas?: string | null
+          responsable_id?: string
+          tipo_alimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dietas_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      embriones_recolectados: {
+        Row: {
+          animal_id_donadora: string
+          calidad: string | null
+          cantidad: number | null
+          created_at: string
+          fecha: string
+          id: string
+          notas: string | null
+          responsable_id: string
+        }
+        Insert: {
+          animal_id_donadora: string
+          calidad?: string | null
+          cantidad?: number | null
+          created_at?: string
+          fecha: string
+          id?: string
+          notas?: string | null
+          responsable_id: string
+        }
+        Update: {
+          animal_id_donadora?: string
+          calidad?: string | null
+          cantidad?: number | null
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          responsable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "embriones_recolectados_animal_id_donadora_fkey"
+            columns: ["animal_id_donadora"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fincas: {
+        Row: {
+          activo: boolean
+          created_at: string
+          created_by: string | null
+          hectareas: number | null
+          id: string
+          nombre: string
+          ubicacion: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string | null
+          hectareas?: number | null
+          id?: string
+          nombre: string
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string | null
+          hectareas?: number | null
+          id?: string
+          nombre?: string
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inseminaciones: {
+        Row: {
+          animal_id: string
+          created_at: string
+          fecha: string
+          hora: string | null
+          id: string
+          metodo: Database["public"]["Enums"]["metodo_cruce"]
+          notas: string | null
+          responsable_id: string
+          toro_externo_nombre: string | null
+          toro_id: string | null
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          fecha: string
+          hora?: string | null
+          id?: string
+          metodo: Database["public"]["Enums"]["metodo_cruce"]
+          notas?: string | null
+          responsable_id: string
+          toro_externo_nombre?: string | null
+          toro_id?: string | null
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          fecha?: string
+          hora?: string | null
+          id?: string
+          metodo?: Database["public"]["Enums"]["metodo_cruce"]
+          notas?: string | null
+          responsable_id?: string
+          toro_externo_nombre?: string | null
+          toro_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inseminaciones_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inseminaciones_toro_id_fkey"
+            columns: ["toro_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicaciones: {
+        Row: {
+          animal_id: string
+          created_at: string
+          dias_tratamiento: number | null
+          dosis: string | null
+          fecha: string
+          id: string
+          medicamento: string
+          motivo: string | null
+          notas: string | null
+          responsable_id: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          dias_tratamiento?: number | null
+          dosis?: string | null
+          fecha: string
+          id?: string
+          medicamento: string
+          motivo?: string | null
+          notas?: string | null
+          responsable_id: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          dias_tratamiento?: number | null
+          dosis?: string | null
+          fecha?: string
+          id?: string
+          medicamento?: string
+          motivo?: string | null
+          notas?: string | null
+          responsable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicaciones_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      palpaciones: {
+        Row: {
+          animal_id: string
+          created_at: string
+          fecha: string
+          id: string
+          notas: string | null
+          responsable_id: string
+          resultado: Database["public"]["Enums"]["palpacion_resultado"]
+          tiempo_prenez_dias: number | null
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          fecha: string
+          id?: string
+          notas?: string | null
+          responsable_id: string
+          resultado: Database["public"]["Enums"]["palpacion_resultado"]
+          tiempo_prenez_dias?: number | null
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          responsable_id?: string
+          resultado?: Database["public"]["Enums"]["palpacion_resultado"]
+          tiempo_prenez_dias?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "palpaciones_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partos: {
+        Row: {
+          animal_id_madre: string
+          created_at: string
+          cria_id: string | null
+          fecha: string
+          id: string
+          notas: string | null
+          numero_parto: number | null
+          responsable_id: string
+          resultado: Database["public"]["Enums"]["parto_resultado"]
+          sexo_cria: Database["public"]["Enums"]["animal_sexo"] | null
+        }
+        Insert: {
+          animal_id_madre: string
+          created_at?: string
+          cria_id?: string | null
+          fecha: string
+          id?: string
+          notas?: string | null
+          numero_parto?: number | null
+          responsable_id: string
+          resultado: Database["public"]["Enums"]["parto_resultado"]
+          sexo_cria?: Database["public"]["Enums"]["animal_sexo"] | null
+        }
+        Update: {
+          animal_id_madre?: string
+          created_at?: string
+          cria_id?: string | null
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero_parto?: number | null
+          responsable_id?: string
+          resultado?: Database["public"]["Enums"]["parto_resultado"]
+          sexo_cria?: Database["public"]["Enums"]["animal_sexo"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partos_animal_id_madre_fkey"
+            columns: ["animal_id_madre"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partos_cria_id_fkey"
+            columns: ["cria_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pesajes: {
+        Row: {
+          animal_id: string
+          created_at: string
+          evidencia_url: string | null
+          fecha: string
+          ganancia_desde_anterior_kg: number | null
+          id: string
+          peso_kg: number
+          responsable_id: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          evidencia_url?: string | null
+          fecha: string
+          ganancia_desde_anterior_kg?: number | null
+          id?: string
+          peso_kg: number
+          responsable_id: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          evidencia_url?: string | null
+          fecha?: string
+          ganancia_desde_anterior_kg?: number | null
+          id?: string
+          peso_kg?: number
+          responsable_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesajes_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active: boolean
@@ -65,6 +681,50 @@ export type Database = {
         }
         Relationships: []
       }
+      vacunaciones: {
+        Row: {
+          animal_id: string
+          created_at: string
+          fecha: string
+          id: string
+          lote: string | null
+          notas: string | null
+          proxima_dosis: string | null
+          responsable_id: string
+          vacuna: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          fecha: string
+          id?: string
+          lote?: string | null
+          notas?: string | null
+          proxima_dosis?: string | null
+          responsable_id: string
+          vacuna: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          fecha?: string
+          id?: string
+          lote?: string | null
+          notas?: string | null
+          proxima_dosis?: string | null
+          responsable_id?: string
+          vacuna?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacunaciones_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -77,10 +737,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_user: { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      animal_sexo: "M" | "H"
+      animal_tipo: "macho" | "hembra" | "cria" | "embrion" | "otro"
       app_role: "super_admin" | "admin" | "operario"
+      embrion_estado:
+        | "congelado"
+        | "transferido"
+        | "implantado"
+        | "perdido"
+        | "nacido"
+      metodo_cruce:
+        | "monta_directa"
+        | "inseminacion_artificial"
+        | "fiv"
+        | "transferencia_embrion"
+      palpacion_resultado: "positivo" | "negativo"
+      parto_resultado: "vivo" | "muerto" | "aborto"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -208,7 +884,24 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      animal_sexo: ["M", "H"],
+      animal_tipo: ["macho", "hembra", "cria", "embrion", "otro"],
       app_role: ["super_admin", "admin", "operario"],
+      embrion_estado: [
+        "congelado",
+        "transferido",
+        "implantado",
+        "perdido",
+        "nacido",
+      ],
+      metodo_cruce: [
+        "monta_directa",
+        "inseminacion_artificial",
+        "fiv",
+        "transferencia_embrion",
+      ],
+      palpacion_resultado: ["positivo", "negativo"],
+      parto_resultado: ["vivo", "muerto", "aborto"],
     },
   },
 } as const
