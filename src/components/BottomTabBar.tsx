@@ -26,7 +26,7 @@ const BottomTabBar = () => {
     : baseTabs;
 
   return (
-    <nav className="bg-black border-t border-gold/40 shadow-soft">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-black border-t border-gold/40 shadow-soft">
       <div className={cn("grid", isAdmin ? "grid-cols-5" : "grid-cols-4")}>
         {tabs.map((t) => {
           const active = pathname === t.to || pathname.startsWith(t.to + "/");
