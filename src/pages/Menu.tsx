@@ -35,9 +35,9 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
       onClick={() => navigate(item.to)}
       className="flex flex-col items-center gap-0 active:scale-95 transition-transform"
     >
-      <svg viewBox="0 0 96 36" className="w-24 h-9 overflow-visible -mb-1">
+      <svg viewBox="0 0 96 18" className="w-24 h-[18px] overflow-visible">
         <defs>
-          <path id={id} d="M 6 32 A 42 42 0 0 1 90 32" fill="transparent" />
+          <path id={id} d="M 6 14 A 42 42 0 0 1 90 14" fill="transparent" />
         </defs>
         <text
           fill="hsl(var(--foreground))"
