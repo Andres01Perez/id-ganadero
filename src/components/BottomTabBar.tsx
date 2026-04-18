@@ -1,11 +1,18 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { Beef, Milk, Baby, Egg, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const tabs = [
-  { label: "Machos", to: "/categoria/macho" },
-  { label: "Hembras", to: "/categoria/hembra" },
-  { label: "Crías", to: "/categoria/cria" },
-  { label: "Embriones", to: "/categoria/embrion" },
+type Tab = {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+};
+
+const tabs: Tab[] = [
+  { label: "Machos", to: "/categoria/macho", icon: Beef },
+  { label: "Hembras", to: "/categoria/hembra", icon: Milk },
+  { label: "Crías", to: "/categoria/cria", icon: Baby },
+  { label: "Embriones", to: "/categoria/embrion", icon: Egg },
 ];
 
 const BottomTabBar = () => {
@@ -15,18 +22,31 @@ const BottomTabBar = () => {
       <div className="grid grid-cols-4">
         {tabs.map((t) => {
           const active = pathname === t.to || pathname.startsWith(t.to + "/");
+          const Icon = t.icon;
           return (
             <NavLink
               key={t.to}
               to={t.to}
               className={cn(
-                "py-3 text-center text-[11px] tracking-[0.18em] uppercase font-semibold transition-colors",
-                active
-                  ? "bg-white text-gold-deep"
-                  : "text-gold-soft hover:text-gold"
+                "relative flex flex-col items-center justify-center gap-1 py-2.5 transition-all active:scale-95",
+                active ? "text-gold" : "text-gold-soft hover:text-gold"
               )}
             >
-              {t.label}
+              {active && (
+                <span
+                  aria-hidden
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-10 bg-gold rounded-b-full"
+                />
+              )}
+              <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.25 : 1.75} />
+              <span
+                className={cn(
+                  "text-[10px] uppercase tracking-[0.18em]",
+                  active ? "font-semibold" : "font-medium"
+                )}
+              >
+                {t.label}
+              </span>
             </NavLink>
           );
         })}
