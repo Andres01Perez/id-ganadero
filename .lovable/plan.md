@@ -1,46 +1,88 @@
 
 
-## Ajustar alto de los banners al tamaño real de la imagen
+## Adendum al plan de SW: garantías de actualización
 
-### Datos
-- Imagen banner: **865 × 503 px** → ratio **~1.72:1** (alto = 58.15% del ancho).
-- Viewport mobile actual: 390 px de ancho → banner ocupa todo el ancho.
-- Alto natural a 390 px de ancho = **227 px** (para que la imagen quepa completa sin recortar).
+Mantener todo lo del plan anterior (cache-first para imágenes + precarga + skeletons), añadiendo estas salvaguardas:
 
-### Estado actual
-| Página | Header actual | Alto en px |
-|---|---|---|
-| `Menu.tsx` | `h-44` | 176 px (recorta arriba/abajo) |
-| `CategoriaAnimales.tsx` | `h-36` | 144 px (recorta mucho) |
-| `Fincas.tsx` | `h-36` | 144 px (recorta mucho) |
+### 1. El SW NUNCA cachea HTML, JS ni CSS
+```js
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Solo interceptar imágenes. Todo lo demás pasa directo a la red.
+  const isImage =
+    /\.(webp|jpg|jpeg|png|svg|gif|avif)$/i.test(url.pathname) ||
+    (url.hostname.endsWith('.supabase.co') && url.pathname.includes('/storage/'));
+  
+  if (!isImage) return; // ← clave: no llamar respondWith → comportamiento normal del navegador
+  
+  // ... cache-first para imágenes
+});
+```
+Al no llamar `event.respondWith()` para no-imágenes, el navegador maneja esos requests como si el SW no existiera. **Cero riesgo de servir HTML/JS viejo.**
 
-Con `object-cover` la imagen se está recortando porque el alto del header es menor al alto natural proporcional.
+### 2. SW con auto-update agresivo
+```js
+self.addEventListener('install', (e) => {
+  self.skipWaiting(); // nueva versión activa de inmediato
+});
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    // Borrar caches viejos de versiones anteriores
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter(k => k !== IMG_CACHE).map(k => caches.delete(k))
+    );
+    await self.clients.claim();
+  })());
+});
+```
 
-### Solución: usar aspect ratio en vez de altura fija
+### 3. `useAppUpdate.tsx` queda intacto
+Sigue detectando bundles nuevos por hash en `index.html`. El SW no interfiere porque no cachea HTML.
 
-Reemplazar `h-XX` por **`aspect-[865/503]`** en el `<header>`. Así el header siempre tendrá la altura exacta para que la imagen del banner quepa completa, sin importar el ancho del dispositivo (390, 414, 360, etc.).
+### 4. Botón de "limpiar caché" como red de seguridad (opcional, recomendado)
+Añadir un pequeño botón en `Menu.tsx` o `VersionFooter.tsx` (oculto en un long-press o en la pantalla de admin) que ejecute:
+```ts
+const clearImageCache = async () => {
+  const regs = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(regs.map(r => r.unregister()));
+  const keys = await caches.keys();
+  await Promise.all(keys.map(k => caches.delete(k)));
+  window.location.reload();
+};
+```
+Si alguna vez algo se atasca, el usuario (o tú remotamente diciéndole "mantén pulsado el versión abajo") puede limpiar todo en 1 toque. Es la versión "boton de pánico" del antiguo killer SW, pero on-demand en vez de automático.
 
-A 390 px → 227 px de alto.
-A 414 px → 240 px de alto.
-A 360 px → 209 px de alto.
+### 5. Registro condicional (igual que ya tienes en `useAppUpdate`)
+```ts
+// src/main.tsx
+if ('serviceWorker' in navigator) {
+  const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+  const isPreview = location.hostname.includes('id-preview--') 
+    || location.hostname.includes('lovableproject.com')
+    || location.hostname === 'localhost';
+  
+  if (!isInIframe && !isPreview) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  } else {
+    // En preview/iframe: desregistrar cualquier SW existente (mantiene el comportamiento actual)
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+  }
+}
+```
 
-Mantener `object-cover` (sigue funcionando bien porque ya el contenedor está en proporción exacta — visualmente equivale a `object-contain` sin barras laterales).
+### Resumen de garantías
 
-### Cambios
-
-| Archivo | Cambio |
+| Escenario | Resultado |
 |---|---|
-| `src/pages/Menu.tsx` | `<header className="relative h-44 overflow-hidden">` → `<header className="relative aspect-[865/503] overflow-hidden">` |
-| `src/pages/CategoriaAnimales.tsx` | `<header className="relative h-36 overflow-hidden">` → `<header className="relative aspect-[865/503] overflow-hidden">` |
-| `src/pages/Fincas.tsx` | `<header className="relative h-36 overflow-hidden">` → `<header className="relative aspect-[865/503] overflow-hidden">` |
-| `src/pages/HojaVidaAnimal.tsx` | Si tiene banner con la misma imagen, aplicar el mismo `aspect-[865/503]`; si su imagen tiene otro ratio, dejar como está (lo verifico al implementar). |
+| Publicas versión nueva | `useAppUpdate` detecta hash nuevo → toast → reload → bundle nuevo. **Igual que hoy.** |
+| Subes foto nueva de un animal | URL nueva (Supabase la genera única) → no está en caché → se descarga. La vieja queda huérfana en caché pero no estorba. |
+| Cambias estilo/lógica de la app | Bundle nuevo con hash distinto → navegador lo pide fresco (SW no toca JS/CSS). |
+| Algo se atasca raro | Botón "limpiar caché" desregistra SW + borra todo + reload. |
+| Usuario abre la app en el editor de Lovable (iframe) | SW no se registra. Si había uno viejo, se desregistra. |
 
-### Notas
-- Tailwind soporta `aspect-[865/503]` como arbitrary value out-of-the-box.
-- El `BottomTabBar` y el FAB no se ven afectados; el aumento de altura solo empuja el contenido hacia abajo dentro del scroll natural de la página.
-- La franja dorada con el título sigue justo debajo, sin tocar.
-- Esto se combina perfecto con la barra negra superior del plan anterior: la barra negra cubre la safe area y el banner empieza justo debajo a su tamaño real.
-
-### Pendiente / no incluido
-- La barra negra superior (`SafeAreaTopBar`) y el fix del FAB cortado siguen pendientes del plan anterior aprobado — los implemento juntos en la misma tanda para que quede coherente.
+Riesgo neto vs estado actual: **mismo riesgo de actualización, mucho mejor UX de imágenes.**
 
