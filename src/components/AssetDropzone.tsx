@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { Upload, RotateCcw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { resizeImage } from "@/lib/image";
 import { toast } from "sonner";
 import { useInvalidateAsset } from "@/hooks/useAppAsset";
+import ImageCropDialog from "@/components/ImageCropDialog";
 
 type Props = {
   assetKey: string;
@@ -11,8 +11,8 @@ type Props = {
   fallbackUrl: string;
   label: string;
   onChanged?: () => void;
-  /** Tamaño máximo del lado mayor de la imagen subida (px). */
-  maxSize?: number;
+  cropAspect: number;
+  outputSize: { width: number; height: number };
   className?: string;
 };
 
@@ -22,22 +22,28 @@ const AssetDropzone = ({
   fallbackUrl,
   label,
   onChanged,
-  maxSize = 1200,
+  cropAspect,
+  outputSize,
   className = "",
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const invalidate = useInvalidateAsset();
 
-  const upload = async (file: File) => {
+  const handlePicked = (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Debe ser una imagen");
       return;
     }
+    setPendingFile(file);
+  };
+
+  const uploadBlob = async (blob: Blob) => {
+    setPendingFile(null);
     setUploading(true);
     try {
-      const blob = await resizeImage(file, maxSize);
       const safeKey = assetKey.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `${safeKey}/${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage
@@ -119,7 +125,7 @@ const AssetDropzone = ({
           e.preventDefault();
           setDragOver(false);
           const file = e.dataTransfer.files?.[0];
-          if (file) upload(file);
+          if (file) handlePicked(file);
         }}
         onClick={() => inputRef.current?.click()}
         className={`relative cursor-pointer rounded-lg border-2 border-dashed transition-all overflow-hidden ${
@@ -127,7 +133,7 @@ const AssetDropzone = ({
             ? "border-primary bg-primary/10"
             : "border-border hover:border-primary/60"
         }`}
-        style={{ aspectRatio: "16/10" }}
+        style={{ aspectRatio: `${outputSize.width} / ${outputSize.height}` }}
       >
         {display ? (
           <img
@@ -159,7 +165,7 @@ const AssetDropzone = ({
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) upload(f);
+            if (f) handlePicked(f);
           }}
         />
       </div>
@@ -168,6 +174,19 @@ const AssetDropzone = ({
           Personalizada · {assetKey}
         </p>
       )}
+
+      <ImageCropDialog
+        open={!!pendingFile}
+        file={pendingFile}
+        aspect={cropAspect}
+        outputSize={outputSize}
+        label={label}
+        onConfirm={uploadBlob}
+        onCancel={() => {
+          setPendingFile(null);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+      />
     </div>
   );
 };
