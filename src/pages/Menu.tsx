@@ -60,7 +60,7 @@ const Menu = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-24">
-      <header className="relative h-44 overflow-hidden">
+      <header className="relative aspect-[865/503] overflow-hidden">
         <img
           src={menuHeader}
           alt="Ganadería JPS"
@@ -70,8 +70,7 @@ const Menu = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
         <button
           onClick={signOut}
-          className="absolute left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
-          style={{ top: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
           aria-label="Cerrar sesión"
         >
           <LogOut className="h-4 w-4" />

@@ -94,16 +94,14 @@ const HojaVidaAnimal = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
         <button
           onClick={() => navigate(-1)}
-          className="absolute left-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
-          style={{ top: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <button
           onClick={() => setEditOpen(true)}
-          className="absolute right-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
-          style={{ top: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
           aria-label="Editar"
         >
           <Pencil className="h-4 w-4" />

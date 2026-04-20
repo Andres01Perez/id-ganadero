@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAppUpdate } from "./hooks/useAppUpdate";
+import SafeAreaTopBar from "./components/SafeAreaTopBar";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const AppUpdateWatcher = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <SafeAreaTopBar />
       <Toaster />
       <Sonner position="top-center" />
       <AppUpdateWatcher />
