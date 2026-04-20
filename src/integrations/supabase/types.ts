@@ -96,6 +96,27 @@ export type Database = {
           },
         ]
       }
+      app_assets: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          url: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          url: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       aspiraciones: {
         Row: {
           animal_id: string
@@ -400,6 +421,7 @@ export type Database = {
           activo: boolean
           created_at: string
           created_by: string | null
+          foto_url: string | null
           hectareas: number | null
           id: string
           nombre: string
@@ -410,6 +432,7 @@ export type Database = {
           activo?: boolean
           created_at?: string
           created_by?: string | null
+          foto_url?: string | null
           hectareas?: number | null
           id?: string
           nombre: string
@@ -420,6 +443,7 @@ export type Database = {
           activo?: boolean
           created_at?: string
           created_by?: string | null
+          foto_url?: string | null
           hectareas?: number | null
           id?: string
           nombre?: string
