@@ -43,79 +43,81 @@ const App = () => (
       <Sonner position="top-center" />
       <AppUpdateWatcher />
       <BrowserRouter>
-        <ConditionalSafeArea />
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/sa" element={<SuperAdminLogin />} />
+        <div className="flex flex-col min-h-[100dvh]">
+          <ConditionalSafeArea />
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/sa" element={<SuperAdminLogin />} />
 
-            {/* Panel Super Admin */}
-            <Route
-              path="/superadmin"
-              element={
-                <ProtectedRoute requireRoles={["super_admin"]}>
-                  <SuperAdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<SuperAdminDashboard />} />
-              <Route path="usuarios" element={<SuperAdminUsuarios />} />
-              <Route path="imagenes" element={<SuperAdminImagenes />} />
-              <Route path="finca" element={<SuperAdminInformacionFinca />} />
-              <Route path="finca/:fincaId" element={<SuperAdminInformacionFinca />} />
-            </Route>
+              {/* Panel Super Admin */}
+              <Route
+                path="/superadmin"
+                element={
+                  <ProtectedRoute requireRoles={["super_admin"]}>
+                    <SuperAdminLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<SuperAdminDashboard />} />
+                <Route path="usuarios" element={<SuperAdminUsuarios />} />
+                <Route path="imagenes" element={<SuperAdminImagenes />} />
+                <Route path="finca" element={<SuperAdminInformacionFinca />} />
+                <Route path="finca/:fincaId" element={<SuperAdminInformacionFinca />} />
+              </Route>
 
-            <Route
-              path="/menu"
-              element={
-                <ProtectedRoute>
-                  <Menu />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireRoles={["admin", "super_admin"]}>
-                  <Admin />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/categoria/:tipo"
-              element={
-                <ProtectedRoute>
-                  <CategoriaAnimales />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/animal/:id"
-              element={
-                <ProtectedRoute>
-                  <HojaVidaAnimal />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/fincas"
-              element={
-                <ProtectedRoute>
-                  <Fincas />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/generalidades"
-              element={
-                <ProtectedRoute>
-                  <PlaceholderPage title="Generalidades" />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
+              <Route
+                path="/menu"
+                element={
+                  <ProtectedRoute>
+                    <Menu />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireRoles={["admin", "super_admin"]}>
+                    <Admin />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/categoria/:tipo"
+                element={
+                  <ProtectedRoute>
+                    <CategoriaAnimales />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/animal/:id"
+                element={
+                  <ProtectedRoute>
+                    <HojaVidaAnimal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/fincas"
+                element={
+                  <ProtectedRoute>
+                    <Fincas />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/generalidades"
+                element={
+                  <ProtectedRoute>
+                    <PlaceholderPage title="Generalidades" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </div>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
