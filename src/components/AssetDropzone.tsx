@@ -77,26 +77,6 @@ const AssetDropzone = ({
     }
   };
 
-  const reset = async () => {
-    if (!confirm(`¿Restaurar la imagen original de "${label}"?`)) return;
-    setUploading(true);
-    try {
-      const { error } = await supabase
-        .from("app_assets")
-        .delete()
-        .eq("key", assetKey);
-      if (error) throw error;
-      toast.success("Restaurada al original");
-      invalidate(assetKey);
-      onChanged?.();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Error";
-      toast.error(msg);
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const display = currentUrl || fallbackUrl;
   const isOverridden = !!currentUrl;
 
@@ -104,16 +84,6 @@ const AssetDropzone = ({
     <div className={`bg-card border border-border rounded-xl p-4 ${className}`}>
       <div className="flex items-center justify-between gap-2 mb-3">
         <p className="font-semibold text-sm">{label}</p>
-        {isOverridden && (
-          <button
-            onClick={reset}
-            disabled={uploading}
-            className="text-[11px] flex items-center gap-1 text-muted-foreground hover:text-destructive disabled:opacity-50"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Restaurar
-          </button>
-        )}
       </div>
       <div
         onDragOver={(e) => {
