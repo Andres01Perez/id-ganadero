@@ -13,14 +13,21 @@ import Fincas from "./pages/Fincas";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { useAppUpdate } from "./hooks/useAppUpdate";
 
 const queryClient = new QueryClient();
+
+const AppUpdateWatcher = () => {
+  useAppUpdate();
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner position="top-center" />
+      <AppUpdateWatcher />
       <BrowserRouter>
         <AuthProvider>
           <Routes>
