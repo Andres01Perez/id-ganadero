@@ -27,6 +27,7 @@ const Index = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { user, roles } = useAuth();
+  const heroSrc = useAppAsset(ASSET_KEYS.loginHero, heroImage);
 
   useEffect(() => {
     if (user) {
@@ -83,7 +84,7 @@ const Index = () => {
       {/* Hero compuesto: vaca + logo JPS embebido */}
       <div className="flex-1 relative">
         <img
-          src={heroImage}
+          src={heroSrc}
           alt="JPS Ganadería"
           className="w-full h-full object-cover"
         />
