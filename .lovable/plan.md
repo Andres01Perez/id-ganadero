@@ -1,106 +1,55 @@
 
 
-## Diagnóstico: por qué el cache es tan agresivo
+## Auditoría del punto ciego
 
-Revisé tu config y encontré **3 capas de cache** acumulándose:
+Tienes razón. El killswitch en `main.tsx` solo funciona si el usuario logra descargar el nuevo `main.tsx`. Pero `vite-plugin-pwa` con estrategia `precacheAndRoute` cachea **todos los assets con hash** y sirve `index.html` desde cache, que apunta a los JS viejos. El usuario puede quedar atrapado en un loop sirviendo siempre la versión vieja.
 
-### 1. Service Worker con `autoUpdate` + precaching agresivo (`vite.config.ts`)
-```ts
-VitePWA({
-  registerType: "autoUpdate",
-  workbox: {
-    globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
-    skipWaiting: true,
-    clientsClaim: true,
-  },
-})
-```
-Esto hace **precache de TODO el build**: JS, CSS, HTML, imágenes, fuentes. El SW sirve la versión vieja desde cache hasta que detecta una nueva, descarga, y recién ahí actualiza. En móvil con conexión intermitente, ese chequeo puede tardar **horas o días**.
+La solución del "Service Worker Asesino" resuelve esto porque:
+- El navegador chequea `sw.js` por byte-diff cada ~24h o en cada navegación (esto NO se cachea como otros assets, es regla del estándar SW).
+- Cuando detecta que el contenido cambió (de Workbox precache → killer), instala el nuevo, ejecuta `activate`, y el nuevo SW se auto-desregistra + borra caches + recarga pestañas.
 
-### 2. `PwaUpdatePrompt` solo chequea cada 60s **mientras la app está abierta**
-Si cierras la PWA antes de los 60s, nunca detecta el update. Al reabrir, el SW sirve cache viejo instantáneamente y el chequeo arranca otra vez desde 0.
+## Plan: añadir el Service Worker Asesino
 
-### 3. Cache HTTP del navegador (independiente del SW)
-Aunque borres el SW, el navegador (Chrome/Safari móvil) cachea `index.html`, JS y CSS por su cuenta con headers default. Un "recargar" normal no limpia esto, necesitas hard refresh.
+### 1. Crear `public/sw.js`
+Archivo nuevo con el killer SW. Se sirve desde la raíz (`/sw.js`), exactamente la ruta donde `vite-plugin-pwa` registraba el SW viejo, así el navegador detecta el cambio y lo reemplaza.
 
-### Por qué "cerrar y abrir" no funciona
-- **PWA instalada**: usa el SW → sirve cache → no chequea red al abrir.
-- **Sitio web normal**: el navegador usa su cache HTTP → sirve archivos viejos.
-- Tu botón `VersionFooter` SÍ limpia todo, pero requiere que entres y lo presiones.
+```js
+// public/sw.js
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
 
----
-
-## Solución: simplificar al máximo (nativo, sin SW agresivo)
-
-### Opción recomendada: **Quitar el Service Worker, dejar solo "instalable"**
-
-Tu app no necesita offline real (es de gestión de ganadería con datos en Supabase, requiere internet siempre). El SW solo te está causando problemas. Lovable docs lo dice explícitamente: si solo quieres "Add to Home Screen", **NO necesitas SW**.
-
-### Cambios concretos
-
-**1. `vite.config.ts`** — Reemplazar `VitePWA` plugin por nada. Mover el manifest a un archivo estático `public/manifest.webmanifest` (ya tienes `public/manifest.json`, solo lo referenciamos).
-
-**2. `index.html`** — Asegurar que tenga:
-```html
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#b79f60" />
-```
-Y meta tags para que el navegador NO cachee HTML:
-```html
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
+self.addEventListener('activate', async (event) => {
+  event.waitUntil((async () => {
+    await self.registration.unregister();
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach(client => client.navigate(client.url));
+  })());
+});
 ```
 
-**3. `src/main.tsx`** — Cambiar el guard actual (que solo desregistra en preview) por **desregistrar SIEMPRE** los SW viejos que ya tengan tus usuarios instalados:
-```ts
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    regs.forEach((r) => r.unregister());
-  });
-  if ("caches" in window) {
-    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
-  }
-}
-```
-Esto **limpia automáticamente** el SW viejo de cualquier usuario que ya tenga la PWA instalada, en su próxima visita. Después de una visita, ya no tendrán cache persistente.
+### 2. Mantener killswitch en `main.tsx` como red de seguridad
+El killswitch que ya tienes sigue siendo útil para usuarios que entran por primera vez al navegador (sin SW viejo) o si algo falla en `sw.js`. No lo tocamos.
 
-**4. Eliminar `src/components/PwaUpdatePrompt.tsx`** y su uso en `App.tsx` (ya no hay SW que actualizar).
+### 3. Confirmar que `index.html` no precarga ni registra `sw.js`
+Verificar que no haya un `<link rel="serviceworker">` ni un `navigator.serviceWorker.register('/sw.js')` en ningún lado. El killer SW solo necesita ser **descubierto y reemplazado** por el navegador en su chequeo automático del SW ya registrado — no hay que registrarlo activamente.
 
-**5. `package.json`** — Quitar dependencia `vite-plugin-pwa`.
+### 4. Cómo funciona la migración
 
-**6. `VersionFooter.tsx`** — Simplificar: ya no necesita lógica de SW, solo `window.location.reload()` con cache-bust:
-```ts
-window.location.href = window.location.pathname + "?v=" + Date.now();
-```
-
-### Resultado
-
-| Antes | Después |
+| Estado del usuario | Qué pasa |
 |---|---|
-| SW cachea todo, update tarda días | Sin SW, navegador siempre pide al servidor |
-| Modal de update poco confiable | Cada recarga trae lo último automáticamente |
-| Usuarios atrapados con versión vieja | El SW viejo se auto-desinstala en próxima visita |
-| Instalable como PWA ✅ | Sigue siendo instalable como PWA ✅ |
-| Funciona offline ✅ | No funciona offline ❌ (pero nunca lo usaste así) |
+| PWA con SW viejo de Workbox | Navegador chequea `/sw.js`, detecta diff, instala killer, killer se desregistra + limpia caches + recarga → versión nueva |
+| Navegador web normal sin SW | El killswitch de `main.tsx` limpia cualquier resto + recarga → versión nueva |
+| Usuario nuevo | Carga directo desde servidor, no hay SW, todo limpio |
 
-### Trade-off
-Pierdes capacidad offline. Tu app **necesita internet** de todas formas para Supabase (login, datos de animales, fincas). No es una pérdida real.
+### 5. Consideración importante
+El killer SW debe **quedarse en producción permanentemente** (al menos varios meses). Si lo borras, los navegadores que aún no lo procesaron seguirán con el Workbox viejo. Es un archivo de 15 líneas, no molesta.
 
-### Migración limpia
-Después del deploy, los usuarios que ya tienen la PWA instalada:
-1. Abren la app → el nuevo `main.tsx` desregistra el SW viejo y limpia caches.
-2. Recargan una vez (o cierran y abren) → ya tienen versión limpia sin SW.
-3. De ahí en adelante, cada apertura trae lo más reciente del servidor.
+## Archivos
 
-### Archivos
 | Archivo | Cambio |
 |---|---|
-| `vite.config.ts` | Quitar `VitePWA` plugin y su import |
-| `index.html` | Añadir `<link rel="manifest">` y meta cache-control |
-| `src/main.tsx` | Desregistrar SW siempre (no solo en preview) + limpiar caches |
-| `src/App.tsx` | Quitar `<PwaUpdatePrompt />` y su import |
-| `src/components/PwaUpdatePrompt.tsx` | Eliminar archivo |
-| `src/components/VersionFooter.tsx` | Simplificar a reload con cache-bust |
-| `package.json` | Quitar `vite-plugin-pwa` |
+| `public/sw.js` | **Crear** con el killer SW (install: skipWaiting, activate: unregister + clear caches + reload clients) |
 
