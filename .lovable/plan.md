@@ -1,44 +1,64 @@
 
 
-## Empujar el contenido debajo del safe-area superior en mobile
+## Eliminar flash de imagen y propagar cambios al instante
 
-### Problema
-`SafeAreaTopBar` es una barra negra `fixed top-0` con altura `env(safe-area-inset-top)` y `z-50`. Como es `fixed`, no ocupa espacio en el flujo, así que las páginas mobile arrancan en `top: 0` y la barra negra tapa los primeros píxeles de cada vista. Resultado: la imagen del header queda recortada y el botón de volver / cerrar sesión queda detrás de la barra negra.
+### Problema 1: Flash de imagen antigua → nueva
 
-### Solución
-Convertir el "safe area" en espacio real que empuje el contenido hacia abajo, en vez de superponerse. Dos cambios mínimos:
+`useAppAsset` devuelve el `fallback` estático (importado del bundle) mientras carga la URL personalizada desde `app_assets`. Cuando llega la respuesta, la `<img>` cambia su `src` y se ve un flash. Esto ocurre en cada navegación a `/menu`, `/categoria/:tipo`, login, etc.
 
-**1. `src/components/SafeAreaTopBar.tsx`** — quitar `fixed`, hacerlo parte del flujo:
-- Cambiar `fixed top-0 inset-x-0 z-50` por simplemente `w-full`.
-- Mantener `bg-black` y la altura `env(safe-area-inset-top)`.
-- Sin `pointer-events-none` (ya no hace falta porque no se superpone a nada).
+**Solución:** persistir la respuesta de `app_assets` en `localStorage` para que en la siguiente carga la URL personalizada esté disponible **sincrónicamente**, antes del primer render. Si no hay nada en localStorage (primer uso), se usa el fallback como hoy.
 
-Resultado: el `<div>` ocupa altura real al inicio del `<body>` y empuja todo lo que viene después.
+### Problema 2: Cambios no se ven en otros dispositivos sin recargar / publicar
 
-**2. `src/App.tsx`** — envolver Routes + SafeArea en un contenedor flex columna para que el safe area sea el primer hijo y el resto fluya debajo:
-- Cambiar la estructura para que `ConditionalSafeArea` y `<Routes>` vivan dentro de un `<div className="min-h-[100dvh] flex flex-col">`.
-- Las páginas siguen siendo `min-h-[100dvh]`; al estar debajo de un bloque que ya consumió el safe-area se ven completas.
+La buena noticia: **no necesitas publicar en Lovable** para que se propaguen. Las imágenes viven en Supabase Storage + tabla `app_assets`, no en el código del bundle. Pero hay 3 capas de caché que retrasan la visibilidad:
 
-### Por qué este enfoque
-- No hay que tocar cada página individualmente añadiendo `padding-top`.
-- El header de cada vista (banner con botón volver) sigue arrancando en `top:3` relativo a su contenedor, pero ahora su contenedor empieza debajo de la zona del notch, no debajo de la barra negra.
-- En desktop / superadmin la barra sigue oculta (lógica `ConditionalSafeArea` intacta), así que no afecta al panel.
+| Capa | Hoy | Cambio |
+|---|---|---|
+| React Query (`useAppAsset`) | `staleTime: 5min` → durante 5 min sigue mostrando lo cacheado | Reducir a `staleTime: 0` + `refetchOnWindowFocus: true` para que cuando un usuario vuelva a la app vea cambios al instante |
+| Service Worker (`public/sw.js`) | Cache-first eterno para imágenes | Para URLs de `app-assets` bucket, usar **stale-while-revalidate**: devuelve la cacheada al instante (sin flash) y en paralelo descarga la nueva para la próxima carga |
+| URL del archivo | Cada subida usa `${Date.now()}.jpg` (URL nueva) | Sin cambios — ya funciona |
 
-### Ajuste en páginas con `min-h-[100dvh]`
-Las páginas usan `min-h-[100dvh]` lo cual sumado al safe-area podría producir scroll mínimo en algunos dispositivos. Cambio defensivo: en el contenedor padre de `App.tsx` no fijar altura, dejar que cada página gestione la suya. El safe-area ya consumido + `100dvh` de la página = altura total visible + barra; el navegador maneja el resto sin problema (es lo mismo que un header fijo de 44px en iOS PWA).
+Combinado con el localStorage del Problema 1, el flujo final queda:
+- Usuario A sube imagen nueva → URL en `app_assets` se actualiza.
+- Usuario B abre la app → React Query refetcha en background al volver al foco → detecta nueva URL → la guarda en localStorage → siguiente apertura ya carga directo sin flash.
+
+### Cambios concretos
+
+**1. `src/hooks/useAppAsset.ts`**
+- Mantener cache de URLs en `localStorage` bajo clave `jps_assets_v1` (objeto `{ key: url }`).
+- En `useAppAsset(key, fallback)`: leer del localStorage **sincrónicamente** con `useState(() => localStorage[key] ?? fallback)`. Devolver eso como `initialData` a React Query → no hay flash.
+- Cuando la query resuelve con una URL distinta, actualizar localStorage y el estado.
+- `staleTime: 0`, `refetchOnWindowFocus: true`, `refetchOnMount: true`.
+- En `useAllAppAssets`, al recibir datos, sincronizar el `localStorage` con el snapshot completo.
+
+**2. `public/sw.js`**
+- Para requests del bucket `app-assets` (detectado por `url.pathname.includes('/app-assets/')`): pasar a estrategia **stale-while-revalidate**:
+  - Devolver inmediatamente lo cacheado si existe.
+  - En paralelo, hacer fetch a red y actualizar el cache (sin bloquear al usuario).
+- Para el resto de imágenes (`animal-fotos`, etc.): mantener cache-first como hoy.
+- Bump versión cache: `IMG_CACHE = 'jps-images-v2'` para que se purgue la v1 vieja con archivos huérfanos.
+
+**3. `src/components/AssetDropzone.tsx` (uploadBlob)**
+- Después de hacer `upsert` exitoso en `app_assets`, también escribir en `localStorage[key] = newUrl` para que el propio superadmin no vea flash en otras pestañas.
+- Enviar mensaje `{ type: 'PURGE_ASSET', url: oldUrl }` al Service Worker para que borre la entrada vieja del cache (opcional: limpia espacio).
+
+**4. `public/sw.js` — handler de mensajes**
+- Añadir handler para `PURGE_ASSET` que reciba una URL específica y la borre del cache.
+
+### Sobre el storage de archivos antiguos
+Cada subida deja el archivo anterior huérfano en Storage (porque la nueva usa otro `Date.now()`). Esto **no causa el flash** y no afecta funcionamiento, solo ocupa espacio. Limpiarlo no es trivial sin trackear historial. Lo dejo fuera de este plan; si lo quieres después, se puede hacer un edge function que elimine archivos viejos de cada `key` cuando se sube uno nuevo.
+
+### Cómo verificar
+1. Abrir `/menu` → recargar 5 veces → no debe haber flash de imagen vieja a nueva.
+2. Desde otro dispositivo (o ventana de incógnito) entrar como superadmin → cambiar el banner del menú.
+3. Volver al primer dispositivo, cambiar de pestaña y volver → toast no aparece (no es bundle nuevo) pero al refrescar `/menu` se debe ver la nueva imagen sin necesidad de publicar nada en Lovable.
+4. Subir una imagen y abrirla en `/menu` desde el mismo navegador → la imagen aparece directamente sin pasar por la vieja.
 
 ### Archivos modificados
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SafeAreaTopBar.tsx` | Quitar `fixed`/`z-50`, dejar como bloque normal |
-| `src/App.tsx` | Envolver `ConditionalSafeArea` + `Routes` en un `<div className="flex flex-col min-h-[100dvh]">` para que el safe-area empuje el flujo |
-
-### Cómo verificar
-1. Abrir la PWA en iPhone (o simular con devtools, viewport 390×844 + simular notch).
-2. Entrar a `/menu` → la imagen del banner se ve completa, no recortada por arriba.
-3. Entrar a `/categoria/macho` → el botón ← de volver se ve completo, no tapado por la barra negra.
-4. Entrar a `/animal/:id` → los botones ← y ✏️ visibles bajo el notch.
-5. Entrar a `/superadmin` desde desktop → no aparece la barra negra (comportamiento sin cambios).
-6. Dispositivos sin notch (Android estándar) → `env(safe-area-inset-top)` = 0, no se ve cambio visual.
+| `src/hooks/useAppAsset.ts` | localStorage como `initialData`, `staleTime: 0`, refetch on focus |
+| `src/components/AssetDropzone.tsx` | Escribir nueva URL en localStorage tras upload + mensaje al SW |
+| `public/sw.js` | Stale-while-revalidate para `/app-assets/`, bump cache name a v2, handler `PURGE_ASSET` |
 
