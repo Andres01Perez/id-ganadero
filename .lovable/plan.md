@@ -1,72 +1,81 @@
 
 
-## Detección nativa de actualizaciones (sin Service Worker)
+## Mejoras visuales: login alto + safe-area top
 
-### Veredicto sobre tu plan
-**Sí se puede aplicar tal cual, con 3 mejoras quirúrgicas** que lo hacen más robusto y evitan falsos positivos. Tu razonamiento es correcto: Vite ya hashea los bundles y el hosting sirve `index.html` con `no-cache`, así que basta con detectar si el `<script>` que ejecutamos sigue presente en el HTML del servidor.
+### 1. Modal de login al estilo CRUDs internos
 
-### Mejoras al hook propuesto
+**Estado actual** (`src/pages/Index.tsx`):
+```
+<SheetContent side="bottom" className="bg-black border-t-2 border-gold rounded-t-3xl p-6 pb-10 max-h-[80vh]">
+```
+El `max-h-[80vh]` solo limita el alto máximo, pero como el contenido es corto el sheet se queda abajo y mide ~30-40% de pantalla. No "sube" hasta arriba.
 
-1. **Comparar por hash del bundle, no por src completo**. El `src` puede venir con o sin query string / origin. Extraigo solo el nombre `index-A1b2C3.js` y verifico si aparece en el HTML remoto. Más resistente.
+**Estado de los CRUDs** (`AnimalForm`, `FincaForm`):
+```
+<SheetContent side="bottom" className="h-[92dvh] overflow-y-auto rounded-t-2xl">
+```
+Usan `h-[92dvh]` (alto fijo, casi pantalla completa) → el sheet sube hasta arriba.
 
-2. **Guard de iframe + preview de Lovable**. En el editor de Lovable la app corre en iframe y el `index.html` cambia constantemente — eso dispararía el toast cada minuto mientras editas. Tu plan no lo contempla. Lo desactivo en `lovable.app`/`lovableproject.com` y dentro de iframe, igual que recomienda la guía PWA. En producción (`id-ganadero.lovable.app` y dominio custom) sí corre.
+**Cambio propuesto** en `src/pages/Index.tsx`:
+- Cambiar `max-h-[80vh]` → `h-[70dvh]` (el usuario pidió 70%, que coincide con el patrón).
+- Agregar `overflow-y-auto` por seguridad.
+- Mantener el resto: fondo negro, borde dorado, `rounded-t-3xl`, tipografía.
+- Centrar verticalmente el contenido dentro del sheet con `flex flex-col justify-center` para que con tanto alto el formulario no quede pegado arriba sino visualmente equilibrado.
 
-3. **Throttle + flag para no spammear**. Una vez mostrado el toast, no volvemos a chequear hasta que el usuario recargue. Evita múltiples toasts apilados si vuelve y va de la app varias veces.
+Resultado: el modal de login arranca a ~30% del top, se siente premium y consistente con el resto de la app.
 
-4. **Listener cleanup correcto**. Tu código tiene un bug sutil: `removeEventListener` recibe una función diferente a la que registró (porque usas un arrow inline en `addEventListener`). Lo extraigo a una constante.
+### 2. Safe area superior (que el contenido no quede bajo la hora/notch)
 
-### Estrategia final
+**Causa raíz**: 
+- `index.html` tiene `viewport-fit=cover` y `apple-mobile-web-app-status-bar-style="black-translucent"` → en iOS standalone (PWA instalada), el contenido se renderiza **detrás** de la barra de estado.
+- Las páginas no aplican `padding-top: env(safe-area-inset-top)`, así que headers, botones de back y títulos quedan tapados por la hora/notch.
 
-| Trigger | Cuándo |
-|---|---|
-| Al montar | Una vez, 3s después de cargar (no bloquea TTI) |
-| `visibilitychange` → visible | Cuando el usuario vuelve a la app |
-| `setInterval` | Cada 2 horas como red de seguridad |
-| Después de detectar update | Se desactivan todos los chequeos |
+**Solución**: añadir padding superior con safe area en los headers de cada vista. Dos enfoques posibles, propongo el más limpio:
 
-### UX del toast (sonner)
-
-- Persistente (`duration: Infinity`).
-- Acción "Actualizar" → `window.location.reload()` (recarga simple; el `no-cache` del HTML basta).
-- Acción "Después" para descartar.
-- Texto en español, alineado al tono de la app: "Nueva versión disponible — Actualiza para aplicar los últimos cambios."
-- Posición: `top-center` para que no choque con el `BottomTabBar`.
-
-### Mantener
-
-- `VersionFooter` como botón de pánico manual (ya funciona).
-- `public/sw.js` killer SW (sigue limpiando dispositivos viejos).
-- Manifest `display: standalone` (instalable).
-- Headers `no-cache` en `index.html`.
-- **No** se reintroduce `vite-plugin-pwa`. Cero service workers nuevos.
-
-### Archivos
-
-| Archivo | Cambio |
-|---|---|
-| `src/hooks/useAppUpdate.tsx` (nuevo) | Hook con polling + visibilitychange + guards de preview/iframe + extracción de hash del bundle |
-| `src/App.tsx` | Llamar `useAppUpdate()` dentro de un componente interno (no se puede llamar en el componente que renderiza `<Sonner />` antes de montar; lo pongo en un wrapper `<AppUpdateWatcher />` que se renderiza junto al Sonner) |
-| Toast position | Configurar `<Sonner position="top-center" />` solo si no estaba ya, o pasarlo como prop al toast |
-
-### Detalle técnico clave del hash-check
-
-```ts
-// 1. Encontrar el script principal cargado en runtime
-const currentSrc = document.querySelector('script[type="module"]')?.getAttribute('src') ?? '';
-const currentHash = currentSrc.split('/').pop()?.split('?')[0]; // "index-A1b2C3.js"
-
-// 2. Fetch del HTML root
-const html = await fetch('/?_v=' + Date.now(), { cache: 'no-store' }).then(r => r.text());
-
-// 3. Si el bundle actual no aparece en el HTML remoto → hay versión nueva
-if (currentHash && !html.includes(currentHash)) {
-  // mostrar toast persistente
+#### A. Utility global en `src/index.css`
+Agregar una utility reusable:
+```css
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pt-safe-plus { padding-top: calc(env(safe-area-inset-top) + 0.5rem); }
 }
 ```
 
-En desarrollo el `src` es `/src/main.tsx` y siempre estará en el HTML local, así que el chequeo nunca dispara — comportamiento deseado.
+#### B. Aplicarla en los puntos correctos
 
-### Pendiente / no incluido
-- Filtro por finca en listas (lo dejamos para después).
-- Modal de actualización modal-bloqueante (descartado, el toast es menos invasivo y suficiente).
+| Archivo | Cambio |
+|---|---|
+| `src/pages/Menu.tsx` | `<header className="relative h-44 ...">` → añadir `pt-safe` al header. El botón de logout `top-3` → `top-[calc(env(safe-area-inset-top)+0.75rem)]`. |
+| `src/pages/CategoriaAnimales.tsx` | Header de la lista: añadir `pt-safe` al wrapper del header (back + título). |
+| `src/pages/Fincas.tsx` | Mismo: `pt-safe` en el header. |
+| `src/pages/HojaVidaAnimal.tsx` | Mismo: `pt-safe` en la barra superior con el back. |
+| `src/pages/Admin.tsx` | Mismo en el header. |
+| `src/pages/Index.tsx` (login) | Hero a pantalla completa: el contenido visible (logo de la vaca) está bien al edge, pero conviene NO aplicarlo para mantener el look fullbleed. Sin cambios aquí. |
+| `src/pages/PlaceholderPage.tsx` | Añadir `pt-safe` al header. |
+| `src/pages/NotFound.tsx` | Añadir `pt-safe`. |
+
+**Por qué no tocar `<body>` global**: rompe el hero fullbleed del login y obliga a recalcular alturas en muchos sitios. Aplicar por header es más quirúrgico y predecible.
+
+**Bottom**: ya está manejado en `Menu.tsx` con `pb-[env(safe-area-inset-bottom)]`. Verifico que `BottomTabBar` también lo respete agregando `pb-[env(safe-area-inset-bottom)]` al `<nav>` cuando es `fixed` — pequeño ajuste de paridad.
+
+### Archivos a modificar
+
+| Archivo | Cambio |
+|---|---|
+| `src/pages/Index.tsx` | `max-h-[80vh]` → `h-[70dvh]` + `overflow-y-auto` + `flex flex-col justify-center` interno |
+| `src/index.css` | Añadir utilities `.pt-safe` y `.pt-safe-plus` |
+| `src/pages/Menu.tsx` | `pt-safe` en header, ajustar `top` del botón logout |
+| `src/pages/CategoriaAnimales.tsx` | `pt-safe` en header |
+| `src/pages/Fincas.tsx` | `pt-safe` en header |
+| `src/pages/HojaVidaAnimal.tsx` | `pt-safe` en barra superior |
+| `src/pages/Admin.tsx` | `pt-safe` en header |
+| `src/pages/PlaceholderPage.tsx` | `pt-safe` en header |
+| `src/pages/NotFound.tsx` | `pt-safe` en wrapper |
+| `src/components/BottomTabBar.tsx` | `pb-[env(safe-area-inset-bottom)]` al nav cuando `fixed` |
+
+### Notas técnicas
+
+- `env(safe-area-inset-top)` solo tiene valor real en iOS PWA standalone con notch. En navegadores normales devuelve 0, así que no afecta visualmente en escritorio ni Android sin notch.
+- `100dvh` ya se usa en varias vistas (`min-h-[100dvh]`) — es la unidad correcta para mobile, sigue siendo coherente.
+- El sheet de login con `h-[70dvh]` deja el 30% superior con el hero de la vaca visible, lo cual mantiene el branding mientras se interactúa con el form.
 
