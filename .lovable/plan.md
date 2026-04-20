@@ -1,88 +1,77 @@
 
 
-## Adendum al plan de SW: garantías de actualización
+## Mostrar versión real del build en el footer
 
-Mantener todo lo del plan anterior (cache-first para imágenes + precarga + skeletons), añadiendo estas salvaguardas:
+### Problema
+- `package.json` tiene `version: "0.1.0"` fija → footer siempre muestra `v0.1.0`.
+- `git rev-parse` en `vite.config.ts` falla en el entorno de build de Lovable → commit siempre es `"local"` en producción.
+- Resultado: el footer no refleja que hubo un nuevo deploy, aunque el bundle JS sí cambie.
 
-### 1. El SW NUNCA cachea HTML, JS ni CSS
-```js
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // Solo interceptar imágenes. Todo lo demás pasa directo a la red.
-  const isImage =
-    /\.(webp|jpg|jpeg|png|svg|gif|avif)$/i.test(url.pathname) ||
-    (url.hostname.endsWith('.supabase.co') && url.pathname.includes('/storage/'));
-  
-  if (!isImage) return; // ← clave: no llamar respondWith → comportamiento normal del navegador
-  
-  // ... cache-first para imágenes
-});
-```
-Al no llamar `event.respondWith()` para no-imágenes, el navegador maneja esos requests como si el SW no existiera. **Cero riesgo de servir HTML/JS viejo.**
+### Solución: usar timestamp de build + hash del bundle como "versión visible"
 
-### 2. SW con auto-update agresivo
-```js
-self.addEventListener('install', (e) => {
-  self.skipWaiting(); // nueva versión activa de inmediato
-});
-self.addEventListener('activate', (e) => {
-  e.waitUntil((async () => {
-    // Borrar caches viejos de versiones anteriores
-    const keys = await caches.keys();
-    await Promise.all(
-      keys.filter(k => k !== IMG_CACHE).map(k => caches.delete(k))
-    );
-    await self.clients.claim();
-  })());
-});
-```
+En lugar de depender de `package.json` y `git` (que no funcionan en Lovable build), usar dos cosas que SÍ están disponibles en build time y cambian con cada deploy:
 
-### 3. `useAppUpdate.tsx` queda intacto
-Sigue detectando bundles nuevos por hash en `index.html`. El SW no interfiere porque no cachea HTML.
+1. **`__APP_BUILD_DATE__`** (ya existe en `vite.config.ts`): se genera con `new Date().toISOString()` cada build → único por deploy.
+2. **Hash del bundle JS** (lo genera Vite automáticamente y queda en el filename `index-XXXXXXXX.js`): cambia solo cuando el código cambia → identificador real del deploy.
 
-### 4. Botón de "limpiar caché" como red de seguridad (opcional, recomendado)
-Añadir un pequeño botón en `Menu.tsx` o `VersionFooter.tsx` (oculto en un long-press o en la pantalla de admin) que ejecute:
+### Cambios
+
+**1. `vite.config.ts`** — generar un identificador corto de build determinista:
 ```ts
-const clearImageCache = async () => {
-  const regs = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(regs.map(r => r.unregister()));
-  const keys = await caches.keys();
-  await Promise.all(keys.map(k => caches.delete(k)));
-  window.location.reload();
-};
-```
-Si alguna vez algo se atasca, el usuario (o tú remotamente diciéndole "mantén pulsado el versión abajo") puede limpiar todo en 1 toque. Es la versión "boton de pánico" del antiguo killer SW, pero on-demand en vez de automático.
+// Build ID corto: YYMMDD-HHMM (UTC) → ej. "260420-1843"
+const now = new Date();
+const pad = (n: number) => String(n).padStart(2, "0");
+const APP_BUILD_ID = `${String(now.getUTCFullYear()).slice(2)}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}`;
 
-### 5. Registro condicional (igual que ya tienes en `useAppUpdate`)
+// Mantener APP_VERSION desde package.json
+// Eliminar APP_COMMIT (no funciona en Lovable build)
+// Añadir APP_BUILD_ID como reemplazo
+```
+
+Y exponer:
 ```ts
-// src/main.tsx
-if ('serviceWorker' in navigator) {
-  const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
-  const isPreview = location.hostname.includes('id-preview--') 
-    || location.hostname.includes('lovableproject.com')
-    || location.hostname === 'localhost';
-  
-  if (!isInIframe && !isPreview) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
-  } else {
-    // En preview/iframe: desregistrar cualquier SW existente (mantiene el comportamiento actual)
-    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-  }
-}
+define: {
+  __APP_VERSION__: JSON.stringify(APP_VERSION),
+  __APP_BUILD_ID__: JSON.stringify(APP_BUILD_ID),
+  __APP_BUILD_DATE__: JSON.stringify(APP_BUILD_DATE),
+},
 ```
 
-### Resumen de garantías
+**2. `src/vite-env.d.ts`** — declarar `__APP_BUILD_ID__`, eliminar `__APP_COMMIT__`.
 
-| Escenario | Resultado |
-|---|---|
-| Publicas versión nueva | `useAppUpdate` detecta hash nuevo → toast → reload → bundle nuevo. **Igual que hoy.** |
-| Subes foto nueva de un animal | URL nueva (Supabase la genera única) → no está en caché → se descarga. La vieja queda huérfana en caché pero no estorba. |
-| Cambias estilo/lógica de la app | Bundle nuevo con hash distinto → navegador lo pide fresco (SW no toca JS/CSS). |
-| Algo se atasca raro | Botón "limpiar caché" desregistra SW + borra todo + reload. |
-| Usuario abre la app en el editor de Lovable (iframe) | SW no se registra. Si había uno viejo, se desregistra. |
+**3. `src/components/VersionFooter.tsx`** — mostrar `v{version} · {buildId}`:
+```tsx
+const version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
+const buildId = typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev";
+// ...
+<span>v{version} · {buildId}</span>
+```
 
-Riesgo neto vs estado actual: **mismo riesgo de actualización, mucho mejor UX de imágenes.**
+Resultado visible en el celular: `v0.1.0 · 260420-1843` → la parte `260420-1843` cambia con cada deploy de Lovable, así sabes con certeza si la PWA actualizó.
+
+**4. (Opcional pero recomendado) `useAppUpdate.tsx`** — hoy compara el hash del bundle JS contra `index.html`. Eso ya funciona y no necesita cambio. El nuevo `buildId` es solo para que el usuario VEA que cambió.
+
+### Por qué no usar git commit
+- `git` no está disponible en el sandbox de build de Lovable → siempre cae a `"local"`.
+- Sería confuso seguir mostrándolo. Mejor reemplazarlo por algo que sí cambia.
+
+### Por qué no incrementar `package.json` automáticamente
+- Lovable no ejecuta `npm version` ni hooks de pre-build.
+- Tendrías que recordar bumpearlo manualmente cada vez → fricción innecesaria.
+- El `buildId` por timestamp es automático y suficiente para verificar deploys.
+
+### Cómo verificar después de implementar
+1. Publicar con el botón de Lovable.
+2. Abrir la PWA en el celular, esperar el toast "Nueva versión disponible", actualizar.
+3. Mirar el footer: ahora debe decir algo tipo `v0.1.0 · 260420-1843` con un timestamp reciente.
+4. Publicar otra vez sin cambiar nada → el `buildId` cambia (nuevo timestamp) → confirmas que el deploy entró.
+
+### Archivos a modificar
+- `vite.config.ts`
+- `src/vite-env.d.ts`
+- `src/components/VersionFooter.tsx`
+
+### Fuera de alcance
+- Bumpeo automático de `package.json` en cada deploy (requeriría infra que Lovable no expone).
+- Mostrar el hash del bundle JS — ya está implícito en la URL del script, no aporta más que el timestamp.
 
