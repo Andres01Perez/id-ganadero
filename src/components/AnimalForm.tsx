@@ -83,24 +83,31 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   useEffect(() => {
     if (!open || !user) return;
     (async () => {
-      let fincaQuery = supabase.from("fincas").select("id, nombre").eq("activo", true).order("nombre");
-      // Si no es admin, restringir a sus fincas asignadas
-      if (!isAdmin) {
+      let fincasData: Finca[] = [];
+      if (isAdmin) {
+        const { data } = await supabase
+          .from("fincas")
+          .select("id, nombre")
+          .eq("activo", true)
+          .order("nombre");
+        fincasData = data ?? [];
+      } else {
         const { data: accesos } = await supabase
           .from("user_finca_acceso")
           .select("finca_id")
           .eq("user_id", user.id);
         const ids = (accesos ?? []).map((a) => a.finca_id);
-        if (ids.length === 0) {
-          setFincas([]);
-        } else {
-          fincaQuery = fincaQuery.in("id", ids);
+        if (ids.length > 0) {
+          const { data } = await supabase
+            .from("fincas")
+            .select("id, nombre")
+            .eq("activo", true)
+            .in("id", ids)
+            .order("nombre");
+          fincasData = data ?? [];
         }
       }
-      const [f, h, m] = await Promise.all([
-        isAdmin || (await supabase.from("user_finca_acceso").select("finca_id").eq("user_id", user.id)).data?.length
-          ? fincaQuery
-          : Promise.resolve({ data: [] as Finca[] }),
+      const [h, m] = await Promise.all([
         supabase
           .from("animales")
           .select("id, codigo, nombre")
@@ -114,7 +121,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           .eq("activo", true)
           .order("codigo"),
       ]);
-      setFincas((f as { data: Finca[] | null }).data ?? []);
+      setFincas(fincasData);
       setHembras(h.data ?? []);
       setMachos(m.data ?? []);
     })();
