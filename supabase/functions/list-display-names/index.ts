@@ -17,12 +17,24 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data, error } = await supabase
+    // IDs de super_admin para excluirlos del listado público
+    const { data: superRows } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "super_admin");
+    const superIds = (superRows ?? []).map((r) => r.user_id);
+
+    let query = supabase
       .from("profiles")
       .select("id, display_name")
       .eq("active", true)
       .order("display_name", { ascending: true });
 
+    if (superIds.length > 0) {
+      query = query.not("id", "in", `(${superIds.join(",")})`);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
 
     return new Response(JSON.stringify({ users: data ?? [] }), {
