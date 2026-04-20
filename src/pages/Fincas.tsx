@@ -63,6 +63,9 @@ const Fincas = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
+  // Preload header image (already eager) — fincas list has no per-item photos,
+  // so no per-row preload needed here.
+
   const openNew = () => {
     setEditingId(null);
     setFormOpen(true);

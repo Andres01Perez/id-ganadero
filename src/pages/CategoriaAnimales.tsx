@@ -3,9 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import listaHeader from "@/assets/lista-header.jpg";
 import bannerHembras from "@/assets/banner-hembras.webp";
-import jpsLogo from "@/assets/jps-logo.webp";
+
 import BottomTabBar from "@/components/BottomTabBar";
 import AnimalForm from "@/components/AnimalForm";
+import AnimalAvatar from "@/components/AnimalAvatar";
 import { ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +57,16 @@ const CategoriaAnimales = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validTipo]);
 
+  // Preload first 10 photos so they hit the cache before the user scrolls
+  useEffect(() => {
+    animals.slice(0, 10).forEach((a) => {
+      if (a.foto_principal_url) {
+        const img = new Image();
+        img.src = a.foto_principal_url;
+      }
+    });
+  }, [animals]);
+
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
       {/* Header foto */}
@@ -94,18 +105,7 @@ const CategoriaAnimales = () => {
               onClick={() => navigate(`/animal/${a.id}`)}
               className="w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform"
             >
-              <div className="w-16 h-16 rounded-full border-[3px] border-gold bg-white overflow-hidden flex items-center justify-center shrink-0">
-                {a.foto_principal_url ? (
-                  <img
-                    src={a.foto_principal_url}
-                    alt={a.nombre ?? a.codigo}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <img src={jpsLogo} alt="" className="w-9 h-9 object-contain opacity-70" />
-                )}
-              </div>
+              <AnimalAvatar src={a.foto_principal_url} alt={a.nombre ?? a.codigo} />
               <div className="flex-1 text-left">
                 <p className="font-bold text-base text-ink leading-tight">
                   {a.nombre ?? "Sin nombre"}
