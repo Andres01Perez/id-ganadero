@@ -35,7 +35,7 @@ const schema = z.object({
   sexo: z.enum(["M", "H"]).optional(),
   raza: z.string().trim().max(40).optional().or(z.literal("")),
   color: z.string().trim().max(40).optional().or(z.literal("")),
-  finca_id: z.string().optional().or(z.literal("")),
+  finca_id: z.string().uuid("Debes seleccionar una finca"),
   madre_id: z.string().optional().or(z.literal("")),
   padre_id: z.string().optional().or(z.literal("")),
 });
@@ -79,12 +79,35 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
 
   const showSexo = tipo === "cria" || tipo === "embrion" || tipo === "otro";
 
-  // Cargar selects
+  // Cargar selects (fincas filtradas según rol)
   useEffect(() => {
-    if (!open) return;
+    if (!open || !user) return;
     (async () => {
-      const [f, h, m] = await Promise.all([
-        supabase.from("fincas").select("id, nombre").eq("activo", true).order("nombre"),
+      let fincasData: Finca[] = [];
+      if (isAdmin) {
+        const { data } = await supabase
+          .from("fincas")
+          .select("id, nombre")
+          .eq("activo", true)
+          .order("nombre");
+        fincasData = data ?? [];
+      } else {
+        const { data: accesos } = await supabase
+          .from("user_finca_acceso")
+          .select("finca_id")
+          .eq("user_id", user.id);
+        const ids = (accesos ?? []).map((a) => a.finca_id);
+        if (ids.length > 0) {
+          const { data } = await supabase
+            .from("fincas")
+            .select("id, nombre")
+            .eq("activo", true)
+            .in("id", ids)
+            .order("nombre");
+          fincasData = data ?? [];
+        }
+      }
+      const [h, m] = await Promise.all([
         supabase
           .from("animales")
           .select("id, codigo, nombre")
@@ -98,11 +121,11 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           .eq("activo", true)
           .order("codigo"),
       ]);
-      setFincas(f.data ?? []);
+      setFincas(fincasData);
       setHembras(h.data ?? []);
       setMachos(m.data ?? []);
     })();
-  }, [open]);
+  }, [open, user, isAdmin]);
 
   // Cargar animal en modo edición / reset en creación
   useEffect(() => {
@@ -392,20 +415,25 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           </div>
 
           <div>
-            <Label htmlFor="finca">Finca</Label>
+            <Label htmlFor="finca">Finca *</Label>
             <select
               id="finca"
               value={fincaId}
               onChange={(e) => setFincaId(e.target.value)}
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="">— Sin asignar —</option>
+              <option value="">— Selecciona una finca —</option>
               {fincas.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.nombre}
                 </option>
               ))}
             </select>
+            {fincas.length === 0 && !isAdmin && (
+              <p className="text-xs text-destructive mt-1">
+                No tienes fincas asignadas. Pide a un admin que te asigne una.
+              </p>
+            )}
           </div>
 
           <div>
