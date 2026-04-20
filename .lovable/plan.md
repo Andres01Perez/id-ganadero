@@ -1,77 +1,125 @@
 
 
-## Mostrar versión real del build en el footer
+## Panel Superadmin (vista desktop integral)
 
-### Problema
-- `package.json` tiene `version: "0.1.0"` fija → footer siempre muestra `v0.1.0`.
-- `git rev-parse` en `vite.config.ts` falla en el entorno de build de Lovable → commit siempre es `"local"` en producción.
-- Resultado: el footer no refleja que hubo un nuevo deploy, aunque el bundle JS sí cambie.
+### Acceso oculto
+- Nueva ruta pública `/sa` con formulario **email + contraseña** (signin nativo de Supabase, no usa el sistema de display_name).
+- Excluir superadmins del listado del login normal: `list-display-names` filtra usuarios cuyo rol sea `super_admin` (join con `user_roles`).
+- Tras login en `/sa`, si el usuario tiene rol `super_admin` → redirige a `/superadmin`. Si no, signOut + error.
+- Si un superadmin entra por `/` (login normal), no aparece en la lista → no puede entrar por ahí. Si por algún motivo ya tiene sesión y va a `/menu`, lo redirigimos a `/superadmin`.
 
-### Solución: usar timestamp de build + hash del bundle como "versión visible"
+### Layout `/superadmin` (desktop-first)
 
-En lugar de depender de `package.json` y `git` (que no funcionan en Lovable build), usar dos cosas que SÍ están disponibles en build time y cambian con cada deploy:
-
-1. **`__APP_BUILD_DATE__`** (ya existe en `vite.config.ts`): se genera con `new Date().toISOString()` cada build → único por deploy.
-2. **Hash del bundle JS** (lo genera Vite automáticamente y queda en el filename `index-XXXXXXXX.js`): cambia solo cuando el código cambia → identificador real del deploy.
-
-### Cambios
-
-**1. `vite.config.ts`** — generar un identificador corto de build determinista:
-```ts
-// Build ID corto: YYMMDD-HHMM (UTC) → ej. "260420-1843"
-const now = new Date();
-const pad = (n: number) => String(n).padStart(2, "0");
-const APP_BUILD_ID = `${String(now.getUTCFullYear()).slice(2)}${pad(now.getUTCMonth()+1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}`;
-
-// Mantener APP_VERSION desde package.json
-// Eliminar APP_COMMIT (no funciona en Lovable build)
-// Añadir APP_BUILD_ID como reemplazo
+```text
+┌────────────────────────────────────────────────────────┐
+│ Sidebar (w-60) │  Contenido (flex-1, max-w-7xl)        │
+│                │                                        │
+│ JPS Superadmin │  [Header: título sección + breadcrumb]│
+│                │                                        │
+│ • Resumen      │                                        │
+│ • Usuarios     │  ... vista de la sección activa ...   │
+│ • Imágenes     │                                        │
+│ • Información  │                                        │
+│   finca        │                                        │
+│                │                                        │
+│ ─────────      │                                        │
+│ [Cerrar sesión]│                                        │
+└────────────────────────────────────────────────────────┘
 ```
 
-Y exponer:
-```ts
-define: {
-  __APP_VERSION__: JSON.stringify(APP_VERSION),
-  __APP_BUILD_ID__: JSON.stringify(APP_BUILD_ID),
-  __APP_BUILD_DATE__: JSON.stringify(APP_BUILD_DATE),
-},
+Usa `SidebarProvider` de shadcn. Sin BottomTabBar, sin SafeAreaTopBar (oculto en esta ruta). Responsive: en móvil sidebar colapsa pero la prioridad es desktop.
+
+Rutas anidadas:
+- `/superadmin` → Resumen (KPIs: total fincas, animales por tipo, usuarios activos, último login)
+- `/superadmin/usuarios`
+- `/superadmin/imagenes`
+- `/superadmin/finca/:fincaId?` (vista jerárquica)
+
+### 1. Usuarios
+
+Tabla densa con todos los usuarios (admins + operarios), columnas:
+`Display name | Email | Rol | Fincas asignadas | Activo | Acciones`
+
+Acciones por fila: **Editar nombre** · **Cambiar contraseña** · **Cambiar rol** · **Editar fincas** · **Activar/Desactivar**.
+
+Botón superior: **+ Nuevo usuario** (modal con los mismos campos que ya hay en `Admin.tsx`, ampliado para elegir cualquier rol incluido `super_admin`).
+
+Necesita **2 nuevas edge functions** (con verificación `super_admin` en server):
+- `admin-update-user`: cambia `display_name`, `email` (recalculado del slug), `password`, `active`.
+- `admin-update-user-role`: borra rol viejo en `user_roles`, inserta el nuevo. Solo super_admin.
+
+Edición de fincas reusa la lógica que ya existe en `Admin.tsx` (insert/delete en `user_finca_acceso`).
+
+### 2. Imágenes
+
+Sistema de **assets reemplazables** vía nueva tabla `app_assets`:
+```sql
+create table public.app_assets (
+  key text primary key,        -- 'menu.icon.machos', 'menu.banner', 'logo', 'finca.123.foto'
+  url text not null,
+  updated_at timestamptz default now(),
+  updated_by uuid
+);
 ```
+RLS: SELECT autenticado, INSERT/UPDATE/DELETE solo `super_admin`.
 
-**2. `src/vite-env.d.ts`** — declarar `__APP_BUILD_ID__`, eliminar `__APP_COMMIT__`.
+Nuevo bucket de Storage `app-assets` (público). Todas las imágenes editables se suben aquí.
 
-**3. `src/components/VersionFooter.tsx`** — mostrar `v{version} · {buildId}`:
-```tsx
-const version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
-const buildId = typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev";
-// ...
-<span>v{version} · {buildId}</span>
-```
+Hook `useAppAsset(key, fallback)` que lee `app_assets` con cache (React Query) y devuelve URL. Si no hay registro → usa el import estático actual como fallback. Esto se aplica en `Menu.tsx`, banners, `Index.tsx` (logo), etc., con cambio mínimo: `<img src={useAppAsset('menu.icon.machos', iconMachos)}/>`.
 
-Resultado visible en el celular: `v0.1.0 · 260420-1843` → la parte `260420-1843` cambia con cada deploy de Lovable, así sabes con certeza si la PWA actualizó.
+UI de la sección **Imágenes**, con sub-tabs:
 
-**4. (Opcional pero recomendado) `useAppUpdate.tsx`** — hoy compara el hash del bundle JS contra `index.html`. Eso ya funciona y no necesita cambio. El nuevo `buildId` es solo para que el usuario VEA que cambió.
+| Sub-tab | Contenido |
+|---|---|
+| **Menú principal** | 6 tarjetas (Fincas/Machos/Hembras/Crías/Embriones/Otros) + banner header + logo. Cada una con preview actual y zona drag-and-drop (`react-dropzone`-style nativo: `onDragOver/onDrop`) + botón "Resetear al original" (borra el override). |
+| **Banners de páginas** | Banner Menú, banner Lista (CategoríaAnimales/Fincas), banner HojaVida. Igual: preview + dropzone. |
+| **Fotos de fincas** | Una fila por finca con su foto actual y dropzone. **Requiere migration**: `alter table fincas add column foto_url text`. |
+| **Fotos de animales** | Reemplaza la pestaña actual de `Admin.tsx`. Mismo grid pero con dropzone por fila + filtro por finca/tipo. |
 
-### Por qué no usar git commit
-- `git` no está disponible en el sandbox de build de Lovable → siempre cae a `"local"`.
-- Sería confuso seguir mostrándolo. Mejor reemplazarlo por algo que sí cambia.
+Drag-and-drop: zona resaltada al `dragenter`, archivo se redimensiona con `resizeImage` existente, sube a `app-assets/{key}/{timestamp}.jpg`, hace upsert en `app_assets`, invalida React Query → todas las pantallas que usan ese asset se actualizan al instante.
 
-### Por qué no incrementar `package.json` automáticamente
-- Lovable no ejecuta `npm version` ni hooks de pre-build.
-- Tendrías que recordar bumpearlo manualmente cada vez → fricción innecesaria.
-- El `buildId` por timestamp es automático y suficiente para verificar deploys.
+### 3. Información finca (vista jerárquica)
 
-### Cómo verificar después de implementar
-1. Publicar con el botón de Lovable.
-2. Abrir la PWA en el celular, esperar el toast "Nueva versión disponible", actualizar.
-3. Mirar el footer: ahora debe decir algo tipo `v0.1.0 · 260420-1843` con un timestamp reciente.
-4. Publicar otra vez sin cambiar nada → el `buildId` cambia (nuevo timestamp) → confirmas que el deploy entró.
+Ruta `/superadmin/finca/:fincaId?`.
 
-### Archivos a modificar
-- `vite.config.ts`
-- `src/vite-env.d.ts`
-- `src/components/VersionFooter.tsx`
+Layout split:
+- **Columna izquierda (w-72)**: lista clicable de todas las fincas con contador de animales.
+- **Columna derecha**: si no hay fincaId → "Selecciona una finca". Si hay:
+  - Card con datos de la finca (nombre, ubicación, hectáreas, operarios asignados).
+  - Tabs: **Machos | Hembras | Crías | Embriones**. Cada tab es una `Table` shadcn con todas las columnas relevantes (código, nombre, raza, color, fecha nac, registro, padre, madre, foto thumbnail).
+  - Click en una fila → drawer/sheet lateral que muestra todos los eventos del animal (vacunas, pesajes, palpaciones, partos, inseminaciones, medicaciones, dietas, ciclos calor, chequeos, embriones detalle) en accordions.
 
-### Fuera de alcance
-- Bumpeo automático de `package.json` en cada deploy (requeriría infra que Lovable no expone).
-- Mostrar el hash del bundle JS — ya está implícito en la URL del script, no aporta más que el timestamp.
+Sin paginación inicial (Supabase 1000 limit es suficiente por ahora, lo notamos en TODO si crece).
+
+### Cambios técnicos resumidos
+
+| Archivo / recurso | Cambio |
+|---|---|
+| `supabase/migrations/*` | (1) Crear tabla `app_assets` + RLS. (2) Crear bucket `app-assets` público + policies. (3) `alter table fincas add column foto_url text`. |
+| `supabase/functions/list-display-names/index.ts` | Excluir usuarios con rol `super_admin` (subquery sobre `user_roles`). |
+| `supabase/functions/admin-update-user/index.ts` (nuevo) | Editar nombre/email/password/active. Solo super_admin (admins solo pueden tocar operarios). |
+| `supabase/functions/admin-update-user-role/index.ts` (nuevo) | Cambiar rol. Solo super_admin. |
+| `src/pages/SuperAdminLogin.tsx` (nuevo, ruta `/sa`) | Form email+password. |
+| `src/pages/SuperAdmin/Layout.tsx` (nuevo) | Sidebar + outlet. |
+| `src/pages/SuperAdmin/Dashboard.tsx` (nuevo) | KPIs. |
+| `src/pages/SuperAdmin/Usuarios.tsx` (nuevo) | Tabla + modales editar/crear. |
+| `src/pages/SuperAdmin/Imagenes.tsx` (nuevo) | 4 sub-tabs con dropzone. |
+| `src/pages/SuperAdmin/InformacionFinca.tsx` (nuevo) | Vista jerárquica con drawer de eventos. |
+| `src/hooks/useAppAsset.ts` (nuevo) | Lee `app_assets` con React Query. |
+| `src/components/AssetDropzone.tsx` (nuevo) | Reusable drag-and-drop. |
+| `src/App.tsx` | Añadir rutas `/sa` y `/superadmin/*` con `ProtectedRoute requireRoles={["super_admin"]}`. Ocultar `SafeAreaTopBar` y `BottomTabBar` en estas rutas (o ya están solo donde se renderizan). |
+| `src/pages/Index.tsx` | Si `roles.includes("super_admin")` → redirige a `/superadmin` en vez de `/menu`. |
+| `src/components/ProtectedRoute.tsx` | Si super_admin entra a una ruta no-superadmin → redirige a `/superadmin`. |
+| `src/pages/Menu.tsx`, `Fincas.tsx`, etc. | Cambiar imports estáticos por `useAppAsset(key, fallback)` para los assets editables. |
+
+### Seguridad
+- Toda mutación pasa por edge function que valida `super_admin` server-side.
+- RLS de `app_assets`: SELECT autenticado, write solo `has_role(auth.uid(), 'super_admin')`.
+- Bucket `app-assets`: lectura pública, write solo super_admin (RLS sobre `storage.objects`).
+- El admin existente sigue viendo `/admin` actual sin cambios — su panel ya no se mezcla con el de super_admin.
+
+### Pendiente / fuera de alcance
+- Auditoría detallada de cambios de imágenes (ya existe `audit_log`, se podría enganchar después).
+- Paginación de tablas grandes — se añade si alguna pasa de 500 filas.
+- "Otros" del menú: queda como `/generalidades` placeholder, no se toca.
 
