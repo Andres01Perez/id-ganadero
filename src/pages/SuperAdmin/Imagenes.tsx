@@ -2,27 +2,39 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssetDropzone from "@/components/AssetDropzone";
+import ImageCropDialog from "@/components/ImageCropDialog";
 import { useAllAppAssets } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS, fincaAssetKey } from "@/lib/asset-keys";
-import { resizeImage } from "@/lib/image";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
 
 type Finca = { id: string; nombre: string; foto_url: string | null };
 
-const menuItems = [
-  { key: ASSET_KEYS.iconFincas, label: "Icono · Fincas" },
-  { key: ASSET_KEYS.iconMachos, label: "Icono · Machos" },
-  { key: ASSET_KEYS.iconHembras, label: "Icono · Hembras" },
-  { key: ASSET_KEYS.iconCrias, label: "Icono · Crías" },
-  { key: ASSET_KEYS.iconEmbriones, label: "Icono · Embriones" },
-  { key: ASSET_KEYS.iconOtros, label: "Icono · Otros" },
+type AssetItem = {
+  key: string;
+  label: string;
+  aspect: number;
+  output: { width: number; height: number };
+};
+
+const SQUARE = { aspect: 1, output: { width: 512, height: 512 } };
+const BANNER = { aspect: 865 / 503, output: { width: 1600, height: 930 } };
+const HERO = { aspect: 3 / 4, output: { width: 1200, height: 1600 } };
+const FINCA = { aspect: 16 / 10, output: { width: 1280, height: 800 } };
+
+const menuItems: AssetItem[] = [
+  { key: ASSET_KEYS.iconFincas, label: "Icono · Fincas", ...SQUARE },
+  { key: ASSET_KEYS.iconMachos, label: "Icono · Machos", ...SQUARE },
+  { key: ASSET_KEYS.iconHembras, label: "Icono · Hembras", ...SQUARE },
+  { key: ASSET_KEYS.iconCrias, label: "Icono · Crías", ...SQUARE },
+  { key: ASSET_KEYS.iconEmbriones, label: "Icono · Embriones", ...SQUARE },
+  { key: ASSET_KEYS.iconOtros, label: "Icono · Otros", ...SQUARE },
 ];
 
-const brandItems = [
-  { key: ASSET_KEYS.logo, label: "Logo JPS" },
-  { key: ASSET_KEYS.loginHero, label: "Hero del login" },
-  { key: ASSET_KEYS.menuBanner, label: "Banner del menú" },
+const brandItems: AssetItem[] = [
+  { key: ASSET_KEYS.logo, label: "Logo JPS", ...SQUARE },
+  { key: ASSET_KEYS.loginHero, label: "Hero del login", ...HERO },
+  { key: ASSET_KEYS.menuBanner, label: "Banner del menú", ...BANNER },
 ];
 
 const Imagenes = () => {
@@ -71,6 +83,8 @@ const Imagenes = () => {
                 currentUrl={url(it.key)}
                 fallbackUrl={ASSET_FALLBACKS[it.key]}
                 onChanged={refetch}
+                cropAspect={it.aspect}
+                outputSize={it.output}
               />
             ))}
           </div>
@@ -86,7 +100,8 @@ const Imagenes = () => {
                 currentUrl={url(it.key)}
                 fallbackUrl={ASSET_FALLBACKS[it.key]}
                 onChanged={refetch}
-                maxSize={1600}
+                cropAspect={it.aspect}
+                outputSize={it.output}
               />
             ))}
           </div>
@@ -117,15 +132,20 @@ const FincaPhotoCard = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const upload = async (file: File) => {
+  const handlePicked = (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Debe ser imagen");
       return;
     }
+    setPendingFile(file);
+  };
+
+  const uploadBlob = async (blob: Blob) => {
+    setPendingFile(null);
     setUploading(true);
     try {
-      const blob = await resizeImage(file, 1200);
       const path = `${fincaAssetKey(finca.id)}/${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage
         .from("app-assets")
@@ -157,13 +177,13 @@ const FincaPhotoCard = ({
           e.preventDefault();
           setDragOver(false);
           const f = e.dataTransfer.files?.[0];
-          if (f) upload(f);
+          if (f) handlePicked(f);
         }}
         onClick={() => {
           const inp = document.createElement("input");
           inp.type = "file";
           inp.accept = "image/*";
-          inp.onchange = () => inp.files?.[0] && upload(inp.files[0]);
+          inp.onchange = () => inp.files?.[0] && handlePicked(inp.files[0]);
           inp.click();
         }}
         className={`relative cursor-pointer rounded-lg border-2 border-dashed transition-all overflow-hidden ${
@@ -186,6 +206,16 @@ const FincaPhotoCard = ({
           )}
         </div>
       </div>
+
+      <ImageCropDialog
+        open={!!pendingFile}
+        file={pendingFile}
+        aspect={FINCA.aspect}
+        outputSize={FINCA.output}
+        label={finca.nombre}
+        onConfirm={uploadBlob}
+        onCancel={() => setPendingFile(null)}
+      />
     </div>
   );
 };
