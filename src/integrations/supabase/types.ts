@@ -22,7 +22,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           fecha_nacimiento: string | null
-          finca_id: string | null
+          finca_id: string
           foto_principal_url: string | null
           id: string
           madre_id: string | null
@@ -41,7 +41,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           fecha_nacimiento?: string | null
-          finca_id?: string | null
+          finca_id: string
           foto_principal_url?: string | null
           id?: string
           madre_id?: string | null
@@ -60,7 +60,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           fecha_nacimiento?: string | null
-          finca_id?: string | null
+          finca_id?: string
           foto_principal_url?: string | null
           id?: string
           madre_id?: string | null
@@ -695,6 +695,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_finca_acceso: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          finca_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          finca_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          finca_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -774,6 +798,14 @@ export type Database = {
       }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_super: { Args: { _user_id: string }; Returns: boolean }
+      user_can_access_animal: {
+        Args: { _animal_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_has_finca: {
+        Args: { _finca_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       animal_sexo: "M" | "H"
