@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { componentTagger } from "lovable-tagger";
 
@@ -9,22 +8,17 @@ import { componentTagger } from "lovable-tagger";
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
 const APP_VERSION: string = pkg.version || "0.0.0";
 
-// Get short commit hash from git, fallback to "local"
-let APP_COMMIT = "local";
-try {
-  APP_COMMIT = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
-    .toString()
-    .trim();
-} catch {
-  APP_COMMIT = "local";
-}
+// Build ID corto: YYMMDD-HHMM (UTC) → ej. "260420-1843". Cambia con cada build/deploy.
+const now = new Date();
+const pad = (n: number) => String(n).padStart(2, "0");
+const APP_BUILD_ID = `${String(now.getUTCFullYear()).slice(2)}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}`;
 
-const APP_BUILD_DATE = new Date().toISOString();
+const APP_BUILD_DATE = now.toISOString();
 
 export default defineConfig(({ mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
-    __APP_COMMIT__: JSON.stringify(APP_COMMIT),
+    __APP_BUILD_ID__: JSON.stringify(APP_BUILD_ID),
     __APP_BUILD_DATE__: JSON.stringify(APP_BUILD_DATE),
   },
   server: {

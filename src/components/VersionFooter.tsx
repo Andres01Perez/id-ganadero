@@ -6,7 +6,7 @@ const LONG_PRESS_MS = 1500;
 
 const VersionFooter = () => {
   const version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
-  const commit = typeof __APP_COMMIT__ !== "undefined" ? __APP_COMMIT__ : "local";
+  const buildId = typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev";
   const [reloading, setReloading] = useState(false);
   const [clearing, setClearing] = useState(false);
   const longPressTimer = useRef<number | null>(null);
@@ -87,7 +87,7 @@ const VersionFooter = () => {
           ? "Limpiando caché..."
           : reloading
             ? "Recargando..."
-            : `v${version} · ${commit}`}
+            : `v${version} · ${buildId}`}
       </span>
     </button>
   );
