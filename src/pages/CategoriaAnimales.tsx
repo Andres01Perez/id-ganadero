@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import listaHeader from "@/assets/lista-header.jpg";
-import bannerHembras from "@/assets/banner-hembras.webp";
+import { useAppAsset } from "@/hooks/useAppAsset";
+import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 
 import BottomTabBar from "@/components/BottomTabBar";
 import AnimalForm from "@/components/AnimalForm";
@@ -37,7 +37,14 @@ const CategoriaAnimales = () => {
     | "cria"
     | "embrion";
   const title = titles[validTipo];
-  const headerImg = validTipo === "hembra" ? bannerHembras : listaHeader;
+  const bannerKeyMap = {
+    macho: ASSET_KEYS.bannerMachos,
+    hembra: ASSET_KEYS.bannerHembras,
+    cria: ASSET_KEYS.bannerCrias,
+    embrion: ASSET_KEYS.bannerEmbriones,
+  } as const;
+  const bannerKey = bannerKeyMap[validTipo];
+  const headerImg = useAppAsset(bannerKey, ASSET_FALLBACKS[bannerKey]);
 
   const load = async () => {
     setLoading(true);

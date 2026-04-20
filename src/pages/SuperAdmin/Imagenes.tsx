@@ -37,6 +37,13 @@ const brandItems: AssetItem[] = [
   { key: ASSET_KEYS.menuBanner, label: "Banner del menú", ...BANNER },
 ];
 
+const categoryBanners: AssetItem[] = [
+  { key: ASSET_KEYS.bannerMachos, label: "Banner · Machos", ...BANNER },
+  { key: ASSET_KEYS.bannerHembras, label: "Banner · Hembras", ...BANNER },
+  { key: ASSET_KEYS.bannerCrias, label: "Banner · Crías", ...BANNER },
+  { key: ASSET_KEYS.bannerEmbriones, label: "Banner · Embriones", ...BANNER },
+];
+
 const Imagenes = () => {
   const { data: assets, refetch } = useAllAppAssets();
   const [fincas, setFincas] = useState<Finca[]>([]);
@@ -90,20 +97,43 @@ const Imagenes = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="brand" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {brandItems.map((it) => (
-              <AssetDropzone
-                key={it.key}
-                assetKey={it.key}
-                label={it.label}
-                currentUrl={url(it.key)}
-                fallbackUrl={ASSET_FALLBACKS[it.key]}
-                onChanged={refetch}
-                cropAspect={it.aspect}
-                outputSize={it.output}
-              />
-            ))}
+        <TabsContent value="brand" className="mt-6 space-y-8">
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {brandItems.map((it) => (
+                <AssetDropzone
+                  key={it.key}
+                  assetKey={it.key}
+                  label={it.label}
+                  currentUrl={url(it.key)}
+                  fallbackUrl={ASSET_FALLBACKS[it.key]}
+                  onChanged={refetch}
+                  cropAspect={it.aspect}
+                  outputSize={it.output}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-1">Banners de categorías</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Imagen de cabecera de las vistas /machos, /hembras, /crías y /embriones.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categoryBanners.map((it) => (
+                <AssetDropzone
+                  key={it.key}
+                  assetKey={it.key}
+                  label={it.label}
+                  currentUrl={url(it.key)}
+                  fallbackUrl={ASSET_FALLBACKS[it.key]}
+                  onChanged={refetch}
+                  cropAspect={it.aspect}
+                  outputSize={it.output}
+                />
+              ))}
+            </div>
           </div>
         </TabsContent>
 
