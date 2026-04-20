@@ -326,7 +326,6 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               className="hidden"
               onChange={handleFotoChange}
             />
