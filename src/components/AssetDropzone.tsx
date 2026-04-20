@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useInvalidateAsset } from "@/hooks/useAppAsset";
+import { useInvalidateAsset, setAssetCache } from "@/hooks/useAppAsset";
 import ImageCropDialog from "@/components/ImageCropDialog";
 
 type Props = {
