@@ -326,7 +326,6 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               className="hidden"
               onChange={handleFotoChange}
             />
@@ -336,7 +335,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
               onClick={() => fileInputRef.current?.click()}
             >
               <Camera className="h-4 w-4 mr-1" />
-              {fotoActualUrl || fotoPreview ? "Cambiar foto" : "Tomar foto"}
+              {fotoActualUrl || fotoPreview ? "Cambiar foto" : "Añadir foto"}
             </Button>
           </div>
 
