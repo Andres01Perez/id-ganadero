@@ -415,20 +415,25 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           </div>
 
           <div>
-            <Label htmlFor="finca">Finca</Label>
+            <Label htmlFor="finca">Finca *</Label>
             <select
               id="finca"
               value={fincaId}
               onChange={(e) => setFincaId(e.target.value)}
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="">— Sin asignar —</option>
+              <option value="">— Selecciona una finca —</option>
               {fincas.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.nombre}
                 </option>
               ))}
             </select>
+            {fincas.length === 0 && !isAdmin && (
+              <p className="text-xs text-destructive mt-1">
+                No tienes fincas asignadas. Pide a un admin que te asigne una.
+              </p>
+            )}
           </div>
 
           <div>
