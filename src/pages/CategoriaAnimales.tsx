@@ -82,8 +82,10 @@ const CategoriaAnimales = () => {
           <p className="text-center text-sm text-muted-foreground py-8">Cargando…</p>
         ) : animals.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-sm text-muted-foreground">No hay {title.toLowerCase()} registrados</p>
-            <p className="text-xs text-muted-foreground mt-1">Toca el botón + para agregar</p>
+            <p className="text-sm text-muted-foreground">No hay {title.toLowerCase()} visibles</p>
+            <p className="text-xs text-muted-foreground mt-2 px-6">
+              Si no ves animales, verifica que tengas fincas asignadas. Pide a un admin que te asigne una finca o agrega un nuevo animal con el botón +.
+            </p>
           </div>
         ) : (
           animals.map((a) => (

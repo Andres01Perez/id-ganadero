@@ -47,13 +47,11 @@ Deno.serve(async (req) => {
 
     const callerId = userData.user.id;
 
-    // Service role for privileged ops
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check caller role
     const { data: callerRoles, error: roleErr } = await admin
       .from("user_roles")
       .select("role")
@@ -80,6 +78,9 @@ Deno.serve(async (req) => {
       | "super_admin"
       | "admin"
       | "operario";
+    const finca_ids: string[] = Array.isArray(body?.finca_ids)
+      ? body.finca_ids.filter((x: unknown) => typeof x === "string")
+      : [];
 
     if (!display_name || display_name.length < 2 || display_name.length > 80) {
       return new Response(
@@ -106,7 +107,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Solo super_admin puede crear super_admin o admin
     const isSuper =
       callerRoles?.some((r) => r.role === "super_admin") ?? false;
     if ((role === "super_admin" || role === "admin") && !isSuper) {
@@ -133,7 +133,6 @@ Deno.serve(async (req) => {
     }
     const email = `${slug}@yopmail.com`;
 
-    // Verificar unicidad de display_name
     const { data: existing } = await admin
       .from("profiles")
       .select("id")
@@ -150,7 +149,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Crear usuario en auth
     const { data: created, error: createErr } =
       await admin.auth.admin.createUser({
         email,
@@ -171,14 +169,12 @@ Deno.serve(async (req) => {
 
     const newUserId = created.user.id;
 
-    // Trigger creó profile básico; actualizarlo con display_name correcto y created_by
     const { error: upErr } = await admin
       .from("profiles")
       .update({ display_name, email, created_by: callerId, active: true })
       .eq("id", newUserId);
 
     if (upErr) {
-      // rollback user
       await admin.auth.admin.deleteUser(newUserId);
       return new Response(JSON.stringify({ error: upErr.message }), {
         status: 500,
@@ -186,7 +182,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Asignar rol
     const { error: roleInsErr } = await admin
       .from("user_roles")
       .insert({ user_id: newUserId, role });
@@ -197,6 +192,25 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Asignar fincas (solo aplica para operarios; admins ven todo)
+    if (role === "operario" && finca_ids.length > 0) {
+      const rows = finca_ids.map((fid) => ({
+        user_id: newUserId,
+        finca_id: fid,
+        created_by: callerId,
+      }));
+      const { error: accErr } = await admin
+        .from("user_finca_acceso")
+        .insert(rows);
+      if (accErr) {
+        await admin.auth.admin.deleteUser(newUserId);
+        return new Response(JSON.stringify({ error: accErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(

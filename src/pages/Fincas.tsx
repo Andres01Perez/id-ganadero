@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import listaHeader from "@/assets/lista-header.jpg";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaForm from "@/components/FincaForm";
-import { ArrowLeft, MapPin, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 type Finca = {
@@ -21,6 +21,7 @@ const Fincas = () => {
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
 
   const [fincas, setFincas] = useState<Finca[]>([]);
+  const [opCounts, setOpCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,14 +33,35 @@ const Fincas = () => {
       .select("id, nombre, ubicacion, hectareas")
       .eq("activo", true)
       .order("nombre");
-    if (error) toast.error("No se pudieron cargar las fincas");
-    else setFincas(data ?? []);
+    if (error) {
+      toast.error("No se pudieron cargar las fincas");
+      setLoading(false);
+      return;
+    }
+    setFincas(data ?? []);
+
+    if (isAdmin && data && data.length > 0) {
+      const { data: accesos } = await supabase
+        .from("user_finca_acceso")
+        .select("finca_id")
+        .in(
+          "finca_id",
+          data.map((f) => f.id)
+        );
+      const counts: Record<string, number> = {};
+      (accesos ?? []).forEach((a) => {
+        counts[a.finca_id] = (counts[a.finca_id] ?? 0) + 1;
+      });
+      setOpCounts(counts);
+    }
+
     setLoading(false);
   };
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   const openNew = () => {
     setEditingId(null);
@@ -93,14 +115,20 @@ const Fincas = () => {
               <div className="w-14 h-14 rounded-full border-[3px] border-gold bg-white flex items-center justify-center shrink-0">
                 <MapPin className="h-6 w-6 text-gold-deep" />
               </div>
-              <div className="flex-1 text-left">
-                <p className="font-bold text-base text-ink leading-tight">{f.nombre}</p>
-                <p className="text-xs text-muted-foreground">
+              <div className="flex-1 text-left min-w-0">
+                <p className="font-bold text-base text-ink leading-tight truncate">{f.nombre}</p>
+                <p className="text-xs text-muted-foreground truncate">
                   {[f.ubicacion, f.hectareas != null ? `${f.hectareas} ha` : null]
                     .filter(Boolean)
                     .join(" · ") || "Sin detalles"}
                 </p>
               </div>
+              {isAdmin && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/60 rounded-full px-2 py-1 shrink-0">
+                  <Users className="h-3 w-3" />
+                  {opCounts[f.id] ?? 0}
+                </span>
+              )}
             </button>
           ))
         )}
