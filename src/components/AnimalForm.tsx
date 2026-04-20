@@ -35,7 +35,7 @@ const schema = z.object({
   sexo: z.enum(["M", "H"]).optional(),
   raza: z.string().trim().max(40).optional().or(z.literal("")),
   color: z.string().trim().max(40).optional().or(z.literal("")),
-  finca_id: z.string().optional().or(z.literal("")),
+  finca_id: z.string().uuid("Debes seleccionar una finca"),
   madre_id: z.string().optional().or(z.literal("")),
   padre_id: z.string().optional().or(z.literal("")),
 });
