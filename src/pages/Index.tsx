@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import heroImage from "@/assets/jps-login-hero.png";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppAsset } from "@/hooks/useAppAsset";
+import { ASSET_KEYS } from "@/lib/asset-keys";
 import { toast } from "sonner";
 import VersionFooter from "@/components/VersionFooter";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -24,11 +26,17 @@ const Index = () => {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
 
   useEffect(() => {
-    if (user) navigate("/menu", { replace: true });
-  }, [user, navigate]);
+    if (user) {
+      if (roles.includes("super_admin")) {
+        navigate("/superadmin", { replace: true });
+      } else {
+        navigate("/menu", { replace: true });
+      }
+    }
+  }, [user, roles, navigate]);
 
   useEffect(() => {
     (async () => {
