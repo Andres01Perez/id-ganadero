@@ -79,12 +79,28 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
 
   const showSexo = tipo === "cria" || tipo === "embrion" || tipo === "otro";
 
-  // Cargar selects
+  // Cargar selects (fincas filtradas según rol)
   useEffect(() => {
-    if (!open) return;
+    if (!open || !user) return;
     (async () => {
+      let fincaQuery = supabase.from("fincas").select("id, nombre").eq("activo", true).order("nombre");
+      // Si no es admin, restringir a sus fincas asignadas
+      if (!isAdmin) {
+        const { data: accesos } = await supabase
+          .from("user_finca_acceso")
+          .select("finca_id")
+          .eq("user_id", user.id);
+        const ids = (accesos ?? []).map((a) => a.finca_id);
+        if (ids.length === 0) {
+          setFincas([]);
+        } else {
+          fincaQuery = fincaQuery.in("id", ids);
+        }
+      }
       const [f, h, m] = await Promise.all([
-        supabase.from("fincas").select("id, nombre").eq("activo", true).order("nombre"),
+        isAdmin || (await supabase.from("user_finca_acceso").select("finca_id").eq("user_id", user.id)).data?.length
+          ? fincaQuery
+          : Promise.resolve({ data: [] as Finca[] }),
         supabase
           .from("animales")
           .select("id, codigo, nombre")
@@ -98,11 +114,11 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           .eq("activo", true)
           .order("codigo"),
       ]);
-      setFincas(f.data ?? []);
+      setFincas((f as { data: Finca[] | null }).data ?? []);
       setHembras(h.data ?? []);
       setMachos(m.data ?? []);
     })();
-  }, [open]);
+  }, [open, user, isAdmin]);
 
   // Cargar animal en modo edición / reset en creación
   useEffect(() => {
