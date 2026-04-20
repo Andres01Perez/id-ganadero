@@ -64,7 +64,8 @@ const CategoriaAnimales = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />
         <button
           onClick={() => navigate("/menu")}
-          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
+          className="absolute left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
+          style={{ top: "calc(env(safe-area-inset-top) + 0.75rem)" }}
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />

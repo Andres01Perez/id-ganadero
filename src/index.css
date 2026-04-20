@@ -103,4 +103,13 @@
   .tracking-jps {
     letter-spacing: 0.18em;
   }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pt-safe-plus {
+    padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
