@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 const PlaceholderPage = ({ title }: { title: string }) => {
   const navigate = useNavigate();
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-4 px-4">
+    <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-4 px-4 pt-safe">
       <h1 className="text-2xl font-bold text-primary">{title}</h1>
       <p className="text-muted-foreground">Próximamente</p>
       <button

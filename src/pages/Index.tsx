@@ -93,9 +93,9 @@ const Index = () => {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
-          className="bg-black border-t-2 border-gold rounded-t-3xl p-6 pb-10 max-h-[80vh]"
+          className="bg-black border-t-2 border-gold rounded-t-3xl p-6 pb-10 h-[70dvh] overflow-y-auto flex flex-col justify-center"
         >
-          <div className="mx-auto max-w-sm">
+          <div className="mx-auto w-full max-w-sm">
             <div className="text-center mb-5">
               <div className="inline-block px-4 py-1 mb-3 border border-gold/60 rounded-full text-gold text-[10px] tracking-[0.3em] uppercase">
                 JPS Ganadería

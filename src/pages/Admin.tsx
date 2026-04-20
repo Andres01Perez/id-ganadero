@@ -294,7 +294,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <header className="bg-black text-white px-4 py-4 flex items-center gap-3">
+      <header className="bg-black text-white px-4 pb-4 pt-safe-plus flex items-center gap-3">
         <button onClick={() => navigate("/menu")} aria-label="Volver">
           <ArrowLeft className="h-5 w-5" />
         </button>
