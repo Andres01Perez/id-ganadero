@@ -11,6 +11,8 @@ import iconCrias from "@/assets/menu-icons/crias.webp";
 import iconEmbriones from "@/assets/menu-icons/embriones.webp";
 import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import jpsLoginHero from "@/assets/jps-login-hero.png";
+import listaHeader from "@/assets/lista-header.jpg";
+import bannerHembras from "@/assets/banner-hembras.webp";
 
 export const ASSET_KEYS = {
   logo: "global.logo",
@@ -22,6 +24,10 @@ export const ASSET_KEYS = {
   iconCrias: "menu.icon.crias",
   iconEmbriones: "menu.icon.embriones",
   iconOtros: "menu.icon.otros",
+  bannerMachos: "categoria.banner.machos",
+  bannerHembras: "categoria.banner.hembras",
+  bannerCrias: "categoria.banner.crias",
+  bannerEmbriones: "categoria.banner.embriones",
 } as const;
 
 export const ASSET_FALLBACKS: Record<string, string> = {
@@ -34,6 +40,10 @@ export const ASSET_FALLBACKS: Record<string, string> = {
   [ASSET_KEYS.iconCrias]: iconCrias,
   [ASSET_KEYS.iconEmbriones]: iconEmbriones,
   [ASSET_KEYS.iconOtros]: iconGeneralidades,
+  [ASSET_KEYS.bannerMachos]: listaHeader,
+  [ASSET_KEYS.bannerHembras]: bannerHembras,
+  [ASSET_KEYS.bannerCrias]: listaHeader,
+  [ASSET_KEYS.bannerEmbriones]: listaHeader,
 };
 
 export const fincaAssetKey = (fincaId: string) => `finca.${fincaId}.foto`;
