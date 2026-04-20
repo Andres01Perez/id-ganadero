@@ -76,13 +76,12 @@ const Fincas = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
-      <header className="relative h-36 overflow-hidden">
+      <header className="relative aspect-[865/503] overflow-hidden">
         <img src={listaHeader} alt="" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />
         <button
           onClick={() => navigate("/menu")}
-          className="absolute left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
-          style={{ top: "calc(env(safe-area-inset-top) + 0.75rem)" }}
+          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -138,7 +137,7 @@ const Fincas = () => {
       {isAdmin && (
         <button
           onClick={openNew}
-          className="fixed bottom-20 right-5 h-14 w-14 rounded-full bg-gold-solid text-ink shadow-gold flex items-center justify-center active:scale-95 transition-transform z-30"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 h-14 w-14 rounded-full bg-gold-solid text-ink shadow-gold flex items-center justify-center active:scale-95 transition-transform z-30"
           aria-label="Agregar finca"
         >
           <Plus className="h-6 w-6" />
