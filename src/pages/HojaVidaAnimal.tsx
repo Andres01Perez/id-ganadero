@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import jpsLogo from "@/assets/jps-logo.webp";
 import BottomTabBar from "@/components/BottomTabBar";
-import { ArrowLeft } from "lucide-react";
+import AnimalForm from "@/components/AnimalForm";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 type Animal = {
@@ -43,24 +44,28 @@ const HojaVidaAnimal = () => {
   const navigate = useNavigate();
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const load = async () => {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from("animales")
+      .select("id, codigo, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) {
+      toast.error("No se encontró el animal");
+      navigate("/menu");
+      return;
+    }
+    setAnimal(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    if (!id) return;
-    (async () => {
-      const { data, error } = await supabase
-        .from("animales")
-        .select("id, codigo, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url")
-        .eq("id", id)
-        .maybeSingle();
-      if (error || !data) {
-        toast.error("No se encontró el animal");
-        navigate("/menu");
-        return;
-      }
-      setAnimal(data);
-      setLoading(false);
-    })();
-  }, [id, navigate]);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (loading || !animal) {
     return (
@@ -93,6 +98,13 @@ const HojaVidaAnimal = () => {
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => setEditOpen(true)}
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
+          aria-label="Editar"
+        >
+          <Pencil className="h-4 w-4" />
         </button>
       </header>
 
@@ -146,6 +158,14 @@ const HojaVidaAnimal = () => {
           ))}
         </div>
       </section>
+
+      <AnimalForm
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        tipo={animal.tipo as "macho" | "hembra" | "cria" | "embrion" | "otro"}
+        animalId={animal.id}
+        onSaved={load}
+      />
 
       <BottomTabBar />
     </div>

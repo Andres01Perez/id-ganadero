@@ -5,6 +5,7 @@ import listaHeader from "@/assets/lista-header.jpg";
 import bannerHembras from "@/assets/banner-hembras.webp";
 import jpsLogo from "@/assets/jps-logo.webp";
 import BottomTabBar from "@/components/BottomTabBar";
+import AnimalForm from "@/components/AnimalForm";
 import { ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,27 +28,32 @@ const CategoriaAnimales = () => {
   const navigate = useNavigate();
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
 
-  const validTipo = tipo && tipo in titles ? tipo : "hembra";
+  const validTipo = (tipo && tipo in titles ? tipo : "hembra") as
+    | "macho"
+    | "hembra"
+    | "cria"
+    | "embrion";
   const title = titles[validTipo];
   const headerImg = validTipo === "hembra" ? bannerHembras : listaHeader;
 
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("animales")
+      .select("id, codigo, nombre, foto_principal_url")
+      .eq("tipo", validTipo)
+      .eq("activo", true)
+      .order("codigo");
+    if (error) toast.error("No se pudieron cargar los animales");
+    else setAnimals(data ?? []);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("animales")
-        .select("id, codigo, nombre, foto_principal_url")
-        .eq("tipo", validTipo as "macho" | "hembra" | "cria" | "embrion")
-        .eq("activo", true)
-        .order("codigo");
-      if (error) {
-        toast.error("No se pudieron cargar los animales");
-      } else {
-        setAnimals(data ?? []);
-      }
-      setLoading(false);
-    })();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validTipo]);
 
   return (
@@ -111,12 +117,19 @@ const CategoriaAnimales = () => {
 
       {/* FAB crear */}
       <button
-        onClick={() => toast.info("Próximamente: crear animal")}
+        onClick={() => setFormOpen(true)}
         className="fixed bottom-20 right-5 h-14 w-14 rounded-full bg-gold-solid text-ink shadow-gold flex items-center justify-center active:scale-95 transition-transform z-30"
         aria-label="Agregar"
       >
         <Plus className="h-6 w-6" />
       </button>
+
+      <AnimalForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        tipo={validTipo}
+        onSaved={load}
+      />
 
       <BottomTabBar />
     </div>
