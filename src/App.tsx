@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
+import Fincas from "./pages/Fincas";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -60,7 +61,7 @@ const App = () => (
               path="/fincas"
               element={
                 <ProtectedRoute>
-                  <PlaceholderPage title="Fincas" />
+                  <Fincas />
                 </ProtectedRoute>
               }
             />
