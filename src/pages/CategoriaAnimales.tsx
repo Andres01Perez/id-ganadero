@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import listaHeader from "@/assets/lista-header.jpg";
 import bannerHembras from "@/assets/banner-hembras.webp";
-import jpsLogo from "@/assets/jps-logo.webp";
+
 import BottomTabBar from "@/components/BottomTabBar";
 import AnimalForm from "@/components/AnimalForm";
 import AnimalAvatar from "@/components/AnimalAvatar";
