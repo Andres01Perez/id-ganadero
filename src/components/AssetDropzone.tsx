@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useInvalidateAsset } from "@/hooks/useAppAsset";
+import { useInvalidateAsset, setAssetCache } from "@/hooks/useAppAsset";
 import ImageCropDialog from "@/components/ImageCropDialog";
 
 type Props = {
@@ -43,6 +43,7 @@ const AssetDropzone = ({
   const uploadBlob = async (blob: Blob) => {
     setPendingFile(null);
     setUploading(true);
+    const previousUrl = currentUrl;
     try {
       const safeKey = assetKey.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `${safeKey}/${Date.now()}.jpg`;
@@ -64,6 +65,18 @@ const AssetDropzone = ({
         { onConflict: "key" }
       );
       if (dbErr) throw dbErr;
+
+      // Sync local cache para que esta y otras pestañas vean la nueva URL al instante
+      setAssetCache(assetKey, pub.publicUrl);
+
+      // Pedir al SW que purgue la URL anterior del cache de imágenes
+      if (previousUrl && previousUrl !== pub.publicUrl && "serviceWorker" in navigator) {
+        navigator.serviceWorker.controller?.postMessage({
+          type: "PURGE_ASSET",
+          url: previousUrl,
+        });
+      }
+
       toast.success("Imagen actualizada");
       invalidate(assetKey);
       onChanged?.();

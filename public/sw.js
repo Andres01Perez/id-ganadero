@@ -1,8 +1,10 @@
-// JPS Ganadería SW v2 — cache-first ONLY for images.
-// Never caches HTML/JS/CSS to avoid breaking app updates.
-// useAppUpdate.tsx handles version detection by hashing index.html.
+// JPS Ganadería SW v3
+// - Cache-first para imágenes generales (animal-fotos, etc).
+// - Stale-while-revalidate para /app-assets/ (banners editables del superadmin)
+//   para que cambios se vean al instante sin bloquear render.
+// - Nunca cachea HTML/JS/CSS (useAppUpdate.tsx maneja versionado).
 
-const IMG_CACHE = 'jps-images-v1';
+const IMG_CACHE = 'jps-images-v2';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -36,45 +38,82 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Only intercept images. Everything else: browser default behavior (no SW interference).
   const isImageExt = /\.(webp|jpg|jpeg|png|svg|gif|avif)$/i.test(url.pathname);
   const isSupabaseStorage =
     url.hostname.endsWith('.supabase.co') && url.pathname.includes('/storage/');
 
   if (!isImageExt && !isSupabaseStorage) return;
 
-  event.respondWith((async () => {
-    try {
-      const cache = await caches.open(IMG_CACHE);
-      const cached = await cache.match(event.request);
-      if (cached) return cached;
+  const isAppAsset = url.pathname.includes('/app-assets/');
 
+  event.respondWith((async () => {
+    const cache = await caches.open(IMG_CACHE);
+    const cached = await cache.match(event.request);
+
+    if (isAppAsset) {
+      // Stale-while-revalidate
+      const networkPromise = fetch(event.request)
+        .then((res) => {
+          if (res && (res.ok || res.type === 'opaque')) {
+            try {
+              cache.put(event.request, res.clone());
+            } catch {
+              // ignore
+            }
+          }
+          return res;
+        })
+        .catch(() => null);
+
+      if (cached) {
+        // No esperamos la red; se actualiza en background para próxima carga
+        event.waitUntil(networkPromise);
+        return cached;
+      }
+      const fresh = await networkPromise;
+      if (fresh) return fresh;
+      throw new Error('app-asset network failed and no cache');
+    }
+
+    // Cache-first para el resto
+    if (cached) return cached;
+    try {
       const res = await fetch(event.request);
-      // Only cache successful, non-opaque-error responses
       if (res && (res.ok || res.type === 'opaque')) {
         try {
           cache.put(event.request, res.clone());
         } catch {
-          // ignore quota/clone errors
+          // ignore
         }
       }
       return res;
     } catch (err) {
-      // Network failed, no cache: rethrow so the browser shows broken image
-      const cache = await caches.open(IMG_CACHE);
-      const cached = await cache.match(event.request);
-      if (cached) return cached;
+      const fallback = await cache.match(event.request);
+      if (fallback) return fallback;
       throw err;
     }
   })());
 });
 
-// Allow page to trigger a full purge (used by "limpiar caché" button)
 self.addEventListener('message', (event) => {
-  if (event.data === 'CLEAR_IMG_CACHE') {
+  const data = event.data;
+
+  if (data === 'CLEAR_IMG_CACHE') {
     event.waitUntil((async () => {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
+    })());
+    return;
+  }
+
+  if (data && typeof data === 'object' && data.type === 'PURGE_ASSET' && data.url) {
+    event.waitUntil((async () => {
+      try {
+        const cache = await caches.open(IMG_CACHE);
+        await cache.delete(data.url);
+      } catch {
+        // ignore
+      }
     })());
   }
 });
