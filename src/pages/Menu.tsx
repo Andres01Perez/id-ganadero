@@ -10,43 +10,40 @@ import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
 import VersionFooter from "@/components/VersionFooter";
 import { LogOut } from "lucide-react";
+import { useAppAsset } from "@/hooks/useAppAsset";
+import { ASSET_KEYS } from "@/lib/asset-keys";
 
 type CircleItem = {
   label: string;
   to: string;
-  icon?: string;
-  image?: string;
+  assetKey: string;
+  fallback: string;
 };
 
 const items: CircleItem[] = [
-  { label: "Fincas", to: "/fincas", image: iconFincas },
-  { label: "Machos", to: "/categoria/macho", image: iconMachos },
-  { label: "Hembras", to: "/categoria/hembra", image: iconHembras },
-  { label: "Crías", to: "/categoria/cria", image: iconCrias },
-  { label: "Embriones", to: "/categoria/embrion", image: iconEmbriones },
-  { label: "Otros", to: "/generalidades", image: iconGeneralidades },
+  { label: "Fincas", to: "/fincas", assetKey: ASSET_KEYS.iconFincas, fallback: iconFincas },
+  { label: "Machos", to: "/categoria/macho", assetKey: ASSET_KEYS.iconMachos, fallback: iconMachos },
+  { label: "Hembras", to: "/categoria/hembra", assetKey: ASSET_KEYS.iconHembras, fallback: iconHembras },
+  { label: "Crías", to: "/categoria/cria", assetKey: ASSET_KEYS.iconCrias, fallback: iconCrias },
+  { label: "Embriones", to: "/categoria/embrion", assetKey: ASSET_KEYS.iconEmbriones, fallback: iconEmbriones },
+  { label: "Otros", to: "/generalidades", assetKey: ASSET_KEYS.iconOtros, fallback: iconGeneralidades },
 ];
 
 const CircleButton = ({ item }: { item: CircleItem }) => {
   const navigate = useNavigate();
+  const src = useAppAsset(item.assetKey, item.fallback);
   return (
     <button
       onClick={() => navigate(item.to)}
       className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
     >
       <div className="w-24 h-24 rounded-full border-[3px] border-gold shadow-soft overflow-hidden bg-card flex items-center justify-center">
-        {item.image ? (
-          <img
-            src={item.image}
-            alt={item.label}
-            className="w-full h-full object-cover scale-110"
-            loading="lazy"
-          />
-        ) : (
-          <span className="text-3xl" aria-hidden>
-            {item.icon}
-          </span>
-        )}
+        <img
+          src={src}
+          alt={item.label}
+          className="w-full h-full object-cover scale-110"
+          loading="lazy"
+        />
       </div>
       <span className="text-sm font-bold tracking-jps uppercase text-foreground">
         {item.label}
@@ -57,12 +54,13 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
 
 const Menu = () => {
   const { signOut } = useAuth();
+  const banner = useAppAsset(ASSET_KEYS.menuBanner, menuHeader);
 
   return (
     <div className="min-h-[100dvh] bg-background pb-24">
       <header className="relative aspect-[865/503] overflow-hidden">
         <img
-          src={menuHeader}
+          src={banner}
           alt="Ganadería JPS"
           className="w-full h-full object-cover"
           loading="eager"

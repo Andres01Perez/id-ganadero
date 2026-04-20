@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,12 @@ import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import Fincas from "./pages/Fincas";
 import NotFound from "./pages/NotFound";
+import SuperAdminLogin from "./pages/SuperAdminLogin";
+import SuperAdminLayout from "./pages/SuperAdmin/Layout";
+import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
+import SuperAdminUsuarios from "./pages/SuperAdmin/Usuarios";
+import SuperAdminImagenes from "./pages/SuperAdmin/Imagenes";
+import SuperAdminInformacionFinca from "./pages/SuperAdmin/InformacionFinca";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAppUpdate } from "./hooks/useAppUpdate";
@@ -23,17 +29,42 @@ const AppUpdateWatcher = () => {
   return null;
 };
 
+const ConditionalSafeArea = () => {
+  const { pathname } = useLocation();
+  // Oculto en panel superadmin (desktop-first)
+  if (pathname.startsWith("/superadmin") || pathname === "/sa") return null;
+  return <SafeAreaTopBar />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <SafeAreaTopBar />
       <Toaster />
       <Sonner position="top-center" />
       <AppUpdateWatcher />
       <BrowserRouter>
+        <ConditionalSafeArea />
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/sa" element={<SuperAdminLogin />} />
+
+            {/* Panel Super Admin */}
+            <Route
+              path="/superadmin"
+              element={
+                <ProtectedRoute requireRoles={["super_admin"]}>
+                  <SuperAdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<SuperAdminDashboard />} />
+              <Route path="usuarios" element={<SuperAdminUsuarios />} />
+              <Route path="imagenes" element={<SuperAdminImagenes />} />
+              <Route path="finca" element={<SuperAdminInformacionFinca />} />
+              <Route path="finca/:fincaId" element={<SuperAdminInformacionFinca />} />
+            </Route>
+
             <Route
               path="/menu"
               element={
