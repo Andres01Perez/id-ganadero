@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
-  CommandDialog,
+  Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -80,63 +81,70 @@ const SearchDialog = ({ open, onOpenChange }: Props) => {
   ];
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput
-        placeholder="Buscar animales, opciones de menú..."
-        value={query}
-        onValueChange={setQuery}
-      />
-      <CommandList>
-        <CommandEmpty>Sin resultados.</CommandEmpty>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="top-[8%] translate-y-0 max-w-lg w-[calc(100%-2rem)] p-0 gap-0 overflow-hidden shadow-lg data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2"
+      >
+        <DialogTitle className="sr-only">Buscar</DialogTitle>
+        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+          <CommandInput
+            placeholder="Buscar animales, opciones de menú..."
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            <CommandEmpty>Sin resultados.</CommandEmpty>
 
-        <CommandGroup heading="Animales">
-          {hits.length === 0 ? (
-            <CommandItem disabled value="hint-animales">
-              <span className="text-muted-foreground">
-                Escribe código o nombre para buscar…
-              </span>
-            </CommandItem>
-          ) : (
-            hits.map((a) => (
-              <CommandItem
-                key={a.id}
-                value={`${a.codigo} ${a.nombre ?? ""}`}
-                onSelect={() => go(`/animal/${a.id}`)}
-              >
-                <span className="font-semibold mr-2">{a.codigo}</span>
-                <span className="text-muted-foreground truncate">
-                  {a.nombre ?? "Sin nombre"} · {a.tipo}
-                </span>
-              </CommandItem>
-            ))
-          )}
-        </CommandGroup>
+            <CommandGroup heading="Animales">
+              {hits.length === 0 ? (
+                <CommandItem disabled value="hint-animales">
+                  <span className="text-muted-foreground">
+                    Escribe código o nombre para buscar…
+                  </span>
+                </CommandItem>
+              ) : (
+                hits.map((a) => (
+                  <CommandItem
+                    key={a.id}
+                    value={`${a.codigo} ${a.nombre ?? ""}`}
+                    onSelect={() => go(`/animal/${a.id}`)}
+                  >
+                    <span className="font-semibold mr-2">{a.codigo}</span>
+                    <span className="text-muted-foreground truncate">
+                      {a.nombre ?? "Sin nombre"} · {a.tipo}
+                    </span>
+                  </CommandItem>
+                ))
+              )}
+            </CommandGroup>
 
-        <CommandSeparator />
+            <CommandSeparator />
 
-        <CommandGroup heading="Menú">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <CommandItem
-                key={item.to}
-                value={item.label}
-                onSelect={() => go(item.to)}
-              >
-                <Icon className="mr-2 h-4 w-4" />
-                <span>{item.label}</span>
-              </CommandItem>
-            );
-          })}
-          {isAdmin && (
-            <CommandItem value="Admin" onSelect={() => go("/admin")}>
-              <Shield className="mr-2 h-4 w-4" />
-              <span>Admin</span>
-            </CommandItem>
-          )}
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+            <CommandGroup heading="Menú">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <CommandItem
+                    key={item.to}
+                    value={item.label}
+                    onSelect={() => go(item.to)}
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    <span>{item.label}</span>
+                  </CommandItem>
+                );
+              })}
+              {isAdmin && (
+                <CommandItem value="Admin" onSelect={() => go("/admin")}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  <span>Admin</span>
+                </CommandItem>
+              )}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
   );
 };
 
