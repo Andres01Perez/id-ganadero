@@ -1,302 +1,277 @@
 
 
-## CRUD completo en el panel de Super Admin
+## Cambiar `codigo` por `numero` en animales
 
 ### Objetivo
-Desde `/superadmin`, el usuario con rol `super_admin` debe poder administrar directamente:
+Renombrar la columna estándar del ganado de:
 
-- Fincas
-- Machos
-- Hembras
-- Crías
-- Embriones
+```text
+animales.codigo
+```
 
-Sin tener que entrar a las vistas móviles ni usar el panel admin normal. El superadmin tendrá una vista de gestión centralizada con crear, ver, editar, desactivar y reactivar registros.
+a:
+
+```text
+animales.numero
+```
+
+y actualizar todo el frontend para que use “Número” en formularios, búsquedas, listas, tablas y hoja de vida.
 
 ---
 
-## 1. Nueva sección en el panel: “Gestión”
+## 1. Base de datos
 
-### Archivo
-`src/pages/SuperAdmin/Layout.tsx`
+### Crear migración Supabase
+Agregar una migración nueva, sin modificar migraciones antiguas, para renombrar la columna existente:
 
-### Cambio
-Agregar una nueva opción al menú lateral:
-
-```text
-Gestión
+```sql
+ALTER TABLE public.animales
+RENAME COLUMN codigo TO numero;
 ```
 
-Ruta:
+Esto conserva los datos actuales. Es decir, si hoy un animal tiene:
 
 ```text
-/superadmin/gestion
+codigo = 0123
 ```
 
-Esta será la pantalla principal para manejar fincas y animales.
-
-El menú quedaría así:
+después quedará:
 
 ```text
-Resumen
-Gestión
-Usuarios
-Imágenes
-Información finca
-Cerrar sesión
+numero = 0123
 ```
+
+### Mantener unicidad
+La columna actual `codigo` fue creada como `text NOT NULL UNIQUE`. Al renombrarla a `numero`, Postgres conserva:
+
+- los datos existentes,
+- el `NOT NULL`,
+- la restricción `UNIQUE`.
+
+Si la restricción queda con nombre antiguo tipo `animales_codigo_key`, opcionalmente se renombrará para claridad:
+
+```sql
+ALTER TABLE public.animales
+RENAME CONSTRAINT animales_codigo_key TO animales_numero_key;
+```
+
+solo si esa constraint existe.
+
+### RLS
+No se necesita cambiar RLS porque las políticas actuales de `animales` no dependen de `codigo`. Usan:
+
+- `finca_id`
+- `created_by`
+- `is_admin_or_super`
+- `user_has_finca`
+- `user_can_access_animal`
+
+Por tanto, el cambio es estructural y de frontend, no de permisos.
 
 ---
 
-## 2. Nueva página de CRUD
-
-### Archivo nuevo
-`src/pages/SuperAdmin/Gestion.tsx`
-
-### Estructura visual
-Crear una página con tabs:
-
-```text
-Fincas | Machos | Hembras | Crías | Embriones
-```
-
-Cada tab tendrá:
-
-- Botón “Agregar”
-- Tabla de registros
-- Buscador simple por código/nombre
-- Filtro de estado:
-  - Activos
-  - Inactivos
-  - Todos
-- Acciones por fila:
-  - Editar
-  - Desactivar
-  - Reactivar, cuando el registro esté inactivo
-
----
-
-## 3. CRUD de fincas
-
-### Reutilizar
-`src/components/FincaForm.tsx`
-
-### Funcionalidad
-En el tab “Fincas”:
-
-- Listar todas las fincas, no solo activas.
-- Mostrar:
-  - Nombre
-  - Ubicación
-  - Hectáreas
-  - Estado
-  - Número de operarios asignados
-- Botón “Agregar finca” abre `FincaForm` en modo creación.
-- Botón “Editar” abre `FincaForm` con `fincaId`.
-- Botón “Desactivar” cambia `activo = false`.
-- Botón “Reactivar” cambia `activo = true`.
-
-### Ajuste menor en `FincaForm`
-Cuando se crea una finca, guardar también:
-
-```ts
-created_by: user.id
-```
-
-Esto no cambia la seguridad, pero deja trazabilidad correcta.
-
----
-
-## 4. CRUD de animales por categoría
-
-### Reutilizar
-`src/components/AnimalForm.tsx`
-
-### Funcionalidad
-En los tabs:
-
-```text
-Machos
-Hembras
-Crías
-Embriones
-```
-
-cada uno usará el mismo componente de gestión filtrando por `tipo`.
-
-Ejemplo:
-
-```ts
-tipo = "macho"
-tipo = "hembra"
-tipo = "cria"
-tipo = "embrion"
-```
-
-Cada tabla mostrará:
-
-- Foto
-- Código
-- Nombre
-- Finca
-- Sexo
-- Raza
-- Color
-- Fecha nacimiento
-- Registro
-- Estado
-- Acciones
-
-Acciones:
-
-- “Agregar macho/hembra/cría/embrión”
-- “Editar”
-- “Desactivar”
-- “Reactivar”
-
-Crear y editar abrirán `AnimalForm`.
-
-Desactivar será soft delete:
-
-```ts
-activo = false
-```
-
-Reactivar será:
-
-```ts
-activo = true
-```
-
----
-
-## 5. Ajustes en `AnimalForm`
+## 2. Frontend: formulario de animales
 
 ### Archivo
 `src/components/AnimalForm.tsx`
 
 ### Cambios
-Mantener la lógica actual, pero hacerla más útil para superadmin:
-
-1. Asegurar que `super_admin` pueda crear animales en cualquier finca.
-2. Mantener que el campo `finca_id` sea obligatorio.
-3. Al crear, seguir enviando:
+Renombrar internamente:
 
 ```ts
-created_by: user.id
+codigo -> numero
+setCodigo -> setNumero
 ```
 
-4. En modo superadmin/admin, cargar todas las fincas activas para selección.
-5. No cambiar el comportamiento de operarios.
+Actualizar validación:
 
-La edición seguirá funcionando con el mismo formulario que ya se usa en las vistas móviles.
+```ts
+numero: z.string().trim().min(1, "Número obligatorio").max(40)
+```
+
+Actualizar payload al guardar:
+
+```ts
+numero: parsed.data.numero
+```
+
+Actualizar carga en edición:
+
+```ts
+setNumero(data.numero ?? "")
+```
+
+Actualizar texto visible:
+
+```text
+Código * -> Número *
+Completa los datos. El código es obligatorio. -> Completa los datos. El número es obligatorio.
+Ya existe un animal con ese código -> Ya existe un animal con ese número.
+```
+
+Actualizar selector de madre/padre para mostrar:
+
+```text
+{numero} · {nombre}
+```
 
 ---
 
-## 6. Ruta nueva
+## 3. Frontend: vistas móviles
+
+### `src/pages/CategoriaAnimales.tsx`
+Cambiar:
+
+- tipo `Animal.codigo` por `Animal.numero`
+- query:
+
+```ts
+.select("id, numero, nombre, foto_principal_url")
+.order("numero")
+```
+
+- avatar alt y texto visible para mostrar `numero`.
+
+### `src/pages/HojaVidaAnimal.tsx`
+Cambiar:
+
+- tipo `codigo` por `numero`
+- query:
+
+```ts
+.select("id, numero, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url")
+```
+
+- banda dorada:
+
+```text
+Nombre Número
+```
+
+- etiqueta en información general:
+
+```text
+Código -> Número
+```
+
+---
+
+## 4. Frontend: búsqueda global
 
 ### Archivo
-`src/App.tsx`
+`src/components/SearchDialog.tsx`
 
-Agregar dentro del layout protegido de superadmin:
+Actualizar búsqueda para usar `numero`:
 
-```tsx
-<Route path="gestion" element={<SuperAdminGestion />} />
+```ts
+.select("id, numero, nombre, tipo")
+.or(`numero.ilike.%${q}%,nombre.ilike.%${q}%`)
 ```
 
-La ruta quedará protegida por:
+Actualizar textos:
 
-```tsx
-<ProtectedRoute requireRoles={["super_admin"]}>
+```text
+Escribe código o nombre para buscar… -> Escribe número o nombre para buscar…
 ```
 
-igual que el resto del panel.
+y resultados usando `a.numero`.
 
 ---
 
-## 7. RLS y seguridad
+## 5. Frontend: panel admin y superadmin
 
-### Estado actual
-Las políticas actuales ya parecen cubrir gran parte del acceso total porque usan:
+### `src/pages/Admin.tsx`
+Actualizar listado de animales:
 
-```sql
-is_admin_or_super(auth.uid())
+```ts
+.select("id, numero, nombre, tipo, foto_principal_url, finca_id")
+.order("numero")
 ```
 
-En especial:
+y mostrar:
 
-- `fincas`: admin/super_admin pueden insertar, actualizar y borrar.
-- `animales`: admin/super_admin pueden ver, actualizar y borrar cualquier animal.
-- `animales insert`: permite insertar si:
-  - el usuario está activo,
-  - `created_by = auth.uid()`,
-  - hay `finca_id`,
-  - y el usuario es admin/super_admin o tiene acceso a esa finca.
-
-Como el superadmin cumple `is_admin_or_super`, debería poder crear animales en cualquier finca siempre que el frontend mande `created_by`.
-
-### Verificación antes de tocar BD
-Antes de modificar políticas, revisar con linter/schema:
-
-- `fincas`
-- `animales`
-- `user_finca_acceso`
-
-### Migración solo si hace falta
-Si alguna política no permite el CRUD total al superadmin, crear una migración para dejar explícito:
-
-```sql
--- fincas
-is_admin_or_super(auth.uid())
-
--- animales
-is_admin_or_super(auth.uid())
-OR user_has_finca(auth.uid(), finca_id)
+```text
+{animal.numero} · {animal.tipo}
 ```
 
-No se guardarán roles en `profiles`; se mantiene el modelo seguro con `user_roles` y funciones `SECURITY DEFINER`.
+### `src/pages/SuperAdmin/Gestion.tsx`
+Actualizar tabla CRUD:
+
+- `AnimalRow.codigo` -> `AnimalRow.numero`
+- query:
+
+```ts
+.select("id, numero, nombre, tipo, sexo, raza, color, fecha_nacimiento, numero_registro, foto_principal_url, activo, finca_id, fincas(nombre)")
+.order("numero")
+```
+
+- buscador:
+
+```text
+Buscar por nombre o código -> Buscar por nombre o número
+```
+
+- encabezado de tabla:
+
+```text
+Código -> Número
+```
+
+- búsqueda interna por `numero`.
+
+### `src/pages/SuperAdmin/InformacionFinca.tsx`
+Actualizar consulta y tabla de información de finca:
+
+```ts
+.select("id, numero, nombre, tipo, raza, color, fecha_nacimiento, numero_registro, sexo, foto_principal_url")
+.order("numero")
+```
+
+y cambiar textos visibles:
+
+```text
+Código -> Número
+```
 
 ---
 
-## 8. No cambiar
+## 6. Tipos de Supabase
 
-No se cambia:
+No editar manualmente:
 
-- Login
-- Roles existentes
-- Estructura principal de tablas
-- `src/integrations/supabase/types.ts`
-- Vistas móviles actuales
-- Carga de imágenes desde `/superadmin/imagenes`
+```text
+src/integrations/supabase/types.ts
+```
+
+Ese archivo representa el schema de Supabase y debe actualizarse mediante la sincronización/generación del proyecto después de aplicar la migración. El código del frontend quedará apuntando a `numero`, que será la columna real tras la migración.
 
 ---
 
-## 9. Archivos a modificar
+## 7. Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/App.tsx` | Agregar ruta `/superadmin/gestion` |
-| `src/pages/SuperAdmin/Layout.tsx` | Agregar item “Gestión” al menú |
-| `src/pages/SuperAdmin/Gestion.tsx` | Nueva página CRUD para fincas y animales |
-| `src/components/FincaForm.tsx` | Guardar `created_by` al crear finca |
-| `src/components/AnimalForm.tsx` | Ajustes menores para uso completo desde superadmin |
-| `supabase/migrations/...sql` | Solo si al verificar RLS falta alguna política |
+| `supabase/migrations/...sql` | Migración para renombrar `animales.codigo` a `animales.numero` |
+| `src/components/AnimalForm.tsx` | Formulario usa `numero`, textos “Número” |
+| `src/components/SearchDialog.tsx` | Búsqueda por `numero` |
+| `src/pages/CategoriaAnimales.tsx` | Listas móviles muestran `numero` |
+| `src/pages/HojaVidaAnimal.tsx` | Hoja de vida muestra `Número` |
+| `src/pages/Admin.tsx` | Listado admin usa `numero` |
+| `src/pages/SuperAdmin/Gestion.tsx` | CRUD superadmin usa `numero` |
+| `src/pages/SuperAdmin/InformacionFinca.tsx` | Información finca usa `numero` |
 
 ---
 
-## 10. Verificación
+## 8. Verificación
 
-1. Entrar como superadmin a `/superadmin`.
-2. Abrir “Gestión”.
-3. Crear una finca nueva.
-4. Editar la finca.
-5. Desactivar y reactivar la finca.
-6. Crear un macho asignado a una finca.
-7. Crear una hembra asignada a una finca.
-8. Crear una cría asignada a una finca.
-9. Crear un embrión asignado a una finca.
-10. Editar cada animal.
-11. Desactivar y reactivar cada animal.
-12. Confirmar que los animales activos aparecen en sus vistas móviles.
-13. Confirmar que los inactivos no aparecen en las vistas móviles, pero sí en superadmin cuando el filtro está en “Inactivos” o “Todos”.
+1. Aplicar migración y confirmar que `animales` tiene columna `numero`.
+2. Confirmar que los valores existentes se conservaron.
+3. Crear un animal nuevo desde mobile y verificar que pide “Número”.
+4. Crear un animal nuevo desde `/superadmin/gestion`.
+5. Editar un animal existente y verificar que carga el número correctamente.
+6. Buscar un animal por número desde el buscador global.
+7. Revisar `/categoria/macho`, `/categoria/hembra`, `/categoria/cria`, `/categoria/embrion`.
+8. Revisar `/animal/:id` y confirmar que la hoja de vida muestra “Número”.
+9. Revisar `/superadmin/gestion` y `/superadmin/finca/:id`.
+10. Confirmar que no cambian permisos RLS ni roles.
 
