@@ -38,7 +38,7 @@ type FincaRow = {
 
 type AnimalRow = {
   id: string;
-  codigo: string;
+  numero: string;
   nombre: string | null;
   tipo: AnimalTipo;
   sexo: "M" | "H" | null;
@@ -88,9 +88,9 @@ const Gestion = () => {
       supabase.from("user_finca_acceso").select("finca_id"),
       supabase
         .from("animales")
-        .select("id, codigo, nombre, tipo, sexo, raza, color, fecha_nacimiento, numero_registro, foto_principal_url, activo, finca_id, fincas(nombre)")
+        .select("id, numero, nombre, tipo, sexo, raza, color, fecha_nacimiento, numero_registro, foto_principal_url, activo, finca_id, fincas(nombre)")
         .in("tipo", ["macho", "hembra", "cria", "embrion"])
-        .order("codigo"),
+        .order("numero"),
     ]);
 
     if (fincasRes.error || accesosRes.error || animalsRes.error) {
@@ -129,7 +129,7 @@ const Gestion = () => {
 
   const animalsByTipo = (tipo: AnimalTipo) =>
     animals.filter((a) => {
-      const text = `${a.codigo} ${a.nombre ?? ""} ${a.fincas?.nombre ?? ""} ${a.raza ?? ""}`.toLowerCase();
+      const text = `${a.numero} ${a.nombre ?? ""} ${a.fincas?.nombre ?? ""} ${a.raza ?? ""}`.toLowerCase();
       return a.tipo === tipo && matchesStatus(a.activo, status) && (!normalizedSearch || text.includes(normalizedSearch));
     });
 
@@ -191,7 +191,7 @@ const Gestion = () => {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o código"
+              placeholder="Buscar por nombre o número"
               className="pl-9"
             />
           </div>
@@ -330,7 +330,7 @@ const AnimalsTable = ({
       <TableHeader>
         <TableRow>
           <TableHead>Foto</TableHead>
-          <TableHead>Código</TableHead>
+          <TableHead>Número</TableHead>
           <TableHead>Nombre</TableHead>
           <TableHead>Finca</TableHead>
           <TableHead>Sexo</TableHead>
@@ -353,11 +353,11 @@ const AnimalsTable = ({
               <TableCell>
                 <div className="h-10 w-10 overflow-hidden rounded-full border border-border bg-muted">
                   {row.foto_principal_url ? (
-                    <img src={row.foto_principal_url} alt={row.codigo} className="h-full w-full object-cover" />
+                    <img src={row.foto_principal_url} alt={row.numero} className="h-full w-full object-cover" />
                   ) : null}
                 </div>
               </TableCell>
-              <TableCell className="font-medium">{row.codigo}</TableCell>
+              <TableCell className="font-medium">{row.numero}</TableCell>
               <TableCell>{row.nombre ?? "—"}</TableCell>
               <TableCell>{row.fincas?.nombre ?? "—"}</TableCell>
               <TableCell>{row.sexo ?? "—"}</TableCell>

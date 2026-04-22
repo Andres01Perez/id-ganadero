@@ -28,7 +28,7 @@ type Props = {
 };
 
 const schema = z.object({
-  codigo: z.string().trim().min(1, "Código obligatorio").max(40),
+  numero: z.string().trim().min(1, "Número obligatorio").max(40),
   nombre: z.string().trim().max(80).optional().or(z.literal("")),
   numero_registro: z.string().trim().max(40).optional().or(z.literal("")),
   fecha_nacimiento: z.string().optional().or(z.literal("")),
@@ -41,7 +41,7 @@ const schema = z.object({
 });
 
 type Finca = { id: string; nombre: string };
-type Parent = { id: string; codigo: string; nombre: string | null };
+type Parent = { id: string; numero: string; nombre: string | null };
 
 const sexoFromTipo = (tipo: AnimalTipo): "M" | "H" | undefined => {
   if (tipo === "macho") return "M";
@@ -54,7 +54,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
   const isEdit = !!animalId;
 
-  const [codigo, setCodigo] = useState("");
+  const [numero, setNumero] = useState("");
   const [nombre, setNombre] = useState("");
   const [numeroRegistro, setNumeroRegistro] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
@@ -110,16 +110,16 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       const [h, m] = await Promise.all([
         supabase
           .from("animales")
-          .select("id, codigo, nombre")
+          .select("id, numero, nombre")
           .eq("tipo", "hembra")
           .eq("activo", true)
-          .order("codigo"),
+          .order("numero"),
         supabase
           .from("animales")
-          .select("id, codigo, nombre")
+          .select("id, numero, nombre")
           .eq("tipo", "macho")
           .eq("activo", true)
-          .order("codigo"),
+          .order("numero"),
       ]);
       setFincas(fincasData);
       setHembras(h.data ?? []);
@@ -142,7 +142,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           onOpenChange(false);
           return;
         }
-        setCodigo(data.codigo ?? "");
+        setNumero(data.numero ?? "");
         setNombre(data.nombre ?? "");
         setNumeroRegistro(data.numero_registro ?? "");
         setFechaNacimiento(data.fecha_nacimiento ?? "");
@@ -158,7 +158,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         setFotoPreview(null);
       })();
     } else {
-      setCodigo("");
+      setNumero("");
       setNombre("");
       setNumeroRegistro("");
       setFechaNacimiento("");
@@ -201,7 +201,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
     if (!user) return;
     const sexoFinal = sexoFromTipo(tipo) ?? (sexo || undefined);
     const parsed = schema.safeParse({
-      codigo,
+      numero,
       nombre,
       numero_registro: numeroRegistro,
       fecha_nacimiento: fechaNacimiento,
@@ -220,7 +220,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
     setSubmitting(true);
     try {
       const payload = {
-        codigo: parsed.data.codigo,
+        numero: parsed.data.numero,
         nombre: parsed.data.nombre || null,
         numero_registro: parsed.data.numero_registro || null,
         fecha_nacimiento: parsed.data.fecha_nacimiento || null,
@@ -268,7 +268,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       const e = err as { message?: string; code?: string };
       console.error(err);
       if (e.code === "23505") {
-        toast.error("Ya existe un animal con ese código");
+        toast.error("Ya existe un animal con ese número");
       } else {
         toast.error(e.message ?? "No se pudo guardar");
       }
@@ -306,7 +306,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             {isEdit ? "Editar" : "Nuevo"} {tipo}
           </SheetTitle>
           <SheetDescription>
-            Completa los datos. El código es obligatorio.
+            Completa los datos. El número es obligatorio.
           </SheetDescription>
         </SheetHeader>
 
@@ -340,11 +340,11 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           </div>
 
           <div>
-            <Label htmlFor="codigo">Código *</Label>
+            <Label htmlFor="numero">Número *</Label>
             <Input
-              id="codigo"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
+              id="numero"
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
               placeholder="Ej. 0123"
             />
           </div>
@@ -448,7 +448,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
                 .filter((h) => h.id !== animalId)
                 .map((h) => (
                   <option key={h.id} value={h.id}>
-                    {h.codigo} {h.nombre ? `· ${h.nombre}` : ""}
+                    {h.numero} {h.nombre ? `· ${h.nombre}` : ""}
                   </option>
                 ))}
             </select>
@@ -467,7 +467,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
                 .filter((m) => m.id !== animalId)
                 .map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.codigo} {m.nombre ? `· ${m.nombre}` : ""}
+                    {m.numero} {m.nombre ? `· ${m.nombre}` : ""}
                   </option>
                 ))}
             </select>

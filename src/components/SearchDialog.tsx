@@ -21,7 +21,7 @@ type Props = {
 
 type AnimalHit = {
   id: string;
-  codigo: string;
+  numero: string;
   nombre: string | null;
   tipo: string;
 };
@@ -56,9 +56,9 @@ const SearchDialog = ({ open, onOpenChange }: Props) => {
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from("animales")
-        .select("id, codigo, nombre, tipo")
+        .select("id, numero, nombre, tipo")
         .eq("activo", true)
-        .or(`codigo.ilike.%${q}%,nombre.ilike.%${q}%`)
+        .or(`numero.ilike.%${q}%,nombre.ilike.%${q}%`)
         .limit(8);
       setHits(data ?? []);
     }, 200);
@@ -99,17 +99,17 @@ const SearchDialog = ({ open, onOpenChange }: Props) => {
               {hits.length === 0 ? (
                 <CommandItem disabled value="hint-animales">
                   <span className="text-muted-foreground">
-                    Escribe código o nombre para buscar…
+                    Escribe número o nombre para buscar…
                   </span>
                 </CommandItem>
               ) : (
                 hits.map((a) => (
                   <CommandItem
                     key={a.id}
-                    value={`${a.codigo} ${a.nombre ?? ""}`}
+                    value={`${a.numero} ${a.nombre ?? ""}`}
                     onSelect={() => go(`/animal/${a.id}`)}
                   >
-                    <span className="font-semibold mr-2">{a.codigo}</span>
+                    <span className="font-semibold mr-2">{a.numero}</span>
                     <span className="text-muted-foreground truncate">
                       {a.nombre ?? "Sin nombre"} · {a.tipo}
                     </span>

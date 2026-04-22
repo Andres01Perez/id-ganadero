@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 
 type Animal = {
   id: string;
-  codigo: string;
+  numero: string;
   nombre: string | null;
   tipo: string;
   foto_principal_url: string | null;
@@ -101,7 +101,7 @@ const AnimalPhotoRow = ({ animal, onUpdated }: { animal: Animal; onUpdated: () =
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm truncate">{animal.nombre ?? "Sin nombre"}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {animal.codigo} · {animal.tipo}
+          {animal.numero} · {animal.tipo}
         </p>
       </div>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
@@ -143,9 +143,9 @@ const Admin = () => {
     setLoadingAnimals(true);
     const { data, error } = await supabase
       .from("animales")
-      .select("id, codigo, nombre, tipo, foto_principal_url, finca_id")
+      .select("id, numero, nombre, tipo, foto_principal_url, finca_id")
       .eq("activo", true)
-      .order("codigo");
+      .order("numero");
     if (error) toast.error("No se pudieron cargar animales");
     else {
       setAnimals(data ?? []);
