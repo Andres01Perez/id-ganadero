@@ -108,7 +108,7 @@ const Gestion = () => {
         operarios: counts.get(f.id) ?? 0,
       })),
     );
-    setAnimals(((animalsRes.data ?? []) as AnimalRow[]) ?? []);
+    setAnimals((animalsRes.data ?? []) as AnimalRow[]);
     setLoading(false);
   };
 
