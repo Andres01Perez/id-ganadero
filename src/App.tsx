@@ -17,6 +17,7 @@ import SuperAdminDashboard from "./pages/SuperAdmin/Dashboard";
 import SuperAdminUsuarios from "./pages/SuperAdmin/Usuarios";
 import SuperAdminImagenes from "./pages/SuperAdmin/Imagenes";
 import SuperAdminInformacionFinca from "./pages/SuperAdmin/InformacionFinca";
+import SuperAdminGestion from "./pages/SuperAdmin/Gestion";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAppUpdate } from "./hooks/useAppUpdate";
@@ -60,6 +61,7 @@ const App = () => (
                 }
               >
                 <Route index element={<SuperAdminDashboard />} />
+                <Route path="gestion" element={<SuperAdminGestion />} />
                 <Route path="usuarios" element={<SuperAdminUsuarios />} />
                 <Route path="imagenes" element={<SuperAdminImagenes />} />
                 <Route path="finca" element={<SuperAdminInformacionFinca />} />
