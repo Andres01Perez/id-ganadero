@@ -173,7 +173,7 @@ const FincaForm = ({ open, onOpenChange, fincaId, onSaved }: Props) => {
       } else {
         const { data, error } = await supabase
           .from("fincas")
-          .insert(payload)
+          .insert({ ...payload, created_by: user?.id ?? null })
           .select("id")
           .single();
         if (error) throw error;
