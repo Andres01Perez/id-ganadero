@@ -4,6 +4,7 @@ import {
   Users,
   Image as ImageIcon,
   Building2,
+  ClipboardList,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,7 @@ import jpsLogo from "@/assets/jps-logo.webp";
 
 const navItems = [
   { to: "/superadmin", end: true, label: "Resumen", icon: LayoutDashboard },
+  { to: "/superadmin/gestion", label: "Gestión", icon: ClipboardList },
   { to: "/superadmin/usuarios", label: "Usuarios", icon: Users },
   { to: "/superadmin/imagenes", label: "Imágenes", icon: ImageIcon },
   { to: "/superadmin/finca", label: "Información finca", icon: Building2 },
