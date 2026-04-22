@@ -1,64 +1,302 @@
 
 
-## Eliminar flash de imagen y propagar cambios al instante
+## CRUD completo en el panel de Super Admin
 
-### Problema 1: Flash de imagen antigua → nueva
+### Objetivo
+Desde `/superadmin`, el usuario con rol `super_admin` debe poder administrar directamente:
 
-`useAppAsset` devuelve el `fallback` estático (importado del bundle) mientras carga la URL personalizada desde `app_assets`. Cuando llega la respuesta, la `<img>` cambia su `src` y se ve un flash. Esto ocurre en cada navegación a `/menu`, `/categoria/:tipo`, login, etc.
+- Fincas
+- Machos
+- Hembras
+- Crías
+- Embriones
 
-**Solución:** persistir la respuesta de `app_assets` en `localStorage` para que en la siguiente carga la URL personalizada esté disponible **sincrónicamente**, antes del primer render. Si no hay nada en localStorage (primer uso), se usa el fallback como hoy.
+Sin tener que entrar a las vistas móviles ni usar el panel admin normal. El superadmin tendrá una vista de gestión centralizada con crear, ver, editar, desactivar y reactivar registros.
 
-### Problema 2: Cambios no se ven en otros dispositivos sin recargar / publicar
+---
 
-La buena noticia: **no necesitas publicar en Lovable** para que se propaguen. Las imágenes viven en Supabase Storage + tabla `app_assets`, no en el código del bundle. Pero hay 3 capas de caché que retrasan la visibilidad:
+## 1. Nueva sección en el panel: “Gestión”
 
-| Capa | Hoy | Cambio |
-|---|---|---|
-| React Query (`useAppAsset`) | `staleTime: 5min` → durante 5 min sigue mostrando lo cacheado | Reducir a `staleTime: 0` + `refetchOnWindowFocus: true` para que cuando un usuario vuelva a la app vea cambios al instante |
-| Service Worker (`public/sw.js`) | Cache-first eterno para imágenes | Para URLs de `app-assets` bucket, usar **stale-while-revalidate**: devuelve la cacheada al instante (sin flash) y en paralelo descarga la nueva para la próxima carga |
-| URL del archivo | Cada subida usa `${Date.now()}.jpg` (URL nueva) | Sin cambios — ya funciona |
+### Archivo
+`src/pages/SuperAdmin/Layout.tsx`
 
-Combinado con el localStorage del Problema 1, el flujo final queda:
-- Usuario A sube imagen nueva → URL en `app_assets` se actualiza.
-- Usuario B abre la app → React Query refetcha en background al volver al foco → detecta nueva URL → la guarda en localStorage → siguiente apertura ya carga directo sin flash.
+### Cambio
+Agregar una nueva opción al menú lateral:
 
-### Cambios concretos
+```text
+Gestión
+```
 
-**1. `src/hooks/useAppAsset.ts`**
-- Mantener cache de URLs en `localStorage` bajo clave `jps_assets_v1` (objeto `{ key: url }`).
-- En `useAppAsset(key, fallback)`: leer del localStorage **sincrónicamente** con `useState(() => localStorage[key] ?? fallback)`. Devolver eso como `initialData` a React Query → no hay flash.
-- Cuando la query resuelve con una URL distinta, actualizar localStorage y el estado.
-- `staleTime: 0`, `refetchOnWindowFocus: true`, `refetchOnMount: true`.
-- En `useAllAppAssets`, al recibir datos, sincronizar el `localStorage` con el snapshot completo.
+Ruta:
 
-**2. `public/sw.js`**
-- Para requests del bucket `app-assets` (detectado por `url.pathname.includes('/app-assets/')`): pasar a estrategia **stale-while-revalidate**:
-  - Devolver inmediatamente lo cacheado si existe.
-  - En paralelo, hacer fetch a red y actualizar el cache (sin bloquear al usuario).
-- Para el resto de imágenes (`animal-fotos`, etc.): mantener cache-first como hoy.
-- Bump versión cache: `IMG_CACHE = 'jps-images-v2'` para que se purgue la v1 vieja con archivos huérfanos.
+```text
+/superadmin/gestion
+```
 
-**3. `src/components/AssetDropzone.tsx` (uploadBlob)**
-- Después de hacer `upsert` exitoso en `app_assets`, también escribir en `localStorage[key] = newUrl` para que el propio superadmin no vea flash en otras pestañas.
-- Enviar mensaje `{ type: 'PURGE_ASSET', url: oldUrl }` al Service Worker para que borre la entrada vieja del cache (opcional: limpia espacio).
+Esta será la pantalla principal para manejar fincas y animales.
 
-**4. `public/sw.js` — handler de mensajes**
-- Añadir handler para `PURGE_ASSET` que reciba una URL específica y la borre del cache.
+El menú quedaría así:
 
-### Sobre el storage de archivos antiguos
-Cada subida deja el archivo anterior huérfano en Storage (porque la nueva usa otro `Date.now()`). Esto **no causa el flash** y no afecta funcionamiento, solo ocupa espacio. Limpiarlo no es trivial sin trackear historial. Lo dejo fuera de este plan; si lo quieres después, se puede hacer un edge function que elimine archivos viejos de cada `key` cuando se sube uno nuevo.
+```text
+Resumen
+Gestión
+Usuarios
+Imágenes
+Información finca
+Cerrar sesión
+```
 
-### Cómo verificar
-1. Abrir `/menu` → recargar 5 veces → no debe haber flash de imagen vieja a nueva.
-2. Desde otro dispositivo (o ventana de incógnito) entrar como superadmin → cambiar el banner del menú.
-3. Volver al primer dispositivo, cambiar de pestaña y volver → toast no aparece (no es bundle nuevo) pero al refrescar `/menu` se debe ver la nueva imagen sin necesidad de publicar nada en Lovable.
-4. Subir una imagen y abrirla en `/menu` desde el mismo navegador → la imagen aparece directamente sin pasar por la vieja.
+---
 
-### Archivos modificados
+## 2. Nueva página de CRUD
+
+### Archivo nuevo
+`src/pages/SuperAdmin/Gestion.tsx`
+
+### Estructura visual
+Crear una página con tabs:
+
+```text
+Fincas | Machos | Hembras | Crías | Embriones
+```
+
+Cada tab tendrá:
+
+- Botón “Agregar”
+- Tabla de registros
+- Buscador simple por código/nombre
+- Filtro de estado:
+  - Activos
+  - Inactivos
+  - Todos
+- Acciones por fila:
+  - Editar
+  - Desactivar
+  - Reactivar, cuando el registro esté inactivo
+
+---
+
+## 3. CRUD de fincas
+
+### Reutilizar
+`src/components/FincaForm.tsx`
+
+### Funcionalidad
+En el tab “Fincas”:
+
+- Listar todas las fincas, no solo activas.
+- Mostrar:
+  - Nombre
+  - Ubicación
+  - Hectáreas
+  - Estado
+  - Número de operarios asignados
+- Botón “Agregar finca” abre `FincaForm` en modo creación.
+- Botón “Editar” abre `FincaForm` con `fincaId`.
+- Botón “Desactivar” cambia `activo = false`.
+- Botón “Reactivar” cambia `activo = true`.
+
+### Ajuste menor en `FincaForm`
+Cuando se crea una finca, guardar también:
+
+```ts
+created_by: user.id
+```
+
+Esto no cambia la seguridad, pero deja trazabilidad correcta.
+
+---
+
+## 4. CRUD de animales por categoría
+
+### Reutilizar
+`src/components/AnimalForm.tsx`
+
+### Funcionalidad
+En los tabs:
+
+```text
+Machos
+Hembras
+Crías
+Embriones
+```
+
+cada uno usará el mismo componente de gestión filtrando por `tipo`.
+
+Ejemplo:
+
+```ts
+tipo = "macho"
+tipo = "hembra"
+tipo = "cria"
+tipo = "embrion"
+```
+
+Cada tabla mostrará:
+
+- Foto
+- Código
+- Nombre
+- Finca
+- Sexo
+- Raza
+- Color
+- Fecha nacimiento
+- Registro
+- Estado
+- Acciones
+
+Acciones:
+
+- “Agregar macho/hembra/cría/embrión”
+- “Editar”
+- “Desactivar”
+- “Reactivar”
+
+Crear y editar abrirán `AnimalForm`.
+
+Desactivar será soft delete:
+
+```ts
+activo = false
+```
+
+Reactivar será:
+
+```ts
+activo = true
+```
+
+---
+
+## 5. Ajustes en `AnimalForm`
+
+### Archivo
+`src/components/AnimalForm.tsx`
+
+### Cambios
+Mantener la lógica actual, pero hacerla más útil para superadmin:
+
+1. Asegurar que `super_admin` pueda crear animales en cualquier finca.
+2. Mantener que el campo `finca_id` sea obligatorio.
+3. Al crear, seguir enviando:
+
+```ts
+created_by: user.id
+```
+
+4. En modo superadmin/admin, cargar todas las fincas activas para selección.
+5. No cambiar el comportamiento de operarios.
+
+La edición seguirá funcionando con el mismo formulario que ya se usa en las vistas móviles.
+
+---
+
+## 6. Ruta nueva
+
+### Archivo
+`src/App.tsx`
+
+Agregar dentro del layout protegido de superadmin:
+
+```tsx
+<Route path="gestion" element={<SuperAdminGestion />} />
+```
+
+La ruta quedará protegida por:
+
+```tsx
+<ProtectedRoute requireRoles={["super_admin"]}>
+```
+
+igual que el resto del panel.
+
+---
+
+## 7. RLS y seguridad
+
+### Estado actual
+Las políticas actuales ya parecen cubrir gran parte del acceso total porque usan:
+
+```sql
+is_admin_or_super(auth.uid())
+```
+
+En especial:
+
+- `fincas`: admin/super_admin pueden insertar, actualizar y borrar.
+- `animales`: admin/super_admin pueden ver, actualizar y borrar cualquier animal.
+- `animales insert`: permite insertar si:
+  - el usuario está activo,
+  - `created_by = auth.uid()`,
+  - hay `finca_id`,
+  - y el usuario es admin/super_admin o tiene acceso a esa finca.
+
+Como el superadmin cumple `is_admin_or_super`, debería poder crear animales en cualquier finca siempre que el frontend mande `created_by`.
+
+### Verificación antes de tocar BD
+Antes de modificar políticas, revisar con linter/schema:
+
+- `fincas`
+- `animales`
+- `user_finca_acceso`
+
+### Migración solo si hace falta
+Si alguna política no permite el CRUD total al superadmin, crear una migración para dejar explícito:
+
+```sql
+-- fincas
+is_admin_or_super(auth.uid())
+
+-- animales
+is_admin_or_super(auth.uid())
+OR user_has_finca(auth.uid(), finca_id)
+```
+
+No se guardarán roles en `profiles`; se mantiene el modelo seguro con `user_roles` y funciones `SECURITY DEFINER`.
+
+---
+
+## 8. No cambiar
+
+No se cambia:
+
+- Login
+- Roles existentes
+- Estructura principal de tablas
+- `src/integrations/supabase/types.ts`
+- Vistas móviles actuales
+- Carga de imágenes desde `/superadmin/imagenes`
+
+---
+
+## 9. Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/hooks/useAppAsset.ts` | localStorage como `initialData`, `staleTime: 0`, refetch on focus |
-| `src/components/AssetDropzone.tsx` | Escribir nueva URL en localStorage tras upload + mensaje al SW |
-| `public/sw.js` | Stale-while-revalidate para `/app-assets/`, bump cache name a v2, handler `PURGE_ASSET` |
+| `src/App.tsx` | Agregar ruta `/superadmin/gestion` |
+| `src/pages/SuperAdmin/Layout.tsx` | Agregar item “Gestión” al menú |
+| `src/pages/SuperAdmin/Gestion.tsx` | Nueva página CRUD para fincas y animales |
+| `src/components/FincaForm.tsx` | Guardar `created_by` al crear finca |
+| `src/components/AnimalForm.tsx` | Ajustes menores para uso completo desde superadmin |
+| `supabase/migrations/...sql` | Solo si al verificar RLS falta alguna política |
+
+---
+
+## 10. Verificación
+
+1. Entrar como superadmin a `/superadmin`.
+2. Abrir “Gestión”.
+3. Crear una finca nueva.
+4. Editar la finca.
+5. Desactivar y reactivar la finca.
+6. Crear un macho asignado a una finca.
+7. Crear una hembra asignada a una finca.
+8. Crear una cría asignada a una finca.
+9. Crear un embrión asignado a una finca.
+10. Editar cada animal.
+11. Desactivar y reactivar cada animal.
+12. Confirmar que los animales activos aparecen en sus vistas móviles.
+13. Confirmar que los inactivos no aparecen en las vistas móviles, pero sí en superadmin cuando el filtro está en “Inactivos” o “Todos”.
 
