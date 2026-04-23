@@ -58,6 +58,7 @@ type CropTarget = "avatar" | "banner";
 
 const AVATAR_CROP = { aspect: 1, output: { width: 512, height: 512 } };
 const BANNER_CROP = { aspect: 865 / 503, output: { width: 1600, height: 930 } };
+const IMAGE_UPLOAD_ERROR_MESSAGE = "No se pudo subir la imagen. Verifica que tengas acceso a este animal.";
 
 const sexoFromTipo = (tipo: AnimalTipo): "M" | "H" | undefined => {
   if (tipo === "macho") return "M";
@@ -240,6 +241,11 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
     return data.publicUrl;
   };
 
+  const isStoragePolicyError = (error: unknown) => {
+    const message = (error as { message?: string })?.message?.toLowerCase() ?? "";
+    return message.includes("row-level security") || message.includes("storage");
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
     const sexoFinal = sexoFromTipo(tipo) ?? (sexo || undefined);
@@ -294,19 +300,28 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         savedId = data.id;
       }
 
-      const imageUpdates: Record<string, string> = {};
-      if (fotoBlob && savedId) {
-        imageUpdates.foto_principal_url = await uploadImage(savedId, fotoBlob, "avatar");
-      }
-      if (bannerBlob && savedId) {
-        imageUpdates.foto_banner_url = await uploadImage(savedId, bannerBlob, "banner");
-      }
-      if (Object.keys(imageUpdates).length > 0 && savedId) {
-        const { error } = await supabase
-          .from("animales")
-          .update(imageUpdates as never)
-          .eq("id", savedId);
-        if (error) throw error;
+      if ((fotoBlob || bannerBlob) && savedId) {
+        try {
+          const imageUpdates: Record<string, string> = {};
+          if (fotoBlob) {
+            imageUpdates.foto_principal_url = await uploadImage(savedId, fotoBlob, "avatar");
+          }
+          if (bannerBlob) {
+            imageUpdates.foto_banner_url = await uploadImage(savedId, bannerBlob, "banner");
+          }
+          if (Object.keys(imageUpdates).length > 0) {
+            const { error } = await supabase
+              .from("animales")
+              .update(imageUpdates as never)
+              .eq("id", savedId);
+            if (error) throw error;
+          }
+        } catch (imageError) {
+          console.error(imageError);
+          toast.error(IMAGE_UPLOAD_ERROR_MESSAGE);
+          await onSaved?.();
+          return;
+        }
       }
 
       toast.success(isEdit ? "Animal actualizado" : "Animal creado");
@@ -317,6 +332,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       console.error(err);
       if (e.code === "23505") {
         toast.error("Ya existe un animal con ese número");
+      } else if (isStoragePolicyError(e)) {
+        toast.error(IMAGE_UPLOAD_ERROR_MESSAGE);
       } else {
         toast.error(e.message ?? "No se pudo guardar");
       }
