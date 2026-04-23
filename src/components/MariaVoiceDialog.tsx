@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Bot, Mic, MicOff, PhoneOff, Volume2 } from "lucide-react";
 import { toast } from "sonner";
@@ -133,18 +133,6 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
 };
 
 const MariaVoiceDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) => {
-  const providerOptions = useMemo(
-    () => ({
-      overrides: {
-        agent: {
-          language: "es",
-          firstMessage: "Hola, soy MarIA. ¿Qué información de la ganadería quieres consultar?",
-        },
-      },
-    }),
-    [],
-  );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md border-border bg-card text-card-foreground sm:rounded-md">
@@ -157,7 +145,7 @@ const MariaVoiceDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange:
             Tu asistente experta en ganadería.
           </DialogDescription>
         </DialogHeader>
-        <ConversationProvider {...providerOptions}>
+        <ConversationProvider>
           <MariaVoicePanel open={open} />
         </ConversationProvider>
       </DialogContent>
