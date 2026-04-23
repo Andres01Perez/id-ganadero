@@ -29,6 +29,7 @@ const CategoriaAnimales = () => {
   const navigate = useNavigate();
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
 
   const validTipo = (tipo && tipo in titles ? tipo : "hembra") as
@@ -48,14 +49,20 @@ const CategoriaAnimales = () => {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await supabase
       .from("animales")
       .select("id, numero, nombre, foto_principal_url")
       .eq("tipo", validTipo)
       .eq("activo", true)
       .order("numero");
-    if (error) toast.error("No se pudieron cargar los animales");
-    else setAnimals(data ?? []);
+    if (error) {
+      setAnimals([]);
+      setLoadError(error.message);
+      toast.error(`No se pudieron cargar los animales: ${error.message}`);
+    } else {
+      setAnimals(data ?? []);
+    }
     setLoading(false);
   };
 
@@ -98,6 +105,11 @@ const CategoriaAnimales = () => {
       <div className="px-4 py-4 space-y-3">
         {loading ? (
           <p className="text-center text-sm text-muted-foreground py-8">Cargando…</p>
+        ) : loadError ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-destructive">No se pudieron cargar los animales</p>
+            <p className="text-xs text-muted-foreground mt-2 px-6">{loadError}</p>
+          </div>
         ) : animals.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-sm text-muted-foreground">No hay {title.toLowerCase()} visibles</p>

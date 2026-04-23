@@ -36,7 +36,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   tipo: AnimalTipo;
   animalId?: string | null;
-  onSaved?: () => void;
+  onSaved?: () => void | Promise<void>;
 };
 
 const schema = z.object({
@@ -274,7 +274,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       }
 
       toast.success(isEdit ? "Animal actualizado" : "Animal creado");
-      onSaved?.();
+      await onSaved?.();
       onOpenChange(false);
     } catch (err) {
       const e = err as { message?: string; code?: string };
@@ -303,7 +303,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       return;
     }
     toast.success("Animal desactivado");
-    onSaved?.();
+    await onSaved?.();
     onOpenChange(false);
   };
 

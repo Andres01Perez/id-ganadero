@@ -70,6 +70,7 @@ const Gestion = () => {
   const [fincas, setFincas] = useState<FincaRow[]>([]);
   const [animals, setAnimals] = useState<AnimalRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("activos");
   const [fincaFormOpen, setFincaFormOpen] = useState(false);
@@ -80,6 +81,7 @@ const Gestion = () => {
 
   const load = async () => {
     setLoading(true);
+    setLoadError(null);
     const [fincasRes, accesosRes, animalsRes] = await Promise.all([
       supabase
         .from("fincas")
@@ -94,7 +96,9 @@ const Gestion = () => {
     ]);
 
     if (fincasRes.error || accesosRes.error || animalsRes.error) {
-      toast.error("No se pudo cargar la gestión");
+      const message = fincasRes.error?.message ?? accesosRes.error?.message ?? animalsRes.error?.message ?? "Error desconocido";
+      setLoadError(message);
+      toast.error(`No se pudo cargar la gestión: ${message}`);
     }
 
     const counts = new Map<string, number>();
@@ -217,6 +221,12 @@ const Gestion = () => {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {loadError && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            No se pudo cargar la gestión: {loadError}
+          </div>
+        )}
 
         <TabsContent value="fincas" className="mt-6">
           <div className="mb-4 flex justify-end">
