@@ -21,6 +21,26 @@ type TokenResponse = {
   signed_url?: string | null;
 };
 
+const MARIA_SYSTEM_PROMPT = `Eres MarIA, asistente de voz de JPS Ganadería.
+Reglas obligatorias:
+- Nunca pidas permiso para consultar la base de datos; consulta directamente con tus herramientas.
+- Si preguntan por animales, fincas, pesos, edades, preñez, palpaciones, reproducción, conteos, totales o cantidades, usa una herramienta antes de responder.
+- Para preguntas con "cuántos", "cuántas", "total", "cantidad", "hembras", "machos" o nombres de fincas, usa contar_animales o resumen_ganaderia.
+- No inventes números, no estimes y no redondees. Responde solo con el dato devuelto por la herramienta.
+- Si la herramienta no encuentra datos, dilo claramente.
+- Responde corto, claro y en español.`;
+
+const LOW_LATENCY_SESSION = {
+  connectionDelay: { default: 0, android: 0, ios: 0 },
+  overrides: {
+    agent: {
+      prompt: { prompt: MARIA_SYSTEM_PROMPT },
+      firstMessage: "Hola, soy MarIA. ¿Qué necesitas consultar?",
+      language: "es" as const,
+    },
+  },
+};
+
 const getFriendlyError = (error: unknown) => {
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError") return "Revisa si tu navegador permite usar el micrófono.";
@@ -42,6 +62,7 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
 
   const conversation = useConversation({
     clientTools: mariaClientTools,
+    ...LOW_LATENCY_SESSION,
     onConnect: () => {
       connectingRef.current = false;
       setErrorMessage(null);
@@ -73,6 +94,7 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
       await conversation.startSession({
         signedUrl,
         connectionType: "websocket",
+        ...LOW_LATENCY_SESSION,
       });
       setErrorMessage(null);
       return true;
@@ -147,11 +169,12 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
           if (conversation.status !== "connected") {
             startWebSocketFallback(data.signed_url);
           }
-        }, 8000);
+        }, 3000);
 
         await conversation.startSession({
           conversationToken: data.token,
           connectionType: "webrtc",
+          ...LOW_LATENCY_SESSION,
         });
         return;
       }

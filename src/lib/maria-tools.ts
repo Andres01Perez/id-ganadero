@@ -15,6 +15,9 @@ type AnimalSummary = {
 
 type ToolParams = Record<string, unknown>;
 
+const ANIMAL_TYPES = ["macho", "hembra", "cria", "embrion", "otro"] as const;
+type AnimalTipo = (typeof ANIMAL_TYPES)[number];
+
 const asText = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
@@ -38,6 +41,67 @@ const ageFromDate = (date: string | null) => {
   return `${years} años y ${restMonths} meses`;
 };
 
+const normalizeTipo = (value: unknown): AnimalTipo | null => {
+  const text = asText(value).toLowerCase();
+  if (["hembra", "hembras", "vaca", "vacas"].includes(text)) return "hembra";
+  if (["macho", "machos", "toro", "toros"].includes(text)) return "macho";
+  if (["cria", "cría", "crias", "crías", "ternero", "terneros"].includes(text)) return "cria";
+  if (["embrion", "embrión", "embriones"].includes(text)) return "embrion";
+  if (ANIMAL_TYPES.includes(text as AnimalTipo)) return text as AnimalTipo;
+  return null;
+};
+
+const normalizeSexo = (value: unknown): "M" | "H" | null => {
+  const text = asText(value).toLowerCase();
+  if (["m", "macho", "machos"].includes(text)) return "M";
+  if (["h", "hembra", "hembras", "f", "female"].includes(text)) return "H";
+  return null;
+};
+
+const resolveFincas = async (value: unknown) => {
+  const finca = asText(value);
+  if (!finca) return { ids: null as string[] | null, nombres: [] as string[] };
+
+  const safe = finca.replace(/[%_]/g, " ").replace(/\s+/g, " ").trim();
+  if (!safe) return { ids: [] as string[], nombres: [] as string[] };
+
+  const { data, error } = await supabase
+    .from("fincas")
+    .select("id, nombre")
+    .eq("activo", true)
+    .ilike("nombre", `%${safe}%`);
+
+  if (error) throw error;
+  return {
+    ids: (data ?? []).map((finca) => finca.id),
+    nombres: (data ?? []).map((finca) => finca.nombre),
+  };
+};
+
+const countAnimales = async (params: ToolParams = {}) => {
+  const tipo = normalizeTipo(params.tipo ?? params.clase ?? params.categoria);
+  const sexo = normalizeSexo(params.sexo);
+  const fincaText = asText(params.finca);
+  const { ids: fincaIds, nombres: fincaNombres } = await resolveFincas(fincaText);
+
+  if (fincaText && fincaIds?.length === 0) {
+    return { total: 0, fincaNombres, tipo, sexo };
+  }
+
+  let query = supabase
+    .from("animales")
+    .select("id", { count: "exact", head: true })
+    .eq("activo", true);
+
+  if (tipo) query = query.eq("tipo", tipo);
+  if (sexo) query = query.eq("sexo", sexo);
+  if (fincaIds) query = query.in("finca_id", fincaIds);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return { total: count ?? 0, fincaNombres, tipo, sexo };
+};
+
 const formatAnimal = (animal: AnimalSummary) => ({
   id: animal.id,
   numero: animal.numero,
@@ -57,11 +121,22 @@ const fail = (message: string) => result({ error: message });
 export const mariaClientTools = {
   buscar_animales: async (params: ToolParams = {}) => {
     const texto = asText(params.texto ?? params.busqueda ?? params.query);
-    const tipo = asText(params.tipo).toLowerCase();
+    const tipo = normalizeTipo(params.tipo);
     const finca = asText(params.finca);
     const raza = asText(params.raza);
     const color = asText(params.color);
     const limit = asLimit(params.limite ?? params.limit);
+
+    let fincaIds: string[] | null = null;
+    if (finca) {
+      try {
+        const resolved = await resolveFincas(finca);
+        fincaIds = resolved.ids;
+        if (fincaIds?.length === 0) return result({ total: 0, animales: [], finca_encontrada: false });
+      } catch (error) {
+        return fail(error instanceof Error ? error.message : "No se pudo buscar la finca.");
+      }
+    }
 
     let query = supabase
       .from("animales")
@@ -74,18 +149,34 @@ export const mariaClientTools = {
       const safe = texto.replace(/[%(),]/g, " ").trim();
       query = query.or(`numero.ilike.%${safe}%,nombre.ilike.%${safe}%`);
     }
-    if (["macho", "hembra", "cria", "embrion", "otro"].includes(tipo)) {
-      query = query.eq("tipo", tipo as "macho" | "hembra" | "cria" | "embrion" | "otro");
-    }
-    if (raza) query = query.ilike("raza", raza);
-    if (color) query = query.ilike("color", color);
-    if (finca) query = query.ilike("fincas.nombre", `%${finca}%`);
+    if (tipo) query = query.eq("tipo", tipo);
+    if (raza) query = query.ilike("raza", `%${raza}%`);
+    if (color) query = query.ilike("color", `%${color}%`);
+    if (fincaIds) query = query.in("finca_id", fincaIds);
 
     const { data, error } = await query;
     if (error) return fail(error.message);
 
     const animales = ((data ?? []) as AnimalSummary[]).map(formatAnimal);
     return result({ total: animales.length, animales });
+  },
+
+  contar_animales: async (params: ToolParams = {}) => {
+    try {
+      const conteo = await countAnimales(params);
+      return result({
+        total: conteo.total,
+        filtros: {
+          tipo: conteo.tipo,
+          sexo: conteo.sexo,
+          finca: conteo.fincaNombres.length ? conteo.fincaNombres : asText(params.finca) || null,
+          activos: true,
+        },
+        instruccion: "Responde únicamente con este conteo exacto. No inventes ni redondees.",
+      });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : "No se pudo contar animales.");
+    }
   },
 
   detalle_animal: async (params: ToolParams = {}) => {
@@ -183,9 +274,30 @@ export const mariaClientTools = {
     });
   },
 
-  resumen_ganaderia: async () => {
+  resumen_ganaderia: async (params: ToolParams = {}) => {
+    const finca = asText(params.finca);
+    let fincaIds: string[] | null = null;
+    let fincaNombres: string[] = [];
+
+    if (finca) {
+      try {
+        const resolved = await resolveFincas(finca);
+        fincaIds = resolved.ids;
+        fincaNombres = resolved.nombres;
+      } catch (error) {
+        return fail(error instanceof Error ? error.message : "No se pudo buscar la finca.");
+      }
+
+      if (fincaIds?.length === 0) {
+        return result({ total: 0, por_tipo: {}, por_sexo: {}, por_finca: {}, finca_encontrada: false });
+      }
+    }
+
+    let animalesQuery = supabase.from("animales").select("tipo, sexo, finca_id").eq("activo", true);
+    if (fincaIds) animalesQuery = animalesQuery.in("finca_id", fincaIds);
+
     const [{ data: animales, error: animalesError }, { data: fincas, error: fincasError }] = await Promise.all([
-      supabase.from("animales").select("tipo, finca_id").eq("activo", true),
+      animalesQuery,
       supabase.from("fincas").select("id, nombre").eq("activo", true),
     ]);
 
@@ -196,6 +308,11 @@ export const mariaClientTools = {
       acc[animal.tipo] = (acc[animal.tipo] ?? 0) + 1;
       return acc;
     }, {});
+    const porSexo = (animales ?? []).reduce<Record<string, number>>((acc, animal) => {
+      const sexo = animal.sexo === "M" ? "machos" : animal.sexo === "H" ? "hembras" : "sin_sexo";
+      acc[sexo] = (acc[sexo] ?? 0) + 1;
+      return acc;
+    }, {});
     const fincaNames = new Map((fincas ?? []).map((f) => [f.id, f.nombre]));
     const porFinca = (animales ?? []).reduce<Record<string, number>>((acc, animal) => {
       const name = fincaNames.get(animal.finca_id) ?? "Sin finca";
@@ -203,6 +320,6 @@ export const mariaClientTools = {
       return acc;
     }, {});
 
-    return result({ total: animales?.length ?? 0, por_tipo: porTipo, por_finca: porFinca });
+    return result({ total: animales?.length ?? 0, finca: fincaNombres.length ? fincaNombres : null, por_tipo: porTipo, por_sexo: porSexo, por_finca: porFinca });
   },
 };
