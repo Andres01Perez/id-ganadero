@@ -191,6 +191,54 @@ export type Database = {
         }
         Relationships: []
       }
+      campeonatos: {
+        Row: {
+          animal_id: string
+          categoria: string | null
+          created_at: string
+          evidencia_url: string | null
+          fecha: string
+          id: string
+          juez: string | null
+          lugar: string | null
+          nombre: string
+          notas: string | null
+          responsable_id: string
+          resultado: string | null
+          updated_at: string
+        }
+        Insert: {
+          animal_id: string
+          categoria?: string | null
+          created_at?: string
+          evidencia_url?: string | null
+          fecha: string
+          id?: string
+          juez?: string | null
+          lugar?: string | null
+          nombre: string
+          notas?: string | null
+          responsable_id: string
+          resultado?: string | null
+          updated_at?: string
+        }
+        Update: {
+          animal_id?: string
+          categoria?: string | null
+          created_at?: string
+          evidencia_url?: string | null
+          fecha?: string
+          id?: string
+          juez?: string | null
+          lugar?: string | null
+          nombre?: string
+          notas?: string | null
+          responsable_id?: string
+          resultado?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chequeos_veterinarios: {
         Row: {
           animal_id: string
