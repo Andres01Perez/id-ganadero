@@ -1,231 +1,384 @@
+## MarIA: agente de voz con ElevenLabs para consultar la ganadería
 
+### Sí, es posible
 
-## Corregir visibilidad de animales por rol y finca
+Se puede agregar una inteligencia artificial de voz llamada **MarIA** en el botón central del menú inferior, donde hoy está el hierro/logo.
 
-### Diagnóstico confirmado
-
-En la base de datos ya existe la hembra creada desde superadmin:
-
-```text
-Número: 683/01
-Tipo: hembra
-Finca: Villa Paula
-Activo: true
-Creado por: admin1 / super_admin
-```
-
-También existe el operario:
+La forma más segura para esta app no es darle acceso libre a “todo Supabase”, sino crear herramientas controladas para que MarIA consulte solo la información permitida por el usuario conectado.
 
 ```text
-Operario Prueba
-Rol: operario
-Finca asignada: Villa Paula
-Activo: true
+Usuario habla con MarIA
+        ↓
+ElevenLabs transcribe y conversa
+        ↓
+MarIA llama herramientas de la app
+        ↓
+La app consulta Supabase con la sesión del usuario
+        ↓
+RLS decide qué puede ver:
+- super_admin: todo
+- admin: todo
+- operario: solo sus fincas
 ```
 
-Y existe el admin:
-
-```text
-Jorge Perez
-Rol: admin
-Activo: true
-```
-
-Por negocio, ambos deberían poder ver esa hembra:
-
-- El `operario` porque tiene acceso a Villa Paula.
-- El `admin` porque debe tener acceso total a todas las fincas.
-- El `super_admin` porque también tiene acceso total.
-
-El problema está en la capa de acceso/visibilidad: hay que reforzar las políticas RLS y ajustar el frontend para no depender de comportamientos ambiguos ni ocultar errores como si fueran listas vacías.
+Esto evita que un operario pueda preguntarle a MarIA por animales de una finca que no tiene asignada.
 
 ---
 
-## 1. Corregir RLS de `animales`
+## Arquitectura recomendada
 
-Crear una migración nueva para reconstruir las políticas de `public.animales` con reglas claras.
+### Opción recomendada: ElevenLabs + Client Tools + RLS de Supabase
 
-### Regla de lectura
+Usaremos el SDK de ElevenLabs en React y definiremos herramientas dentro del frontend.
+
+Ventajas:
+
+- Respeta las políticas RLS actuales.
+- No expone la clave de Supabase Service Role.
+- MarIA solo ve lo mismo que el usuario puede ver en la app.
+- Es más seguro que darle acceso directo a toda la base de datos.
+- Permite consultas como:
+  - “¿Cuántas hembras tengo?”
+  - “Busca la vaca número 683/01”
+  - “¿Qué edad tiene esta vaca?”
+  - “Muéstrame los últimos pesos”
+  - “¿Tiene palpaciones?”
+  - “¿Cuál fue la última preñez?”
+  - “¿Qué animales hay en Villa Paula?”
+
+---
+
+## Qué se necesita de ElevenLabs
+
+### 1. Crear un Agent en ElevenLabs
+
+En ElevenLabs debes crear un **Conversational AI Agent** llamado:
 
 ```text
-Puede ver animales si:
-1. el usuario está activo, y
-2. es admin o super_admin
-   O
-   tiene acceso asignado a la finca del animal.
+MarIA
 ```
 
-Esto permitirá:
-
-- `super_admin`: ver todos los animales.
-- `admin`: ver todos los animales.
-- `operario`: ver solo animales de sus fincas asignadas.
-
-### Regla de creación
+Configuración sugerida:
 
 ```text
-Puede crear animales si:
-1. el usuario está activo,
-2. created_by = auth.uid(),
-3. finca_id no es nulo,
-4. es admin/super_admin o tiene acceso a esa finca.
+Nombre: MarIA
+Idioma principal: Español
+Personalidad: Experta en ganadería Brahman y manejo reproductivo
+Rol: Asistente de voz de la plataforma JPS Ganadería
 ```
 
-Esto mantiene seguridad y permite que el superadmin cree animales para cualquier finca.
-
-### Regla de edición
-
-Agregar `USING` y también `WITH CHECK`.
-
-Esto es importante porque hoy la política de update valida quién puede editar la fila existente, pero no refuerza correctamente que la fila resultante siga quedando en una finca permitida.
+Prompt recomendado para el agente:
 
 ```text
-Puede actualizar animales si:
-1. puede acceder al animal actual,
-2. y el resultado actualizado queda en una finca permitida.
-```
+Eres MarIA, la asistente experta de JPS Ganadería.
 
-### Regla de eliminación
+Ayudas a consultar información de animales, fincas, pesos, edades, números, nombres, razas, colores, palpaciones, preñez, partos, inseminaciones y registros productivos.
 
-```text
-Puede eliminar/desactivar animales si:
-1. es admin/super_admin,
-2. o tiene acceso a la finca del animal.
+Responde en español claro, breve y práctico. 
+No inventes información. Si no encuentras datos, dilo claramente.
+Cuando necesites información de la base de datos, usa las herramientas disponibles.
 ```
 
 ---
 
-## 2. Reforzar funciones de acceso
+### 2. API Key de ElevenLabs
 
-Actualizar o crear funciones `SECURITY DEFINER` para evitar problemas de RLS circular y mantener una sola fuente de verdad.
+Sí necesitas crear una API Key en ElevenLabs.
 
-### Función para roles
+La clave debe permitir usar **Conversational AI** y generar tokens/sesiones para el agente.
 
-Usar `public.is_admin_or_super(auth.uid())` como autoridad para acceso total.
+No necesita permisos administrativos sobre Supabase.
 
-### Función para acceso por finca
+La app usará la clave solo desde una Supabase Edge Function, nunca desde el navegador.
 
-Revisar `public.user_has_finca(_user_id, _finca_id)` para asegurar que:
+Se guardará como secreto:
 
 ```text
-admin/super_admin => true para cualquier finca
-operario => true solo si existe fila en user_finca_acceso
+ELEVENLABS_API_KEY
 ```
 
-### Función para acceso a animal
+También necesitaremos el ID del agente:
 
-Revisar `public.user_can_access_animal(_user_id, _animal_id)` para que consulte la finca del animal usando función `SECURITY DEFINER` y no dependa de políticas recursivas.
+```text
+ELEVENLABS_AGENT_ID
+```
+
+El endpoint que se usará desde backend será:
+
+```text
+GET https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=AGENT_ID
+Header: xi-api-key: ELEVENLABS_API_KEY
+```
+
+Esto permite iniciar una conversación privada con MarIA sin exponer la clave.
 
 ---
 
-## 3. Corregir RLS de `fincas`
+## Sobre MCP
 
-Hoy `fincas` es visible para cualquier usuario activo. Para que el comportamiento sea consistente con los animales, ajustar la lectura así:
+### ¿Se puede tipo MCP?
+
+Sí, se puede hacer un MCP para que un agente consulte Supabase, pero para este caso no lo recomiendo como primera versión.
+
+El problema de un MCP directo es que puede terminar teniendo demasiado acceso si se conecta con permisos amplios.
+
+Para JPS Ganadería es más seguro empezar con:
 
 ```text
-admin/super_admin => ve todas las fincas
-operario => ve solo sus fincas asignadas
+ElevenLabs Client Tools + Supabase RLS
 ```
 
-Esto evita que un operario vea fincas que no le corresponden y alinea la lógica con `animales`.
+Luego, si MarIA necesita capacidades más avanzadas, se puede crear un MCP o un conjunto de Edge Functions especializadas, pero siempre con permisos limitados y no con acceso libre a toda la base.
 
 ---
 
-## 4. Reparar datos existentes si hace falta
+## Cambios que implementaría
 
-Agregar una validación en migración o verificación posterior para confirmar:
+### 1. Menú inferior
 
-```text
-animales.finca_id IS NOT NULL
-user_finca_acceso contiene la relación operario -> Villa Paula
-perfiles activos
-roles correctos
-```
+Actualizar `src/components/BottomTabBar.tsx`.
 
-No se cambiarán datos innecesariamente, pero se verificará que:
-
-- La hembra `683/01` siga asignada a Villa Paula.
-- El operario siga asignado a Villa Paula.
-- El admin mantenga acceso global por rol.
+El botón central del hierro pasará a abrir MarIA en vez de navegar al menú.
 
 ---
 
-## 5. Mejorar frontend para mostrar errores reales
+### 2. Nuevo componente de voz
 
-Actualizar las consultas de animales en:
-
-| Archivo | Ajuste |
-|---|---|
-| `src/pages/CategoriaAnimales.tsx` | Mostrar error real si Supabase devuelve error, no solo “No hay animales visibles” |
-| `src/pages/Admin.tsx` | Mostrar detalle del error cuando el admin no puede cargar animales |
-| `src/pages/SuperAdmin/Gestion.tsx` | Mostrar detalle si falla la consulta principal |
-| `src/components/AnimalForm.tsx` | Después de guardar, forzar recarga limpia de la lista |
-
-Esto ayudará a diferenciar entre:
+Crear un componente:
 
 ```text
-No hay animales
+src/components/MariaVoiceDialog.tsx
 ```
 
-y
+Este abrirá una ventana simple con:
 
 ```text
-RLS bloqueó la consulta
+MarIA
+Tu asistente experta en ganadería
+
+[Iniciar conversación]
+[Terminar]
+Estado: escuchando / hablando / desconectada
+```
+
+También mostrará un mensaje antes de pedir micrófono:
+
+```text
+MarIA necesita acceso al micrófono para escucharte.
 ```
 
 ---
 
-## 6. Evitar datos desactualizados por sesión/caché
+### 3. Instalar ElevenLabs React SDK
 
-Después de corregir RLS:
-
-- Forzar `load()` después de crear/editar animales.
-- Mantener `.eq("activo", true)` solo en vistas móviles/admin normales.
-- En superadmin conservar filtros `Activos`, `Inactivos`, `Todos`.
-- Recomendar cerrar sesión y volver a entrar si el navegador tiene una sesión vieja.
-
-No se cambiará la lógica de negocio: los animales inactivos seguirán ocultos para las vistas móviles normales.
-
----
-
-## 7. Verificación
-
-Probar con los tres roles:
-
-### Superadmin
-
-1. Entrar a `/superadmin/gestion`.
-2. Confirmar que ve la hembra `683/01`.
-3. Crear otro animal en Villa Paula.
-4. Confirmar que aparece inmediatamente en la tabla.
-
-### Admin
-
-1. Entrar con `Jorge Perez`.
-2. Ir a `/menu`.
-3. Entrar a `Hembras`.
-4. Confirmar que ve la hembra `683/01`.
-5. Confirmar que puede ver animales de cualquier finca.
-
-### Operario
-
-1. Entrar con `Operario Prueba`.
-2. Ir a `/menu`.
-3. Entrar a `Hembras`.
-4. Confirmar que ve la hembra `683/01`.
-5. Confirmar que solo ve animales de Villa Paula.
-
----
-
-## 8. Resultado esperado
-
-Después del cambio:
+Agregar dependencia:
 
 ```text
-super_admin => ve y administra todos los animales
-admin       => ve y administra todos los animales
-operario    => ve animales activos de sus fincas asignadas
+@elevenlabs/react
 ```
 
-La hembra creada desde superadmin en Villa Paula será visible para el operario asignado a Villa Paula y para cualquier admin.
+Usar `useConversation` para manejar:
 
+- conexión WebRTC
+- micrófono
+- estado de la conversación
+- mensajes de error
+- herramientas de consulta
+
+---
+
+### 4. Edge Function para token privado
+
+Crear una Supabase Edge Function:
+
+```text
+supabase/functions/elevenlabs-conversation-token/index.ts
+```
+
+Responsabilidades:
+
+1. Validar que el usuario esté autenticado.
+2. Leer `ELEVENLABS_API_KEY`.
+3. Leer `ELEVENLABS_AGENT_ID`.
+4. Solicitar token de conversación a ElevenLabs.
+5. Devolver el token al frontend.
+
+Así la clave API nunca queda visible.
+
+---
+
+### 5. Herramientas iniciales para MarIA
+
+Definir herramientas que MarIA pueda llamar desde ElevenLabs.
+
+Primera versión recomendada:
+
+```text
+buscar_animales
+```
+
+Busca animales por número, nombre, tipo, finca, raza o color.
+
+```text
+detalle_animal
+```
+
+Trae la ficha básica de un animal:
+
+- número
+- nombre
+- tipo
+- sexo
+- finca
+- raza
+- color
+- fecha de nacimiento
+- edad aproximada
+- padre
+- madre
+
+```text
+consultar_pesajes
+```
+
+Trae últimos pesos y fechas.
+
+```text
+consultar_reproduccion
+```
+
+Consulta:
+
+- palpaciones
+- inseminaciones
+- partos
+- embriones relacionados
+- estado reproductivo disponible
+
+```text
+resumen_ganaderia
+```
+
+Da resumen general permitido para el usuario:
+
+- total de animales visibles
+- hembras
+- machos
+- crías
+- embriones
+- animales por finca visible
+
+Todas estas consultas usarán el cliente Supabase del usuario conectado, por lo que RLS seguirá aplicando.
+
+---
+
+### 6. Configurar herramientas en ElevenLabs
+
+En el dashboard de ElevenLabs habrá que registrar herramientas con los mismos nombres que tendrá el frontend.
+
+Ejemplo:
+
+```text
+buscar_animales
+detalle_animal
+consultar_pesajes
+consultar_reproduccion
+resumen_ganaderia
+```
+
+Estas herramientas serán “Client Tools”, es decir, ElevenLabs le pedirá a la app que ejecute la consulta y devuelva la respuesta.
+
+---
+
+## Seguridad
+
+### MarIA no tendrá acceso libre a toda la base
+
+La regla será:
+
+```text
+MarIA ve lo mismo que ve el usuario conectado.
+```
+
+Por ejemplo:
+
+```text
+super_admin → MarIA puede responder sobre todo
+admin       → MarIA puede responder sobre todo
+operario    → MarIA solo puede responder sobre animales de sus fincas
+```
+
+No se usará `SUPABASE_SERVICE_ROLE_KEY` para consultas de MarIA en la primera versión.
+
+---
+
+## Resultado esperado
+
+Después de implementarlo:
+
+1. El usuario toca el botón central del menú inferior.
+2. Se abre MarIA.
+3. La app pide permiso de micrófono.
+4. El usuario pregunta por voz:
+  ```text
+   MarIA, busca la vaca 683/01
+  ```
+5. MarIA consulta Supabase respetando permisos.
+6. MarIA responde por voz:
+  ```text
+   Encontré la hembra número 683/01. Está en Villa Paula...
+  ```
+
+---
+
+## Plan de implementación
+
+### Paso 1: Preparar integración ElevenLabs
+
+- Agregar `@elevenlabs/react`.
+- Crear Edge Function para generar token privado.
+- Usar secretos `ELEVENLABS_API_KEY` y `ELEVENLABS_AGENT_ID`.
+
+### Paso 2: Crear interfaz MarIA
+
+- Crear `MariaVoiceDialog`.
+- Integrarlo en el botón central de `BottomTabBar`.
+- Mantener diseño negro/dorado y simple.
+
+### Paso 3: Crear herramientas de consulta
+
+- Implementar herramientas con Supabase client:
+  - `buscar_animales`
+  - `detalle_animal`
+  - `consultar_pesajes`
+  - `consultar_reproduccion`
+  - `resumen_ganaderia`
+
+### Paso 4: Configurar instrucciones para ElevenLabs
+
+- Definir prompt de MarIA.
+- Registrar los Client Tools en ElevenLabs.
+- Conectar cada tool con el nombre exacto usado en React.
+
+### Paso 5: Pruebas
+
+Probar con:
+
+```text
+super_admin
+admin
+operario Villa Paula
+```
+
+Verificar preguntas como:
+
+```text
+¿Cuántas hembras hay?
+Busca la vaca 683/01
+¿Qué edad tiene?
+¿Cuáles fueron sus últimos pesos?
+¿Tiene palpaciones?
+¿Qué animales hay en Villa Paula?
+```
+
+Confirmar que el operario no pueda consultar animales fuera de su finca.
