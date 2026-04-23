@@ -12,6 +12,26 @@ const jsonResponse = (body: Record<string, unknown>, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const elevenLabsRequest = async (url: string, apiKey: string) => {
+  const response = await fetch(url, { headers: { "xi-api-key": apiKey } });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    let message = "No se pudo iniciar MarIA";
+    try {
+      const parsed = JSON.parse(detail);
+      if (parsed?.detail?.status === "missing_permissions") {
+        message = "La API key de ElevenLabs necesita el permiso Conversational AI: convai_write";
+      }
+    } catch {
+      // Mantener mensaje genérico si ElevenLabs no devuelve JSON.
+    }
+    return { error: message, detail, status: response.status };
+  }
+
+  return { data: await response.json() };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -45,30 +65,29 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "MarIA no está configurada" }, 500);
     }
 
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`,
-      { headers: { "xi-api-key": apiKey } },
-    );
+    const encodedAgentId = encodeURIComponent(agentId);
+    const [tokenResult, signedUrlResult] = await Promise.all([
+      elevenLabsRequest(
+        `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodedAgentId}`,
+        apiKey,
+      ),
+      elevenLabsRequest(
+        `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodedAgentId}`,
+        apiKey,
+      ),
+    ]);
 
-    if (!response.ok) {
-      const detail = await response.text();
-      let message = "No se pudo iniciar MarIA";
-      try {
-        const parsed = JSON.parse(detail);
-        if (parsed?.detail?.status === "missing_permissions") {
-          message = "La API key de ElevenLabs necesita el permiso Conversational AI: convai_write";
-        }
-      } catch {
-        // Mantener mensaje genérico si ElevenLabs no devuelve JSON.
-      }
+    if (tokenResult.error && signedUrlResult.error) {
       return jsonResponse(
-        { error: message, detail },
-        response.status,
+        { error: tokenResult.error, detail: tokenResult.detail },
+        tokenResult.status ?? 500,
       );
     }
 
-    const conversation = await response.json();
-    return jsonResponse({ token: conversation.token });
+    return jsonResponse({
+      token: tokenResult.data?.token ?? null,
+      signed_url: signedUrlResult.data?.signed_url ?? null,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";
     return jsonResponse({ error: message }, 500);
