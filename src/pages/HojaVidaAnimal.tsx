@@ -22,7 +22,7 @@ type Animal = {
 };
 
 const pills = [
-  { label: "Control de calor", slug: "calor" },
+  { label: "Control de celo", slug: "calor" },
   { label: "Aspiraciones", slug: "aspiraciones" },
   { label: "Embriones", slug: "embriones" },
   { label: "Palpaciones", slug: "palpaciones" },
@@ -30,7 +30,7 @@ const pills = [
   { label: "Dieta", slug: "dieta" },
   { label: "Peso", slug: "peso" },
   { label: "Partos", slug: "partos" },
-  { label: "Chequeo", slug: "chequeo" },
+  { label: "Chequeo veterinario", slug: "chequeo" },
   { label: "Campeonatos", slug: "campeonatos" },
 ];
 

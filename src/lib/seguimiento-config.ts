@@ -53,7 +53,7 @@ export type SeguimientoConfig = {
 export const seguimientoConfigs: Record<SeguimientoTipo, SeguimientoConfig> = {
   calor: {
     tipo: "calor",
-    title: "Control de calor",
+    title: "Control de celo",
     subtitle: "Historial de ciclos y próximos calores.",
     table: "ciclos_calor",
     animalField: "animal_id",
@@ -216,7 +216,7 @@ export const seguimientoConfigs: Record<SeguimientoTipo, SeguimientoConfig> = {
   },
   chequeo: {
     tipo: "chequeo",
-    title: "Chequeo",
+    title: "Chequeo veterinario",
     subtitle: "Revisiones veterinarias y diagnóstico.",
     table: "chequeos_veterinarios",
     animalField: "animal_id",
