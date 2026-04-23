@@ -1,384 +1,230 @@
-## MarIA: agente de voz con ElevenLabs para consultar la ganadería
 
-### Sí, es posible
+## Corregir por qué MarIA no escucha y simplificar la vista
 
-Se puede agregar una inteligencia artificial de voz llamada **MarIA** en el botón central del menú inferior, donde hoy está el hierro/logo.
+### Diagnóstico confirmado
 
-La forma más segura para esta app no es darle acceso libre a “todo Supabase”, sino crear herramientas controladas para que MarIA consulte solo la información permitida por el usuario conectado.
+El problema principal no parece ser el permiso del micrófono, porque:
+
+- ya se obtiene token correctamente desde `elevenlabs-conversation-token`
+- el navegador sí intenta iniciar la sesión
+- en los logs aparece este fallo real:
 
 ```text
-Usuario habla con MarIA
-        ↓
-ElevenLabs transcribe y conversa
-        ↓
-MarIA llama herramientas de la app
-        ↓
-La app consulta Supabase con la sesión del usuario
-        ↓
-RLS decide qué puede ver:
-- super_admin: todo
-- admin: todo
-- operario: solo sus fincas
+Initial connection failed: v1 RTC path not found. Consider upgrading your LiveKit server version – Retrying
+GET https://livekit.rtc.elevenlabs.io/rtc/v1/validate ... 404
 ```
 
-Esto evita que un operario pueda preguntarle a MarIA por animales de una finca que no tiene asignada.
+Eso indica que la conexión actual por `WebRTC` está fallando en este entorno y MarIA no queda con una sesión de voz estable para escuchar bien al usuario.
+
+Además, la UI actual está mostrando cosas que no deben verse:
+
+- eventos crudos de ElevenLabs (`JSON.stringify(message)`)
+- texto técnico sobre permisos/RLS
+- estados poco claros para el usuario final
 
 ---
 
-## Arquitectura recomendada
+## Qué voy a cambiar
 
-### Opción recomendada: ElevenLabs + Client Tools + RLS de Supabase
+### 1. Hacer más robusto el arranque de voz
 
-Usaremos el SDK de ElevenLabs en React y definiremos herramientas dentro del frontend.
+Actualizar `src/components/MariaVoiceDialog.tsx` para:
 
-Ventajas:
+- mantener la solicitud de micrófono dentro del gesto del botón
+- esperar explícitamente `await conversation.startSession(...)`
+- manejar mejor errores de micrófono:
+  - permiso denegado
+  - micrófono no encontrado
+  - micrófono ocupado por otra app
+- si falla la conexión WebRTC con error tipo:
+  - `RTC path not found`
+  - `validate 404`
+  - cierre anómalo `1006`
+  
+  hacer fallback automático a conexión por `signedUrl`/WebSocket
 
-- Respeta las políticas RLS actuales.
-- No expone la clave de Supabase Service Role.
-- MarIA solo ve lo mismo que el usuario puede ver en la app.
-- Es más seguro que darle acceso directo a toda la base de datos.
-- Permite consultas como:
-  - “¿Cuántas hembras tengo?”
-  - “Busca la vaca número 683/01”
-  - “¿Qué edad tiene esta vaca?”
-  - “Muéstrame los últimos pesos”
-  - “¿Tiene palpaciones?”
-  - “¿Cuál fue la última preñez?”
-  - “¿Qué animales hay en Villa Paula?”
+Esto deja a MarIA funcionando incluso si WebRTC no es compatible en el entorno actual.
 
 ---
 
-## Qué se necesita de ElevenLabs
+### 2. Ajustar la Edge Function para soportar fallback
 
-### 1. Crear un Agent en ElevenLabs
+Actualizar `supabase/functions/elevenlabs-conversation-token/index.ts` para que pueda devolver:
 
-En ElevenLabs debes crear un **Conversational AI Agent** llamado:
+- `conversation token` para WebRTC
+- `signed_url` para WebSocket cuando el frontend la solicite
 
+Opciones de implementación recomendadas:
+
+```text
+POST body: { mode: "webrtc" | "websocket" }
+```
+
+o devolver ambos en una sola respuesta:
+
+```json
+{
+  "token": "...",
+  "signed_url": "..."
+}
+```
+
+Así el frontend puede intentar primero la mejor opción y caer a la alternativa sin romper la experiencia.
+
+---
+
+### 3. Eliminar por completo los eventos visibles de ElevenLabs
+
+En `src/components/MariaVoiceDialog.tsx` quitar:
+
+- `lastMessage`
+- `JSON.stringify(message)`
+- cualquier bloque visual que muestre eventos crudos del SDK
+
+`onMessage` quedará solo para lógica interna si hace falta, no para renderizarlo al usuario.
+
+---
+
+### 4. Quitar el preámbulo técnico
+
+Eliminar el texto actual:
+
+```text
+MarIA necesita acceso al micrófono para escucharte. Sus respuestas respetan los permisos...
+```
+
+y reemplazarlo por copy simple, humano y corto, por ejemplo:
+
+```text
+Toca iniciar y háblale a MarIA.
+```
+
+o
+
+```text
+Pregúntale por animales, pesos, edades o reproducción.
+```
+
+Sin mencionar RLS, permisos internos ni detalles técnicos.
+
+---
+
+### 5. Rediseñar la vista para mostrar solo lo importante
+
+Rediseñar `MariaVoiceDialog` con una experiencia más limpia y clara:
+
+#### Estado 1: inactiva
 ```text
 MarIA
+Asistente de voz
+
+[ botón grande Iniciar ]
 ```
 
-Configuración sugerida:
-
+#### Estado 2: escuchando
 ```text
-Nombre: MarIA
-Idioma principal: Español
-Personalidad: Experta en ganadería Brahman y manejo reproductivo
-Rol: Asistente de voz de la plataforma JPS Ganadería
+MarIA te está escuchando
+Habla ahora
 ```
 
-Prompt recomendado para el agente:
+Con:
+- halo/pulso dorado suave
+- icono de micrófono activo
+- etiqueta visual “Escuchando”
 
+#### Estado 3: hablando
 ```text
-Eres MarIA, la asistente experta de JPS Ganadería.
-
-Ayudas a consultar información de animales, fincas, pesos, edades, números, nombres, razas, colores, palpaciones, preñez, partos, inseminaciones y registros productivos.
-
-Responde en español claro, breve y práctico. 
-No inventes información. Si no encuentras datos, dilo claramente.
-Cuando necesites información de la base de datos, usa las herramientas disponibles.
+MarIA está hablando
 ```
+
+Con:
+- icono/onda de audio
+- animación suave diferente a la de escucha
+- etiqueta visual “Hablando”
+
+#### Estado 4: conectando
+```text
+Conectando con MarIA…
+```
+
+Con loader simple.
+
+#### Estado 5: error amable
+Mensajes claros como:
+- “No pudimos usar el micrófono.”
+- “No se pudo conectar MarIA. Intenta de nuevo.”
+- “Revisa si tu navegador permite usar el micrófono.”
+
+Sin exponer mensajes internos del SDK.
 
 ---
 
-### 2. API Key de ElevenLabs
-
-Sí necesitas crear una API Key en ElevenLabs.
-
-La clave debe permitir usar **Conversational AI** y generar tokens/sesiones para el agente.
-
-No necesita permisos administrativos sobre Supabase.
-
-La app usará la clave solo desde una Supabase Edge Function, nunca desde el navegador.
-
-Se guardará como secreto:
-
-```text
-ELEVENLABS_API_KEY
-```
-
-También necesitaremos el ID del agente:
-
-```text
-ELEVENLABS_AGENT_ID
-```
-
-El endpoint que se usará desde backend será:
-
-```text
-GET https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=AGENT_ID
-Header: xi-api-key: ELEVENLABS_API_KEY
-```
-
-Esto permite iniciar una conversación privada con MarIA sin exponer la clave.
-
----
-
-## Sobre MCP
-
-### ¿Se puede tipo MCP?
-
-Sí, se puede hacer un MCP para que un agente consulte Supabase, pero para este caso no lo recomiendo como primera versión.
-
-El problema de un MCP directo es que puede terminar teniendo demasiado acceso si se conecta con permisos amplios.
-
-Para JPS Ganadería es más seguro empezar con:
-
-```text
-ElevenLabs Client Tools + Supabase RLS
-```
-
-Luego, si MarIA necesita capacidades más avanzadas, se puede crear un MCP o un conjunto de Edge Functions especializadas, pero siempre con permisos limitados y no con acceso libre a toda la base.
-
----
-
-## Cambios que implementaría
-
-### 1. Menú inferior
-
-Actualizar `src/components/BottomTabBar.tsx`.
-
-El botón central del hierro pasará a abrir MarIA en vez de navegar al menú.
-
----
-
-### 2. Nuevo componente de voz
-
-Crear un componente:
-
-```text
-src/components/MariaVoiceDialog.tsx
-```
-
-Este abrirá una ventana simple con:
-
-```text
-MarIA
-Tu asistente experta en ganadería
-
-[Iniciar conversación]
-[Terminar]
-Estado: escuchando / hablando / desconectada
-```
-
-También mostrará un mensaje antes de pedir micrófono:
-
-```text
-MarIA necesita acceso al micrófono para escucharte.
-```
-
----
-
-### 3. Instalar ElevenLabs React SDK
-
-Agregar dependencia:
-
-```text
-@elevenlabs/react
-```
-
-Usar `useConversation` para manejar:
-
-- conexión WebRTC
-- micrófono
-- estado de la conversación
-- mensajes de error
-- herramientas de consulta
-
----
-
-### 4. Edge Function para token privado
-
-Crear una Supabase Edge Function:
-
-```text
-supabase/functions/elevenlabs-conversation-token/index.ts
-```
-
-Responsabilidades:
-
-1. Validar que el usuario esté autenticado.
-2. Leer `ELEVENLABS_API_KEY`.
-3. Leer `ELEVENLABS_AGENT_ID`.
-4. Solicitar token de conversación a ElevenLabs.
-5. Devolver el token al frontend.
-
-Así la clave API nunca queda visible.
-
----
-
-### 5. Herramientas iniciales para MarIA
-
-Definir herramientas que MarIA pueda llamar desde ElevenLabs.
-
-Primera versión recomendada:
-
-```text
-buscar_animales
-```
-
-Busca animales por número, nombre, tipo, finca, raza o color.
-
-```text
-detalle_animal
-```
-
-Trae la ficha básica de un animal:
-
-- número
-- nombre
-- tipo
-- sexo
-- finca
-- raza
-- color
-- fecha de nacimiento
-- edad aproximada
-- padre
-- madre
-
-```text
-consultar_pesajes
-```
-
-Trae últimos pesos y fechas.
-
-```text
-consultar_reproduccion
-```
-
-Consulta:
-
-- palpaciones
-- inseminaciones
-- partos
-- embriones relacionados
-- estado reproductivo disponible
-
-```text
-resumen_ganaderia
-```
-
-Da resumen general permitido para el usuario:
-
-- total de animales visibles
-- hembras
-- machos
-- crías
-- embriones
-- animales por finca visible
-
-Todas estas consultas usarán el cliente Supabase del usuario conectado, por lo que RLS seguirá aplicando.
-
----
-
-### 6. Configurar herramientas en ElevenLabs
-
-En el dashboard de ElevenLabs habrá que registrar herramientas con los mismos nombres que tendrá el frontend.
-
-Ejemplo:
-
-```text
-buscar_animales
-detalle_animal
-consultar_pesajes
-consultar_reproduccion
-resumen_ganaderia
-```
-
-Estas herramientas serán “Client Tools”, es decir, ElevenLabs le pedirá a la app que ejecute la consulta y devuelva la respuesta.
-
----
-
-## Seguridad
-
-### MarIA no tendrá acceso libre a toda la base
-
-La regla será:
-
-```text
-MarIA ve lo mismo que ve el usuario conectado.
-```
-
-Por ejemplo:
-
-```text
-super_admin → MarIA puede responder sobre todo
-admin       → MarIA puede responder sobre todo
-operario    → MarIA solo puede responder sobre animales de sus fincas
-```
-
-No se usará `SUPABASE_SERVICE_ROLE_KEY` para consultas de MarIA en la primera versión.
+## Archivos a actualizar
+
+### `src/components/MariaVoiceDialog.tsx`
+- reestructurar el flujo de inicio/parada
+- usar estados UI dedicados:
+  - `idle`
+  - `connecting`
+  - `listening`
+  - `speaking`
+  - `error`
+- usar `onModeChange`, `onStatusChange`, `onError` y `conversation.isSpeaking` para derivar la experiencia
+- ocultar mensajes/eventos internos
+- agregar fallback WebRTC → WebSocket
+
+### `supabase/functions/elevenlabs-conversation-token/index.ts`
+- soportar entrega de `signed_url` además de `token`
+- mantener validación de usuario autenticado
+- conservar mensajes de error seguros y amigables
+
+### `src/components/BottomTabBar.tsx`
+- solo ajuste menor si hace falta para que el botón central refleje mejor que abre MarIA
+- mantener el acceso actual
 
 ---
 
 ## Resultado esperado
 
-Después de implementarlo:
+Después del cambio:
 
-1. El usuario toca el botón central del menú inferior.
-2. Se abre MarIA.
-3. La app pide permiso de micrófono.
-4. El usuario pregunta por voz:
-  ```text
-   MarIA, busca la vaca 683/01
-  ```
-5. MarIA consulta Supabase respetando permisos.
-6. MarIA responde por voz:
-  ```text
-   Encontré la hembra número 683/01. Está en Villa Paula...
-  ```
+```text
+1. El usuario toca el botón central.
+2. MarIA abre una vista limpia.
+3. El usuario inicia conversación.
+4. Si WebRTC falla, la app cae automáticamente a WebSocket.
+5. MarIA ya puede escuchar correctamente.
+6. La pantalla solo muestra:
+   - conectando
+   - escuchando
+   - hablando
+   - error amigable
+```
+
+Y el usuario ya no verá:
+
+- eventos JSON de ElevenLabs
+- preámbulos técnicos sobre permisos
+- mensajes internos del sistema
 
 ---
 
-## Plan de implementación
+## Detalle técnico importante
 
-### Paso 1: Preparar integración ElevenLabs
-
-- Agregar `@elevenlabs/react`.
-- Crear Edge Function para generar token privado.
-- Usar secretos `ELEVENLABS_API_KEY` y `ELEVENLABS_AGENT_ID`.
-
-### Paso 2: Crear interfaz MarIA
-
-- Crear `MariaVoiceDialog`.
-- Integrarlo en el botón central de `BottomTabBar`.
-- Mantener diseño negro/dorado y simple.
-
-### Paso 3: Crear herramientas de consulta
-
-- Implementar herramientas con Supabase client:
-  - `buscar_animales`
-  - `detalle_animal`
-  - `consultar_pesajes`
-  - `consultar_reproduccion`
-  - `resumen_ganaderia`
-
-### Paso 4: Configurar instrucciones para ElevenLabs
-
-- Definir prompt de MarIA.
-- Registrar los Client Tools en ElevenLabs.
-- Conectar cada tool con el nombre exacto usado en React.
-
-### Paso 5: Pruebas
-
-Probar con:
+La causa más fuerte detectada hoy es esta:
 
 ```text
-super_admin
-admin
-operario Villa Paula
+WebRTC validate endpoint devuelve 404
 ```
 
-Verificar preguntas como:
+Por eso la corrección no debe ser solo visual; también hay que endurecer la conexión con fallback.
+
+La mejora recomendada es:
 
 ```text
-¿Cuántas hembras hay?
-Busca la vaca 683/01
-¿Qué edad tiene?
-¿Cuáles fueron sus últimos pesos?
-¿Tiene palpaciones?
-¿Qué animales hay en Villa Paula?
+Intentar WebRTC primero
+→ si falla por RTC/404/1006
+→ iniciar sesión con signedUrl (WebSocket)
 ```
 
-Confirmar que el operario no pueda consultar animales fuera de su finca.
+Esto resuelve tanto la sensación de “MarIA no me escucha” como la estabilidad real de la conversación.
