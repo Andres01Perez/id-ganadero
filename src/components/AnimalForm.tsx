@@ -292,14 +292,19 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         savedId = data.id;
       }
 
-      if (fotoFile && savedId) {
-        const url = await uploadFoto(savedId);
-        if (url) {
-          await supabase
-            .from("animales")
-            .update({ foto_principal_url: url })
-            .eq("id", savedId);
-        }
+      const imageUpdates: { foto_principal_url?: string; foto_banner_url?: string } = {};
+      if (fotoBlob && savedId) {
+        imageUpdates.foto_principal_url = await uploadImage(savedId, fotoBlob, "avatar");
+      }
+      if (bannerBlob && savedId) {
+        imageUpdates.foto_banner_url = await uploadImage(savedId, bannerBlob, "banner");
+      }
+      if (Object.keys(imageUpdates).length > 0 && savedId) {
+        const { error } = await supabase
+          .from("animales")
+          .update(imageUpdates)
+          .eq("id", savedId);
+        if (error) throw error;
       }
 
       toast.success(isEdit ? "Animal actualizado" : "Animal creado");
@@ -352,33 +357,45 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         </SheetHeader>
 
         <div className="space-y-4 mt-4 pb-6">
-          {/* Foto */}
-          <div className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded-full border-2 border-gold bg-white overflow-hidden flex items-center justify-center shrink-0">
-              {fotoPreview ? (
-                <img src={fotoPreview} alt="" className="w-full h-full object-cover" />
-              ) : fotoActualUrl ? (
-                <img src={fotoActualUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <img src={jpsLogo} alt="" className="w-8 h-8 object-contain opacity-60" />
-              )}
+          <section className="space-y-3 rounded-lg border border-border bg-card p-3">
+            <p className="text-sm font-semibold">Imágenes del animal</p>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-full border-2 border-gold bg-background overflow-hidden flex items-center justify-center shrink-0">
+                {fotoPreview || fotoActualUrl ? (
+                  <img src={fotoPreview ?? fotoActualUrl ?? ""} alt="Foto del listado" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={jpsLogo} alt="" className="w-8 h-8 object-contain opacity-60" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Foto del listado</p>
+                <p className="text-xs text-muted-foreground">Se verá en el círculo de las listas.</p>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImagePicked("avatar", e)} />
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => avatarInputRef.current?.click()}>
+                  <Camera className="h-4 w-4 mr-1" />
+                  {fotoActualUrl || fotoPreview ? "Cambiar" : "Añadir"}
+                </Button>
+              </div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFotoChange}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Camera className="h-4 w-4 mr-1" />
-              {fotoActualUrl || fotoPreview ? "Cambiar foto" : "Añadir foto"}
-            </Button>
-          </div>
+            <div className="space-y-2">
+              <div className="aspect-[865/503] w-full overflow-hidden rounded-lg border border-border bg-background flex items-center justify-center">
+                {bannerPreview || bannerActualUrl ? (
+                  <img src={bannerPreview ?? bannerActualUrl ?? ""} alt="Banner principal" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={jpsLogo} alt="" className="h-12 w-12 object-contain opacity-50" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium">Banner principal</p>
+                <p className="text-xs text-muted-foreground">Se verá arriba en la hoja de vida.</p>
+                <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImagePicked("banner", e)} />
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => bannerInputRef.current?.click()}>
+                  <Camera className="h-4 w-4 mr-1" />
+                  {bannerActualUrl || bannerPreview ? "Cambiar" : "Añadir"}
+                </Button>
+              </div>
+            </div>
+          </section>
 
           <div>
             <Label htmlFor="numero">Número *</Label>
