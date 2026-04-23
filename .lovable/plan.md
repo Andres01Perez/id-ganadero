@@ -1,142 +1,64 @@
 
-## Corregir error al guardar imágenes del animal
 
-### Problema detectado
+## Agregar banner editable de "Fincas" al panel de imágenes
 
-El error no viene del formulario de datos generales directamente. Viene de Supabase Storage al intentar subir el banner:
+### Contexto
 
-```text
-POST /storage/v1/object/animal-fotos/{animalId}/banner/{timestamp}.jpg
-new row violates row-level security policy
-```
+En `/superadmin/imagenes`, dentro de la pestaña **Marca · Banners → Banners de categorías**, ya existen banners editables para Machos, Hembras, Crías y Embriones. Falta el banner de la pantalla **Fincas** (`/fincas`), que hoy usa una imagen estática (`lista-header.jpg`) sin posibilidad de cambio desde el superadmin.
 
-Esto confirma que el bloqueo está en las políticas RLS de `storage.objects` para el bucket:
+### Cambios
 
-```text
-animal-fotos
-```
+**1. `src/lib/asset-keys.ts`**
 
-El cambio reciente de seguridad quitó/ajustó políticas de lectura y dejó la subida con reglas que no están funcionando bien para el flujo actual de edición de imágenes.
-
----
-
-## Qué voy a corregir
-
-### 1. Crear una migración para Storage
-
-Ajustaré las políticas del bucket `animal-fotos` para permitir que un usuario autenticado y activo pueda subir, actualizar y borrar imágenes únicamente cuando tenga acceso al animal.
-
-La ruta de las imágenes ya empieza con el ID del animal:
+Agregar la nueva clave canónica del banner de fincas y su fallback:
 
 ```text
-{animalId}/avatar/{timestamp}.jpg
-{animalId}/banner/{timestamp}.jpg
-{animalId}/eventos/pesajes/{timestamp}.jpg
-{animalId}/eventos/campeonatos/{timestamp}.jpg
+bannerFincas: "categoria.banner.fincas"
 ```
 
-Usaré ese primer segmento para validar acceso con la función existente:
+Fallback: la misma imagen actual (`lista-header.jpg`) para no romper nada existente.
+
+**2. `src/pages/SuperAdmin/Imagenes.tsx`**
+
+Añadir una nueva entrada al arreglo `categoryBanners` para que aparezca como tarjeta editable junto a los demás banners de categorías:
 
 ```text
-user_can_access_animal(auth.uid(), animal_id)
+{ key: ASSET_KEYS.bannerFincas, label: "Banner · Fincas", ...BANNER }
 ```
 
----
+También actualizar el subtítulo de "Banners de categorías" para mencionar `/fincas`.
 
-### 2. Reemplazar políticas inseguras o inconsistentes
+**3. `src/pages/Fincas.tsx`**
 
-Eliminaré las políticas antiguas de `animal-fotos` que están mezcladas entre:
+Reemplazar el `<img src={listaHeader} ... />` estático por un consumo dinámico vía `useAppAsset`:
 
 ```text
-solo admin
-cualquier usuario autenticado
-sin política SELECT para el flujo de upsert
+const headerImg = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
 ```
 
-Y crearé políticas consistentes:
+Y usar `headerImg` como `src`. Esto sigue el mismo patrón ya implementado en `CategoriaAnimales.tsx`.
+
+### Sin cambios en
+
+- Base de datos (la tabla `app_assets` ya soporta cualquier clave nueva).
+- Storage (el bucket `app-assets` y sus políticas son agnósticos a la clave).
+- `useAppAsset.ts` (es genérico).
+
+### Resultado
 
 ```text
-Ver objeto de animal-fotos:
-- usuario autenticado
-- usuario activo
-- usuario con acceso al animal
-
-Subir objeto:
-- usuario autenticado
-- usuario activo
-- usuario con acceso al animal de la carpeta
-
-Actualizar objeto:
-- usuario autenticado
-- usuario activo
-- usuario con acceso al animal
-
-Eliminar objeto:
-- usuario autenticado
-- usuario activo
-- usuario con acceso al animal
+1. En /superadmin/imagenes → "Marca · Banners" → "Banners de categorías"
+   aparecerá una nueva tarjeta "Banner · Fincas".
+2. El superadmin podrá subir/recortar la imagen con el mismo flujo (16:10).
+3. El cambio se reflejará al instante en la pantalla /fincas.
+4. Si nunca se sube nada, sigue mostrando la imagen original.
 ```
 
-Esto evita abrir todo el bucket a cualquier usuario y corrige el bloqueo al subir banner/foto.
-
----
-
-### 3. Mantener compatibilidad con las imágenes actuales
-
-Las imágenes existentes usan rutas como:
+### Archivos que se tocarán
 
 ```text
-{animalId}/{timestamp}.jpg
-{animalId}/banner/{timestamp}.jpg
+src/lib/asset-keys.ts
+src/pages/SuperAdmin/Imagenes.tsx
+src/pages/Fincas.tsx
 ```
 
-La nueva política tomará siempre el primer segmento como `animalId`, así que seguirá funcionando con las imágenes ya guardadas.
-
----
-
-### 4. Ajustar el formulario de animal si es necesario
-
-Revisaré `src/components/AnimalForm.tsx` para asegurar que el guardado siga este orden:
-
-```text
-1. Guardar datos generales del animal
-2. Subir imagen/avatar o banner
-3. Actualizar foto_principal_url / foto_banner_url en animales
-4. Mostrar mensaje claro si falla solo la imagen
-```
-
-También mejoraré el mensaje de error para que no muestre el texto técnico:
-
-```text
-new row violates row-level security policy
-```
-
-En su lugar mostrará algo claro:
-
-```text
-No se pudo subir la imagen. Verifica que tengas acceso a este animal.
-```
-
----
-
-## Resultado esperado
-
-Después del cambio:
-
-```text
-1. El usuario podrá guardar cambios al editar la información general del animal.
-2. El banner se podrá subir correctamente.
-3. La foto principal se podrá subir correctamente.
-4. Las evidencias de peso y campeonatos seguirán funcionando.
-5. El bucket animal-fotos seguirá protegido por finca/animal.
-6. No se abrirá el bucket completo a usuarios sin acceso.
-```
-
-## Archivos / áreas que se tocarán
-
-```text
-supabase/migrations/
-src/components/AnimalForm.tsx
-```
-
-No modificaré `src/integrations/supabase/types.ts` manualmente.
