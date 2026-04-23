@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { resizeImage } from "@/lib/image";
 import { toast } from "sonner";
+import ImageCropDialog from "@/components/ImageCropDialog";
 import {
   Sheet,
   SheetContent,
@@ -54,6 +54,10 @@ const schema = z.object({
 
 type Finca = { id: string; nombre: string };
 type Parent = { id: string; numero: string; nombre: string | null };
+type CropTarget = "avatar" | "banner";
+
+const AVATAR_CROP = { aspect: 1, output: { width: 512, height: 512 } };
+const BANNER_CROP = { aspect: 865 / 503, output: { width: 1600, height: 930 } };
 
 const sexoFromTipo = (tipo: AnimalTipo): "M" | "H" | undefined => {
   if (tipo === "macho") return "M";
@@ -78,8 +82,13 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [padreId, setPadreId] = useState("");
   const [createdBy, setCreatedBy] = useState<string | null>(null);
   const [fotoActualUrl, setFotoActualUrl] = useState<string | null>(null);
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [bannerActualUrl, setBannerActualUrl] = useState<string | null>(null);
+  const [fotoBlob, setFotoBlob] = useState<Blob | null>(null);
+  const [bannerBlob, setBannerBlob] = useState<Blob | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropTarget, setCropTarget] = useState<CropTarget | null>(null);
 
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [hembras, setHembras] = useState<Parent[]>([]);
@@ -87,7 +96,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
 
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const showSexo = tipo === "cria" || tipo === "embrion" || tipo === "otro";
 
