@@ -18,6 +18,7 @@ type Animal = {
   color: string | null;
   raza: string | null;
   foto_principal_url: string | null;
+  foto_banner_url: string | null;
 };
 
 const pills = [
@@ -50,7 +51,7 @@ const HojaVidaAnimal = () => {
     if (!id) return;
     const { data, error } = await supabase
       .from("animales")
-      .select("id, numero, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url")
+      .select("id, numero, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url, foto_banner_url")
       .eq("id", id)
       .maybeSingle();
     if (error || !data) {
@@ -58,7 +59,7 @@ const HojaVidaAnimal = () => {
       navigate("/menu");
       return;
     }
-    setAnimal(data);
+    setAnimal(data as Animal);
     setLoading(false);
   };
 
@@ -78,10 +79,10 @@ const HojaVidaAnimal = () => {
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
       {/* Foto grande */}
-      <header className="relative h-64 bg-neutral-200 overflow-hidden">
-        {animal.foto_principal_url ? (
+      <header className="relative aspect-[865/503] bg-muted overflow-hidden">
+        {animal.foto_banner_url || animal.foto_principal_url ? (
           <img
-            src={animal.foto_principal_url}
+            src={animal.foto_banner_url ?? animal.foto_principal_url ?? ""}
             alt={animal.nombre ?? animal.numero}
             className="w-full h-full object-cover"
             loading="eager"
