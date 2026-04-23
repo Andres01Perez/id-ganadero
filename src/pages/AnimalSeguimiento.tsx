@@ -215,9 +215,9 @@ const AnimalSeguimiento = () => {
           </div>
           {config.tipo === "peso" ? (
             <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-              <div className="bg-secondary rounded-md p-2"><p className="text-xs text-muted-foreground">Último</p><p className="font-semibold">{last?.peso_kg ?? "—"} kg</p></div>
-              <div className="bg-secondary rounded-md p-2"><p className="text-xs text-muted-foreground">Anterior</p><p className="font-semibold">{previous?.peso_kg ?? "—"} kg</p></div>
-              <div className="bg-secondary rounded-md p-2"><p className="text-xs text-muted-foreground">Ganancia</p><p className="font-semibold">{last?.ganancia_desde_anterior_kg ?? "—"} kg</p></div>
+              <div className="bg-secondary rounded-md p-2"><p className="text-xs text-muted-foreground">Último</p><p className="font-semibold">{String(last?.peso_kg ?? "—")} kg</p></div>
+              <div className="bg-secondary rounded-md p-2"><p className="text-xs text-muted-foreground">Anterior</p><p className="font-semibold">{String(previous?.peso_kg ?? "—")} kg</p></div>
+              <div className="bg-secondary rounded-md p-2"><p className="text-xs text-muted-foreground">Ganancia</p><p className="font-semibold">{String(last?.ganancia_desde_anterior_kg ?? "—")} kg</p></div>
             </div>
           ) : null}
         </section>
