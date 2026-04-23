@@ -52,8 +52,17 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const detail = await response.text();
+      let message = "No se pudo iniciar MarIA";
+      try {
+        const parsed = JSON.parse(detail);
+        if (parsed?.detail?.status === "missing_permissions") {
+          message = "La API key de ElevenLabs necesita el permiso Conversational AI: convai_write";
+        }
+      } catch {
+        // Mantener mensaje genérico si ElevenLabs no devuelve JSON.
+      }
       return jsonResponse(
-        { error: "No se pudo iniciar MarIA", detail },
+        { error: message, detail },
         response.status,
       );
     }
