@@ -20,6 +20,7 @@ const Fincas = () => {
   const navigate = useNavigate();
   const { roles } = useAuth();
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+  const headerImg = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
 
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [opCounts, setOpCounts] = useState<Record<string, number>>({});
