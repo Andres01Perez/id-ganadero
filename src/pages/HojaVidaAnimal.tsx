@@ -151,7 +151,7 @@ const HojaVidaAnimal = () => {
           {pills.map((p) => (
             <button
               key={p.slug}
-              onClick={() => toast.info(`Próximamente: ${p.label}`)}
+              onClick={() => navigate(`/animal/${animal.id}/seguimiento/${p.slug}`)}
               className="bg-gold-solid text-ink rounded-full py-3 px-4 text-sm font-semibold uppercase tracking-wider shadow-gold active:scale-95 transition-transform"
             >
               {p.label}

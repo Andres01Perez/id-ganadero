@@ -9,6 +9,7 @@ import Admin from "./pages/Admin";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
+import AnimalSeguimiento from "./pages/AnimalSeguimiento";
 import Fincas from "./pages/Fincas";
 import NotFound from "./pages/NotFound";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
@@ -97,6 +98,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <HojaVidaAnimal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/animal/:id/seguimiento/:tipo"
+                element={
+                  <ProtectedRoute>
+                    <AnimalSeguimiento />
                   </ProtectedRoute>
                 }
               />
