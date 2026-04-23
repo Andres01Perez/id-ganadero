@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import listaHeader from "@/assets/lista-header.jpg";
+import { useAppAsset } from "@/hooks/useAppAsset";
+import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaForm from "@/components/FincaForm";
 import { ArrowLeft, MapPin, Plus, Users } from "lucide-react";
@@ -19,6 +20,7 @@ const Fincas = () => {
   const navigate = useNavigate();
   const { roles } = useAuth();
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+  const headerImg = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
 
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [opCounts, setOpCounts] = useState<Record<string, number>>({});
@@ -80,7 +82,7 @@ const Fincas = () => {
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
       <header className="relative aspect-[865/503] overflow-hidden">
-        <img src={listaHeader} alt="" className="w-full h-full object-cover" loading="eager" />
+        <img src={headerImg} alt="" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />
         <button
           onClick={() => navigate("/menu")}
