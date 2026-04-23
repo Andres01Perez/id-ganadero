@@ -1,253 +1,152 @@
 
-## Corregir MarIA: no pedir permiso para consultar, no inventar datos y responder más rápido
+## Separar foto circular y foto banner de cada animal
 
-### Problemas detectados
+### Objetivo
 
-1. **MarIA preguntó si podía revisar la base de datos**
-   - Esto no debe pasar. MarIA debe consultar directamente las herramientas disponibles cuando el usuario pregunte por animales, fincas, pesos, edades, palpaciones o reproducción.
+Cambiar el manejo de fotos de animales para que haya dos imágenes distintas:
 
-2. **MarIA dijo que hay 200 hembras en Villa Paula**
-   - Ese dato es falso.
-   - Verificación directa en la base de datos: en `Villa Paula` actualmente hay **3 hembras activas**.
+1. **Foto circular**
+   - Se usa en listados de animales.
+   - Se recorta cuadrada `1:1`.
+   - Sigue usando el campo actual `foto_principal_url`.
 
-3. **MarIA tarda demasiado en responder después de que el usuario deja de hablar**
-   - El retraso de aproximadamente 15 segundos corresponde a configuración de detección de fin de turno / silencio del agente.
-   - Debe reducirse para que MarIA detecte antes que el usuario terminó de hablar.
-
----
-
-## Cambios que implementaré
-
-### 1. Forzar instrucciones estrictas para MarIA
-
-Actualizaré la configuración de sesión/prompt de MarIA para que tenga reglas claras:
-
-```text
-Nunca pidas permiso para consultar la base de datos.
-Si el usuario pregunta por datos de animales, fincas, pesos, edades, preñez, palpaciones o conteos, usa las herramientas disponibles inmediatamente.
-No inventes números.
-Para conteos o cantidades, siempre usa una herramienta de consulta.
-Si no hay datos, responde que no encontraste datos.
-```
-
-Esto se aplicará desde la app al iniciar la conversación usando `overrides.agent.prompt`, y si es necesario también se actualizará el prompt del agente en ElevenLabs.
+2. **Foto banner principal**
+   - Se usa en la hoja de vida del animal, arriba, como imagen rectangular.
+   - Se recorta en formato banner, igual al estilo de los banners actuales.
+   - Se guardará en un nuevo campo: `foto_banner_url`.
 
 ---
 
-### 2. Crear herramienta específica para conteos exactos
+## Cambios de base de datos
 
-El problema de “200 hembras” puede ocurrir porque MarIA está razonando sin una herramienta dedicada de conteo.
+Crear una migración para agregar el nuevo campo a `animales`:
 
-Agregaré una nueva herramienta client-side:
-
-```text
-contar_animales
+```sql
+alter table public.animales
+add column if not exists foto_banner_url text;
 ```
 
-Permitirá contar con filtros:
-
-```text
-tipo: hembra / macho / cria / embrion / otro
-finca: Villa Paula
-sexo: M / H
-activo: true
-```
-
-Ejemplo de respuesta real:
-
-```json
-{
-  "total": 3,
-  "filtros": {
-    "tipo": "hembra",
-    "finca": "Villa Paula"
-  }
-}
-```
-
-Así, para preguntas como:
-
-```text
-¿Cuántas hembras tenemos en la finca Villa Paula?
-```
-
-MarIA deberá usar `contar_animales` y responder con el número exacto.
+No se necesitan nuevas políticas RLS porque la lectura y actualización del animal ya están controladas por las políticas existentes de la tabla `animales`.
 
 ---
 
-### 3. Mejorar `resumen_ganaderia`
+## Cambios en el formulario de animal
 
-Actualizaré `resumen_ganaderia` para que sea más útil y menos ambiguo:
-
-- aceptar filtro opcional por finca
-- devolver totales por tipo
-- devolver totales por sexo
-- devolver totales exactos por finca visible
-- evitar límites que puedan distorsionar conteos
-
-Esto ayudará cuando el usuario haga preguntas generales como:
+Actualizar `src/components/AnimalForm.tsx` para pedir dos fotos separadas:
 
 ```text
-¿Cuántos animales hay en Villa Paula?
-¿Cuántas hembras tengo?
-¿Cuántos machos hay?
+Foto del listado
+- Circular
+- Recorte 1:1
+- Se ve en listas y tablas
+
+Banner principal
+- Rectangular
+- Recorte tipo banner
+- Se ve en la hoja de vida del animal
 ```
+
+### Recorte
+
+Reutilizar el componente existente:
+
+```text
+src/components/ImageCropDialog.tsx
+```
+
+Configurar dos modos de recorte:
+
+```text
+Foto circular:
+aspect: 1
+output: 512 x 512
+
+Banner principal:
+aspect: 865 / 503
+output: 1600 x 930
+```
+
+El usuario podrá escoger y ajustar cada imagen antes de guardar.
 
 ---
 
-### 4. Corregir búsqueda por finca
+## Guardado de imágenes
 
-Revisaré la consulta actual de `buscar_animales`, porque el filtro:
+Mantener el bucket actual:
 
-```ts
-.ilike("fincas.nombre", ...)
+```text
+animal-fotos
 ```
 
-puede no filtrar correctamente cuando se usa relación anidada en Supabase.
+Guardar las imágenes en rutas separadas para orden:
 
-La cambiaré por una estrategia más confiable:
+```text
+{animalId}/avatar/{timestamp}.jpg
+{animalId}/banner/{timestamp}.jpg
+```
 
-1. Buscar primero las fincas cuyo nombre coincida.
-2. Tomar sus `id`.
-3. Filtrar animales con `.in("finca_id", fincaIds)`.
+Al guardar el animal:
 
-Esto hará que MarIA no mezcle animales de otras fincas.
+- si cambió la foto circular, actualizar `foto_principal_url`
+- si cambió el banner, actualizar `foto_banner_url`
 
 ---
 
-### 5. Registrar/usar la nueva herramienta en ElevenLabs
+## Cambios en la hoja de vida
 
-La app tendrá la herramienta `contar_animales`, pero ElevenLabs también debe conocerla como Client Tool.
+Actualizar `src/pages/HojaVidaAnimal.tsx`:
 
-Agregaré el soporte en React y dejaré la configuración lista para que el agente pueda llamarla.
+- consultar también `foto_banner_url`
+- usar `foto_banner_url` en la foto grande superior
+- si un animal viejo no tiene banner, usar como respaldo `foto_principal_url`
+- si no tiene ninguna foto, mostrar el logo como fallback
 
-Herramientas finales:
+Cambiar el header para que sea realmente rectangular tipo banner:
 
 ```text
-buscar_animales
-detalle_animal
-contar_animales
-consultar_pesajes
-consultar_reproduccion
-resumen_ganaderia
+aspect-[865/503]
 ```
+
+en lugar de una altura fija que puede deformar la imagen en móvil.
 
 ---
 
-### 6. Reducir el tiempo de espera al hablar
+## Cambios en listados
 
-Haré dos ajustes:
+Mantener los listados usando la foto circular actual:
 
-#### En la app
-Al iniciar sesión con ElevenLabs, enviaré configuración de baja latencia cuando el SDK lo permita:
+- `src/pages/CategoriaAnimales.tsx`
+- `src/components/AnimalAvatar.tsx`
+- tablas administrativas que muestran avatar circular
 
-```ts
-connectionDelay: {
-  default: 0,
-  android: 0,
-  ios: 0
-}
-```
-
-y mantendré la conexión por WebSocket/WebRTC sin retardos artificiales.
-
-#### En ElevenLabs
-Revisaré la configuración del agente relacionada con:
-
-```text
-turn detection
-silence timeout
-end of speech detection
-responsiveness
-latency optimization
-```
-
-Objetivo:
-
-```text
-silencio para terminar turno: ~2 segundos
-```
-
-Si ElevenLabs permite actualizarlo por API, lo dejaré aplicado desde la Edge Function o una actualización del agente. Si esa parte solo está disponible desde el dashboard, dejaré indicada la configuración exacta que debe quedar en el agente.
+No se cambiará el comportamiento del listado: seguirá mostrando `foto_principal_url`.
 
 ---
 
-### 7. Evitar respuestas numéricas sin herramienta
+## Ajuste visual del formulario
 
-Agregaré instrucciones para que MarIA no responda conteos desde memoria o suposición.
-
-Regla:
+En el formulario se mostrará una sección clara de imágenes:
 
 ```text
-Para cualquier pregunta que incluya “cuántos”, “cuántas”, “total”, “cantidad”, “número de animales”, “hembras”, “machos” o una finca específica, primero debe llamar una herramienta.
+Imágenes del animal
+
+[Foto del listado]
+Vista circular pequeña
+Botón: Añadir / Cambiar
+
+[Banner principal]
+Vista rectangular
+Botón: Añadir / Cambiar
 ```
 
-Esto previene respuestas inventadas como “200 hembras”.
-
----
-
-## Archivos a modificar
-
-### `src/lib/maria-tools.ts`
-
-- agregar `contar_animales`
-- mejorar filtro por finca
-- mejorar `resumen_ganaderia`
-- devolver respuestas más explícitas para que el agente no tenga que inferir
-
-### `src/components/MariaVoiceDialog.tsx`
-
-- agregar `overrides.agent.prompt` con reglas estrictas
-- agregar configuración de baja latencia si el SDK la acepta
-- mantener UI simple: escuchando / hablando / conectando
-- no mostrar detalles técnicos al usuario
-
-### `supabase/functions/elevenlabs-conversation-token/index.ts`
-
-- revisar si se puede consultar/actualizar configuración del agente en ElevenLabs
-- mantener token y signed URL
-- si ElevenLabs permite configurar turn-taking por API, aplicar el objetivo de 2 segundos
-
----
-
-## Pruebas
-
-Probaré estos casos:
+Con textos simples para evitar confusión:
 
 ```text
-¿Cuántas hembras tenemos en la finca Villa Paula?
-```
+Foto del listado
+Se verá en el círculo de las listas.
 
-Resultado esperado:
-
-```text
-En Villa Paula hay 3 hembras activas.
-```
-
-```text
-¿Cuántos animales hay en Villa Paula?
-```
-
-Resultado esperado: conteo real desde Supabase.
-
-```text
-Busca la vaca 683/01
-```
-
-Resultado esperado: búsqueda real sin pedir permiso.
-
-```text
-¿Cuáles fueron sus últimos pesos?
-```
-
-Resultado esperado: consulta directa a `consultar_pesajes`.
-
-También validaré que:
-
-```text
-MarIA no pregunte “¿me dejas revisar la base de datos?”
-MarIA no invente conteos.
-MarIA responda aproximadamente 2 segundos después de que el usuario termina de hablar.
+Banner principal
+Se verá arriba en la hoja de vida.
 ```
 
 ---
@@ -257,8 +156,11 @@ MarIA responda aproximadamente 2 segundos después de que el usuario termina de 
 Después del cambio:
 
 ```text
-Usuario: ¿Cuántas hembras tenemos en la finca Villa Paula?
-MarIA: En Villa Paula hay 3 hembras activas.
+1. Al crear o editar un animal, el usuario puede subir dos fotos.
+2. La foto circular se recorta cuadrada.
+3. El banner se recorta rectangular.
+4. La lista de animales mantiene la foto redonda.
+5. La hoja de vida muestra una imagen rectangular tipo banner.
+6. Los animales existentes siguen funcionando aunque todavía no tengan banner.
 ```
 
-Sin pedir permiso, sin inventar números y con menor tiempo de espera.
