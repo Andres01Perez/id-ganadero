@@ -4,10 +4,12 @@ import { Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import jpsLogo from "@/assets/jps-logo.webp";
 import SearchDialog from "@/components/SearchDialog";
+import MariaVoiceDialog from "@/components/MariaVoiceDialog";
 
 const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mariaOpen, setMariaOpen] = useState(false);
 
   return (
     <>
@@ -34,9 +36,9 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
           {/* Hierro central */}
           <button
             type="button"
-            onClick={() => navigate("/menu")}
+            onClick={() => setMariaOpen(true)}
             className="-mt-4 h-14 w-14 rounded-full border-2 border-gold bg-black flex items-center justify-center shadow-soft transition-all active:scale-95"
-            aria-label="Inicio"
+            aria-label="Abrir MarIA"
           >
             <img
               src={jpsLogo}
@@ -61,6 +63,7 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
       </nav>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <MariaVoiceDialog open={mariaOpen} onOpenChange={setMariaOpen} />
     </>
   );
 };
