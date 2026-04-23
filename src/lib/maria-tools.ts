@@ -15,6 +15,9 @@ type AnimalSummary = {
 
 type ToolParams = Record<string, unknown>;
 
+const ANIMAL_TYPES = ["macho", "hembra", "cria", "embrion", "otro"] as const;
+type AnimalTipo = (typeof ANIMAL_TYPES)[number];
+
 const asText = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
@@ -36,6 +39,67 @@ const ageFromDate = (date: string | null) => {
   if (years === 0) return `${restMonths} meses`;
   if (restMonths === 0) return `${years} años`;
   return `${years} años y ${restMonths} meses`;
+};
+
+const normalizeTipo = (value: unknown): AnimalTipo | null => {
+  const text = asText(value).toLowerCase();
+  if (["hembra", "hembras", "vaca", "vacas"].includes(text)) return "hembra";
+  if (["macho", "machos", "toro", "toros"].includes(text)) return "macho";
+  if (["cria", "cría", "crias", "crías", "ternero", "terneros"].includes(text)) return "cria";
+  if (["embrion", "embrión", "embriones"].includes(text)) return "embrion";
+  if (ANIMAL_TYPES.includes(text as AnimalTipo)) return text as AnimalTipo;
+  return null;
+};
+
+const normalizeSexo = (value: unknown): "M" | "H" | null => {
+  const text = asText(value).toLowerCase();
+  if (["m", "macho", "machos"].includes(text)) return "M";
+  if (["h", "hembra", "hembras", "f", "female"].includes(text)) return "H";
+  return null;
+};
+
+const resolveFincas = async (value: unknown) => {
+  const finca = asText(value);
+  if (!finca) return { ids: null as string[] | null, nombres: [] as string[] };
+
+  const safe = finca.replace(/[%_]/g, " ").replace(/\s+/g, " ").trim();
+  if (!safe) return { ids: [] as string[], nombres: [] as string[] };
+
+  const { data, error } = await supabase
+    .from("fincas")
+    .select("id, nombre")
+    .eq("activo", true)
+    .ilike("nombre", `%${safe}%`);
+
+  if (error) throw error;
+  return {
+    ids: (data ?? []).map((finca) => finca.id),
+    nombres: (data ?? []).map((finca) => finca.nombre),
+  };
+};
+
+const countAnimales = async (params: ToolParams = {}) => {
+  const tipo = normalizeTipo(params.tipo ?? params.clase ?? params.categoria);
+  const sexo = normalizeSexo(params.sexo);
+  const fincaText = asText(params.finca);
+  const { ids: fincaIds, nombres: fincaNombres } = await resolveFincas(fincaText);
+
+  if (fincaText && fincaIds?.length === 0) {
+    return { total: 0, fincaNombres, tipo, sexo };
+  }
+
+  let query = supabase
+    .from("animales")
+    .select("id", { count: "exact", head: true })
+    .eq("activo", true);
+
+  if (tipo) query = query.eq("tipo", tipo);
+  if (sexo) query = query.eq("sexo", sexo);
+  if (fincaIds) query = query.in("finca_id", fincaIds);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return { total: count ?? 0, fincaNombres, tipo, sexo };
 };
 
 const formatAnimal = (animal: AnimalSummary) => ({
