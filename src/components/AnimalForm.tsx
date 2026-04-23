@@ -14,10 +14,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Camera, Trash2 } from "lucide-react";
 import jpsLogo from "@/assets/jps-logo.webp";
 
 type AnimalTipo = "macho" | "hembra" | "cria" | "embrion" | "otro";
+type AnimalRaza = "Brahman";
+type AnimalColor = "Gris" | "Rojo";
+
+const RAZA_OPTIONS: AnimalRaza[] = ["Brahman"];
+const COLOR_OPTIONS: AnimalColor[] = ["Gris", "Rojo"];
 
 type Props = {
   open: boolean;
@@ -33,8 +45,8 @@ const schema = z.object({
   numero_registro: z.string().trim().max(40).optional().or(z.literal("")),
   fecha_nacimiento: z.string().optional().or(z.literal("")),
   sexo: z.enum(["M", "H"]).optional(),
-  raza: z.string().trim().max(40).optional().or(z.literal("")),
-  color: z.string().trim().max(40).optional().or(z.literal("")),
+  raza: z.enum(["Brahman"], { message: "Selecciona una raza válida" }),
+  color: z.enum(["Gris", "Rojo"], { message: "Selecciona un color válido" }),
   finca_id: z.string().uuid("Debes seleccionar una finca"),
   madre_id: z.string().optional().or(z.literal("")),
   padre_id: z.string().optional().or(z.literal("")),
@@ -59,8 +71,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [numeroRegistro, setNumeroRegistro] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [sexo, setSexo] = useState<"M" | "H" | "">("");
-  const [raza, setRaza] = useState("");
-  const [color, setColor] = useState("");
+  const [raza, setRaza] = useState<AnimalRaza | "">("Brahman");
+  const [color, setColor] = useState<AnimalColor | "">("");
   const [fincaId, setFincaId] = useState("");
   const [madreId, setMadreId] = useState("");
   const [padreId, setPadreId] = useState("");
@@ -147,8 +159,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         setNumeroRegistro(data.numero_registro ?? "");
         setFechaNacimiento(data.fecha_nacimiento ?? "");
         setSexo((data.sexo as "M" | "H" | null) ?? "");
-        setRaza(data.raza ?? "");
-        setColor(data.color ?? "");
+        setRaza(data.raza === "Brahman" ? data.raza : "");
+        setColor(data.color === "Gris" || data.color === "Rojo" ? data.color : "");
         setFincaId(data.finca_id ?? "");
         setMadreId(data.madre_id ?? "");
         setPadreId(data.padre_id ?? "");
@@ -163,7 +175,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setNumeroRegistro("");
       setFechaNacimiento("");
       setSexo(sexoFromTipo(tipo) ?? "");
-      setRaza("");
+      setRaza("Brahman");
       setColor("");
       setFincaId("");
       setMadreId("");
@@ -397,19 +409,29 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="raza">Raza</Label>
-              <Input
-                id="raza"
-                value={raza}
-                onChange={(e) => setRaza(e.target.value)}
-              />
+              <Select value={raza} onValueChange={(value) => setRaza(value as AnimalRaza)}>
+                <SelectTrigger id="raza">
+                  <SelectValue placeholder="Selecciona raza" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RAZA_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="color">Color</Label>
-              <Input
-                id="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-              />
+              <Select value={color} onValueChange={(value) => setColor(value as AnimalColor)}>
+                <SelectTrigger id="color">
+                  <SelectValue placeholder="Selecciona color" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
