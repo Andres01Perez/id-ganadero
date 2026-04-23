@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 type Animal = {
   id: string;
-  codigo: string;
+  numero: string;
   nombre: string | null;
   foto_principal_url: string | null;
 };
@@ -50,10 +50,10 @@ const CategoriaAnimales = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("animales")
-      .select("id, codigo, nombre, foto_principal_url")
+      .select("id, numero, nombre, foto_principal_url")
       .eq("tipo", validTipo)
       .eq("activo", true)
-      .order("codigo");
+      .order("numero");
     if (error) toast.error("No se pudieron cargar los animales");
     else setAnimals(data ?? []);
     setLoading(false);
@@ -112,12 +112,12 @@ const CategoriaAnimales = () => {
               onClick={() => navigate(`/animal/${a.id}`)}
               className="w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform"
             >
-              <AnimalAvatar src={a.foto_principal_url} alt={a.nombre ?? a.codigo} />
+              <AnimalAvatar src={a.foto_principal_url} alt={a.nombre ?? a.numero} />
               <div className="flex-1 text-left">
                 <p className="font-bold text-base text-ink leading-tight">
                   {a.nombre ?? "Sin nombre"}
                 </p>
-                <p className="text-xs text-muted-foreground tracking-wide">{a.codigo}</p>
+                <p className="text-xs text-muted-foreground tracking-wide">{a.numero}</p>
               </div>
             </button>
           ))

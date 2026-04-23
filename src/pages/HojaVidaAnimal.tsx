@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 type Animal = {
   id: string;
-  codigo: string;
+  numero: string;
   nombre: string | null;
   tipo: string;
   sexo: string | null;
@@ -50,7 +50,7 @@ const HojaVidaAnimal = () => {
     if (!id) return;
     const { data, error } = await supabase
       .from("animales")
-      .select("id, codigo, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url")
+      .select("id, numero, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url")
       .eq("id", id)
       .maybeSingle();
     if (error || !data) {
@@ -82,7 +82,7 @@ const HojaVidaAnimal = () => {
         {animal.foto_principal_url ? (
           <img
             src={animal.foto_principal_url}
-            alt={animal.nombre ?? animal.codigo}
+            alt={animal.nombre ?? animal.numero}
             className="w-full h-full object-cover"
             loading="eager"
           />
@@ -108,9 +108,9 @@ const HojaVidaAnimal = () => {
         </button>
       </header>
 
-      {/* Banda dorada con código */}
+      {/* Banda dorada con número */}
       <div className="bg-gold-solid text-ink py-3 px-4 text-center tracking-jps font-semibold uppercase text-base">
-        {animal.nombre ?? "Sin nombre"} {animal.codigo}
+        {animal.nombre ?? "Sin nombre"} {animal.numero}
       </div>
 
       {/* Información general */}
@@ -122,8 +122,8 @@ const HojaVidaAnimal = () => {
           <dt className="text-muted-foreground">Nombre</dt>
           <dd className="font-semibold">{animal.nombre ?? "—"}</dd>
 
-          <dt className="text-muted-foreground">Código</dt>
-          <dd className="font-semibold">{animal.codigo}</dd>
+          <dt className="text-muted-foreground">Número</dt>
+          <dd className="font-semibold">{animal.numero}</dd>
 
           <dt className="text-muted-foreground">F. nacimiento</dt>
           <dd className="font-semibold">{formatDate(animal.fecha_nacimiento)}</dd>

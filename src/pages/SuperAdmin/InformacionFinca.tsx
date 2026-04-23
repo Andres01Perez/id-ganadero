@@ -34,7 +34,7 @@ type Finca = {
 
 type Animal = {
   id: string;
-  codigo: string;
+  numero: string;
   nombre: string | null;
   tipo: string;
   raza: string | null;
@@ -102,10 +102,10 @@ const InformacionFinca = () => {
           .maybeSingle(),
         supabase
           .from("animales")
-          .select("id, codigo, nombre, tipo, raza, color, fecha_nacimiento, numero_registro, sexo, foto_principal_url")
+          .select("id, numero, nombre, tipo, raza, color, fecha_nacimiento, numero_registro, sexo, foto_principal_url")
           .eq("finca_id", fincaId)
           .eq("activo", true)
-          .order("codigo"),
+          .order("numero"),
       ]);
       setFinca(fRes.data);
       setAnimals(aRes.data ?? []);
@@ -219,10 +219,10 @@ const InformacionFinca = () => {
             <>
               <SheetHeader>
                 <SheetTitle>
-                  {selectedAnimal.nombre ?? selectedAnimal.codigo}
+                  {selectedAnimal.nombre ?? selectedAnimal.numero}
                 </SheetTitle>
                 <p className="text-xs text-muted-foreground">
-                  {selectedAnimal.codigo} · {selectedAnimal.tipo}
+                  {selectedAnimal.numero} · {selectedAnimal.tipo}
                 </p>
               </SheetHeader>
               <AnimalEvents animalId={selectedAnimal.id} />
@@ -254,7 +254,7 @@ const AnimalsTable = ({
         <TableHeader>
           <TableRow>
             <TableHead></TableHead>
-            <TableHead>Código</TableHead>
+            <TableHead>Número</TableHead>
             <TableHead>Nombre</TableHead>
             <TableHead>Raza</TableHead>
             <TableHead>Color</TableHead>
@@ -276,7 +276,7 @@ const AnimalsTable = ({
                   ) : null}
                 </div>
               </TableCell>
-              <TableCell className="font-mono text-xs">{a.codigo}</TableCell>
+              <TableCell className="font-mono text-xs">{a.numero}</TableCell>
               <TableCell className="font-medium">{a.nombre ?? "—"}</TableCell>
               <TableCell className="text-xs">{a.raza ?? "—"}</TableCell>
               <TableCell className="text-xs">{a.color ?? "—"}</TableCell>

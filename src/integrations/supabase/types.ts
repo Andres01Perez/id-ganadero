@@ -17,7 +17,6 @@ export type Database = {
       animales: {
         Row: {
           activo: boolean
-          codigo: string
           color: string | null
           created_at: string
           created_by: string | null
@@ -27,6 +26,7 @@ export type Database = {
           id: string
           madre_id: string | null
           nombre: string | null
+          numero: string
           numero_registro: string | null
           padre_id: string | null
           raza: string | null
@@ -36,7 +36,6 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
-          codigo: string
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -46,6 +45,7 @@ export type Database = {
           id?: string
           madre_id?: string | null
           nombre?: string | null
+          numero: string
           numero_registro?: string | null
           padre_id?: string | null
           raza?: string | null
@@ -55,7 +55,6 @@ export type Database = {
         }
         Update: {
           activo?: boolean
-          codigo?: string
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -65,6 +64,7 @@ export type Database = {
           id?: string
           madre_id?: string | null
           nombre?: string | null
+          numero?: string
           numero_registro?: string | null
           padre_id?: string | null
           raza?: string | null
