@@ -127,6 +127,7 @@ const Admin = () => {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [orphanCount, setOrphanCount] = useState(0);
   const [loadingAnimals, setLoadingAnimals] = useState(false);
+  const [animalsError, setAnimalsError] = useState<string | null>(null);
 
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [newUserFincas, setNewUserFincas] = useState<Set<string>>(new Set());
@@ -141,12 +142,18 @@ const Admin = () => {
 
   const loadAnimals = async () => {
     setLoadingAnimals(true);
+    setAnimalsError(null);
     const { data, error } = await supabase
       .from("animales")
       .select("id, numero, nombre, tipo, foto_principal_url, finca_id")
       .eq("activo", true)
       .order("numero");
-    if (error) toast.error("No se pudieron cargar animales");
+    if (error) {
+      setAnimals([]);
+      setOrphanCount(0);
+      setAnimalsError(error.message);
+      toast.error(`No se pudieron cargar animales: ${error.message}`);
+    }
     else {
       setAnimals(data ?? []);
       setOrphanCount((data ?? []).filter((a) => !a.finca_id).length);
@@ -326,6 +333,11 @@ const Admin = () => {
             </p>
             {loadingAnimals ? (
               <p className="text-center text-sm text-muted-foreground py-6">Cargando…</p>
+            ) : animalsError ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-destructive">No se pudieron cargar animales</p>
+                <p className="text-xs text-muted-foreground mt-2">{animalsError}</p>
+              </div>
             ) : animals.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-6">
                 No hay animales registrados todavía.
