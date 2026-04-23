@@ -35,9 +35,31 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [tokens, setTokens] = useState<TokenResponse | null>(null);
+  const [shouldFallback, setShouldFallback] = useState(false);
   const fallbackStartedRef = useRef(false);
   const connectingRef = useRef(false);
   const fallbackTimerRef = useRef<number | null>(null);
+
+  const conversation = useConversation({
+    clientTools: mariaClientTools,
+    onConnect: () => {
+      connectingRef.current = false;
+      setErrorMessage(null);
+      setVoiceState("listening");
+      if (fallbackTimerRef.current) {
+        window.clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+    },
+    onDisconnect: () => {
+      connectingRef.current = false;
+      setVoiceState((current) => (current === "error" ? current : "idle"));
+    },
+    onError: () => {
+      connectingRef.current = false;
+      setShouldFallback(true);
+    },
+  });
 
   const startWebSocketFallback = useCallback(async (signedUrl?: string | null) => {
     if (!signedUrl || fallbackStartedRef.current || connectingRef.current) return false;
@@ -60,33 +82,9 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
       return false;
     } finally {
       connectingRef.current = false;
+      setShouldFallback(false);
     }
-  }, []);
-
-  const conversation = useConversation({
-    clientTools: mariaClientTools,
-    onConnect: () => {
-      connectingRef.current = false;
-      setErrorMessage(null);
-      setVoiceState("listening");
-      if (fallbackTimerRef.current) {
-        window.clearTimeout(fallbackTimerRef.current);
-        fallbackTimerRef.current = null;
-      }
-    },
-    onDisconnect: () => {
-      connectingRef.current = false;
-      setVoiceState((current) => (current === "error" ? current : "idle"));
-    },
-    onError: async (error) => {
-      connectingRef.current = false;
-      const fallbackStarted = await startWebSocketFallback(tokens?.signed_url);
-      if (!fallbackStarted) {
-        setVoiceState("error");
-        setErrorMessage(getFriendlyError(error));
-      }
-    },
-  });
+  }, [conversation]);
 
   useEffect(() => {
     if (!open && conversation.status !== "disconnected") {
@@ -100,6 +98,7 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
       setErrorMessage(null);
       fallbackStartedRef.current = false;
       connectingRef.current = false;
+      setShouldFallback(false);
       if (fallbackTimerRef.current) {
         window.clearTimeout(fallbackTimerRef.current);
         fallbackTimerRef.current = null;
@@ -112,6 +111,18 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
       setVoiceState(conversation.isSpeaking ? "speaking" : "listening");
     }
   }, [conversation.isSpeaking, conversation.status]);
+
+  useEffect(() => {
+    if (!shouldFallback) return;
+
+    startWebSocketFallback(tokens?.signed_url).then((started) => {
+      if (!started) {
+        setVoiceState("error");
+        setErrorMessage("No se pudo conectar MarIA. Intenta de nuevo.");
+        setShouldFallback(false);
+      }
+    });
+  }, [shouldFallback, startWebSocketFallback, tokens?.signed_url]);
 
   const startConversation = useCallback(async () => {
     setVoiceState("connecting");
