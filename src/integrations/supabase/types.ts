@@ -22,6 +22,7 @@ export type Database = {
           created_by: string | null
           fecha_nacimiento: string | null
           finca_id: string
+          foto_banner_url: string | null
           foto_principal_url: string | null
           id: string
           madre_id: string | null
@@ -41,6 +42,7 @@ export type Database = {
           created_by?: string | null
           fecha_nacimiento?: string | null
           finca_id: string
+          foto_banner_url?: string | null
           foto_principal_url?: string | null
           id?: string
           madre_id?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           created_by?: string | null
           fecha_nacimiento?: string | null
           finca_id?: string
+          foto_banner_url?: string | null
           foto_principal_url?: string | null
           id?: string
           madre_id?: string | null

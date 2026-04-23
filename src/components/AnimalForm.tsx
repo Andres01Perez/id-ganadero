@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { resizeImage } from "@/lib/image";
 import { toast } from "sonner";
+import ImageCropDialog from "@/components/ImageCropDialog";
 import {
   Sheet,
   SheetContent,
@@ -54,6 +54,10 @@ const schema = z.object({
 
 type Finca = { id: string; nombre: string };
 type Parent = { id: string; numero: string; nombre: string | null };
+type CropTarget = "avatar" | "banner";
+
+const AVATAR_CROP = { aspect: 1, output: { width: 512, height: 512 } };
+const BANNER_CROP = { aspect: 865 / 503, output: { width: 1600, height: 930 } };
 
 const sexoFromTipo = (tipo: AnimalTipo): "M" | "H" | undefined => {
   if (tipo === "macho") return "M";
@@ -78,8 +82,13 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [padreId, setPadreId] = useState("");
   const [createdBy, setCreatedBy] = useState<string | null>(null);
   const [fotoActualUrl, setFotoActualUrl] = useState<string | null>(null);
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [bannerActualUrl, setBannerActualUrl] = useState<string | null>(null);
+  const [fotoBlob, setFotoBlob] = useState<Blob | null>(null);
+  const [bannerBlob, setBannerBlob] = useState<Blob | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropTarget, setCropTarget] = useState<CropTarget | null>(null);
 
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [hembras, setHembras] = useState<Parent[]>([]);
@@ -87,7 +96,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
 
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const showSexo = tipo === "cria" || tipo === "embrion" || tipo === "otro";
 
@@ -166,8 +176,11 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         setPadreId(data.padre_id ?? "");
         setCreatedBy(data.created_by ?? null);
         setFotoActualUrl(data.foto_principal_url ?? null);
-        setFotoFile(null);
+        setBannerActualUrl((data as { foto_banner_url?: string | null }).foto_banner_url ?? null);
+        setFotoBlob(null);
+        setBannerBlob(null);
         setFotoPreview(null);
+        setBannerPreview(null);
       })();
     } else {
       setNumero("");
@@ -182,25 +195,41 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setPadreId("");
       setCreatedBy(null);
       setFotoActualUrl(null);
-      setFotoFile(null);
+      setBannerActualUrl(null);
+      setFotoBlob(null);
+      setBannerBlob(null);
       setFotoPreview(null);
+      setBannerPreview(null);
     }
   }, [open, animalId, tipo, onOpenChange]);
 
   const canEdit = !isEdit || (createdBy && user?.id === createdBy) || isAdmin;
   const canDelete = isEdit && canEdit;
 
-  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagePicked = (target: CropTarget, e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFotoFile(f);
-    setFotoPreview(URL.createObjectURL(f));
+    setCropTarget(target);
+    setCropFile(f);
+    e.target.value = "";
   };
 
-  const uploadFoto = async (id: string): Promise<string | null> => {
-    if (!fotoFile) return null;
-    const blob = await resizeImage(fotoFile, 800);
-    const path = `${id}/${Date.now()}.jpg`;
+  const handleCropConfirm = (blob: Blob) => {
+    const preview = URL.createObjectURL(blob);
+    if (cropTarget === "avatar") {
+      setFotoBlob(blob);
+      setFotoPreview(preview);
+    } else if (cropTarget === "banner") {
+      setBannerBlob(blob);
+      setBannerPreview(preview);
+    }
+    setCropFile(null);
+    setCropTarget(null);
+  };
+
+  const uploadImage = async (id: string, blob: Blob, kind: CropTarget): Promise<string> => {
+    const folder = kind === "avatar" ? "avatar" : "banner";
+    const path = `${id}/${folder}/${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from("animal-fotos")
       .upload(path, blob, { contentType: "image/jpeg", upsert: true });
@@ -263,14 +292,19 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         savedId = data.id;
       }
 
-      if (fotoFile && savedId) {
-        const url = await uploadFoto(savedId);
-        if (url) {
-          await supabase
-            .from("animales")
-            .update({ foto_principal_url: url })
-            .eq("id", savedId);
-        }
+      const imageUpdates: Record<string, string> = {};
+      if (fotoBlob && savedId) {
+        imageUpdates.foto_principal_url = await uploadImage(savedId, fotoBlob, "avatar");
+      }
+      if (bannerBlob && savedId) {
+        imageUpdates.foto_banner_url = await uploadImage(savedId, bannerBlob, "banner");
+      }
+      if (Object.keys(imageUpdates).length > 0 && savedId) {
+        const { error } = await supabase
+          .from("animales")
+          .update(imageUpdates as never)
+          .eq("id", savedId);
+        if (error) throw error;
       }
 
       toast.success(isEdit ? "Animal actualizado" : "Animal creado");
@@ -323,33 +357,45 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         </SheetHeader>
 
         <div className="space-y-4 mt-4 pb-6">
-          {/* Foto */}
-          <div className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded-full border-2 border-gold bg-white overflow-hidden flex items-center justify-center shrink-0">
-              {fotoPreview ? (
-                <img src={fotoPreview} alt="" className="w-full h-full object-cover" />
-              ) : fotoActualUrl ? (
-                <img src={fotoActualUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <img src={jpsLogo} alt="" className="w-8 h-8 object-contain opacity-60" />
-              )}
+          <section className="space-y-3 rounded-lg border border-border bg-card p-3">
+            <p className="text-sm font-semibold">Imágenes del animal</p>
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-full border-2 border-gold bg-background overflow-hidden flex items-center justify-center shrink-0">
+                {fotoPreview || fotoActualUrl ? (
+                  <img src={fotoPreview ?? fotoActualUrl ?? ""} alt="Foto del listado" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={jpsLogo} alt="" className="w-8 h-8 object-contain opacity-60" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Foto del listado</p>
+                <p className="text-xs text-muted-foreground">Se verá en el círculo de las listas.</p>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImagePicked("avatar", e)} />
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => avatarInputRef.current?.click()}>
+                  <Camera className="h-4 w-4 mr-1" />
+                  {fotoActualUrl || fotoPreview ? "Cambiar" : "Añadir"}
+                </Button>
+              </div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFotoChange}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Camera className="h-4 w-4 mr-1" />
-              {fotoActualUrl || fotoPreview ? "Cambiar foto" : "Añadir foto"}
-            </Button>
-          </div>
+            <div className="space-y-2">
+              <div className="aspect-[865/503] w-full overflow-hidden rounded-lg border border-border bg-background flex items-center justify-center">
+                {bannerPreview || bannerActualUrl ? (
+                  <img src={bannerPreview ?? bannerActualUrl ?? ""} alt="Banner principal" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={jpsLogo} alt="" className="h-12 w-12 object-contain opacity-50" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium">Banner principal</p>
+                <p className="text-xs text-muted-foreground">Se verá arriba en la hoja de vida.</p>
+                <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImagePicked("banner", e)} />
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => bannerInputRef.current?.click()}>
+                  <Camera className="h-4 w-4 mr-1" />
+                  {bannerActualUrl || bannerPreview ? "Cambiar" : "Añadir"}
+                </Button>
+              </div>
+            </div>
+          </section>
 
           <div>
             <Label htmlFor="numero">Número *</Label>
@@ -521,6 +567,19 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             )}
           </div>
         </div>
+
+        <ImageCropDialog
+          open={!!cropFile}
+          file={cropFile}
+          aspect={cropTarget === "banner" ? BANNER_CROP.aspect : AVATAR_CROP.aspect}
+          outputSize={cropTarget === "banner" ? BANNER_CROP.output : AVATAR_CROP.output}
+          label={cropTarget === "banner" ? "Banner principal" : "Foto del listado"}
+          onConfirm={handleCropConfirm}
+          onCancel={() => {
+            setCropFile(null);
+            setCropTarget(null);
+          }}
+        />
       </SheetContent>
     </Sheet>
   );
