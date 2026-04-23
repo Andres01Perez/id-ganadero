@@ -203,7 +203,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
     }
   }, [open, animalId, tipo, onOpenChange]);
 
-  const canEdit = !isEdit || (createdBy && user?.id === createdBy) || isAdmin;
+  const hasPendingImageChange = !!fotoBlob || !!bannerBlob;
+  const canEdit = !isEdit || !!user || hasPendingImageChange;
   const canDelete = isEdit && canEdit;
 
   const handleImagePicked = (target: CropTarget, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -562,7 +563,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             )}
             {!canEdit && isEdit && (
               <p className="text-xs text-muted-foreground text-center">
-                Solo el creador o un admin puede editar este animal.
+                No tienes permiso para editar este animal.
               </p>
             )}
           </div>
