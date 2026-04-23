@@ -121,11 +121,22 @@ const fail = (message: string) => result({ error: message });
 export const mariaClientTools = {
   buscar_animales: async (params: ToolParams = {}) => {
     const texto = asText(params.texto ?? params.busqueda ?? params.query);
-    const tipo = asText(params.tipo).toLowerCase();
+    const tipo = normalizeTipo(params.tipo);
     const finca = asText(params.finca);
     const raza = asText(params.raza);
     const color = asText(params.color);
     const limit = asLimit(params.limite ?? params.limit);
+
+    let fincaIds: string[] | null = null;
+    if (finca) {
+      try {
+        const resolved = await resolveFincas(finca);
+        fincaIds = resolved.ids;
+        if (fincaIds?.length === 0) return result({ total: 0, animales: [], finca_encontrada: false });
+      } catch (error) {
+        return fail(error instanceof Error ? error.message : "No se pudo buscar la finca.");
+      }
+    }
 
     let query = supabase
       .from("animales")
@@ -138,18 +149,34 @@ export const mariaClientTools = {
       const safe = texto.replace(/[%(),]/g, " ").trim();
       query = query.or(`numero.ilike.%${safe}%,nombre.ilike.%${safe}%`);
     }
-    if (["macho", "hembra", "cria", "embrion", "otro"].includes(tipo)) {
-      query = query.eq("tipo", tipo as "macho" | "hembra" | "cria" | "embrion" | "otro");
-    }
-    if (raza) query = query.ilike("raza", raza);
-    if (color) query = query.ilike("color", color);
-    if (finca) query = query.ilike("fincas.nombre", `%${finca}%`);
+    if (tipo) query = query.eq("tipo", tipo);
+    if (raza) query = query.ilike("raza", `%${raza}%`);
+    if (color) query = query.ilike("color", `%${color}%`);
+    if (fincaIds) query = query.in("finca_id", fincaIds);
 
     const { data, error } = await query;
     if (error) return fail(error.message);
 
     const animales = ((data ?? []) as AnimalSummary[]).map(formatAnimal);
     return result({ total: animales.length, animales });
+  },
+
+  contar_animales: async (params: ToolParams = {}) => {
+    try {
+      const conteo = await countAnimales(params);
+      return result({
+        total: conteo.total,
+        filtros: {
+          tipo: conteo.tipo,
+          sexo: conteo.sexo,
+          finca: conteo.fincaNombres.length ? conteo.fincaNombres : asText(params.finca) || null,
+          activos: true,
+        },
+        instruccion: "Responde únicamente con este conteo exacto. No inventes ni redondees.",
+      });
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : "No se pudo contar animales.");
+    }
   },
 
   detalle_animal: async (params: ToolParams = {}) => {
