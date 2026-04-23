@@ -292,7 +292,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         savedId = data.id;
       }
 
-      const imageUpdates: { foto_principal_url?: string; foto_banner_url?: string } = {};
+      const imageUpdates: Record<string, string> = {};
       if (fotoBlob && savedId) {
         imageUpdates.foto_principal_url = await uploadImage(savedId, fotoBlob, "avatar");
       }
@@ -302,7 +302,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       if (Object.keys(imageUpdates).length > 0 && savedId) {
         const { error } = await supabase
           .from("animales")
-          .update(imageUpdates)
+          .update(imageUpdates as never)
           .eq("id", savedId);
         if (error) throw error;
       }
@@ -567,6 +567,19 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             )}
           </div>
         </div>
+
+        <ImageCropDialog
+          open={!!cropFile}
+          file={cropFile}
+          aspect={cropTarget === "banner" ? BANNER_CROP.aspect : AVATAR_CROP.aspect}
+          outputSize={cropTarget === "banner" ? BANNER_CROP.output : AVATAR_CROP.output}
+          label={cropTarget === "banner" ? "Banner principal" : "Foto del listado"}
+          onConfirm={handleCropConfirm}
+          onCancel={() => {
+            setCropFile(null);
+            setCropTarget(null);
+          }}
+        />
       </SheetContent>
     </Sheet>
   );
