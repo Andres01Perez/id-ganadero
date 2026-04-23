@@ -222,6 +222,12 @@ const Gestion = () => {
           ))}
         </TabsList>
 
+        {loadError && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            No se pudo cargar la gestión: {loadError}
+          </div>
+        )}
+
         <TabsContent value="fincas" className="mt-6">
           <div className="mb-4 flex justify-end">
             <Button onClick={openNewFinca}>
