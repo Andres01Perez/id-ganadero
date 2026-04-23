@@ -1,64 +1,45 @@
 
 
-## Agregar banner editable de "Fincas" al panel de imágenes
+## Corregir botón "Volver" en hoja de vida del animal
 
-### Contexto
+### Problema
 
-En `/superadmin/imagenes`, dentro de la pestaña **Marca · Banners → Banners de categorías**, ya existen banners editables para Machos, Hembras, Crías y Embriones. Falta el banner de la pantalla **Fincas** (`/fincas`), que hoy usa una imagen estática (`lista-header.jpg`) sin posibilidad de cambio desde el superadmin.
-
-### Cambios
-
-**1. `src/lib/asset-keys.ts`**
-
-Agregar la nueva clave canónica del banner de fincas y su fallback:
+Cuando el usuario navega así:
 
 ```text
-bannerFincas: "categoria.banner.fincas"
+Menú principal → Categoría → Hoja de vida del animal → Seguimiento (ej. Peso)
 ```
 
-Fallback: la misma imagen actual (`lista-header.jpg`) para no romper nada existente.
+Y luego pulsa "Volver" en Seguimiento, regresa a la Hoja de vida del animal (correcto). Pero al pulsar "Volver" nuevamente en la Hoja de vida, vuelve a Seguimiento porque `navigate(-1)` retrocede en el historial del navegador, generando un bucle.
 
-**2. `src/pages/SuperAdmin/Imagenes.tsx`**
+### Causa
 
-Añadir una nueva entrada al arreglo `categoryBanners` para que aparezca como tarjeta editable junto a los demás banners de categorías:
+En `src/pages/HojaVidaAnimal.tsx` el botón usa:
 
 ```text
-{ key: ASSET_KEYS.bannerFincas, label: "Banner · Fincas", ...BANNER }
+onClick={() => navigate(-1)}
 ```
 
-También actualizar el subtítulo de "Banners de categorías" para mencionar `/fincas`.
+Esto depende del historial, no de la jerarquía de la app.
 
-**3. `src/pages/Fincas.tsx`**
+### Solución
 
-Reemplazar el `<img src={listaHeader} ... />` estático por un consumo dinámico vía `useAppAsset`:
+Cambiar el botón "Volver" de la Hoja de vida del animal para que navegue directamente al menú principal en lugar de retroceder en el historial:
 
 ```text
-const headerImg = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
+onClick={() => navigate("/menu")}
 ```
 
-Y usar `headerImg` como `src`. Esto sigue el mismo patrón ya implementado en `CategoriaAnimales.tsx`.
+Esto rompe el bucle y deja un comportamiento predecible: desde cualquier animal, "Volver" siempre lleva al menú de inicio.
 
 ### Sin cambios en
 
-- Base de datos (la tabla `app_assets` ya soporta cualquier clave nueva).
-- Storage (el bucket `app-assets` y sus políticas son agnósticos a la clave).
-- `useAppAsset.ts` (es genérico).
-
-### Resultado
-
-```text
-1. En /superadmin/imagenes → "Marca · Banners" → "Banners de categorías"
-   aparecerá una nueva tarjeta "Banner · Fincas".
-2. El superadmin podrá subir/recortar la imagen con el mismo flujo (16:10).
-3. El cambio se reflejará al instante en la pantalla /fincas.
-4. Si nunca se sube nada, sigue mostrando la imagen original.
-```
+- El botón "Volver" de las pantallas de seguimiento (`SeguimientoHeader.tsx`) sigue usando retroceso normal, porque desde Seguimiento sí queremos volver a la Hoja de vida del animal.
+- Categorías y demás pantallas no se tocan.
 
 ### Archivos que se tocarán
 
 ```text
-src/lib/asset-keys.ts
-src/pages/SuperAdmin/Imagenes.tsx
-src/pages/Fincas.tsx
+src/pages/HojaVidaAnimal.tsx
 ```
 
