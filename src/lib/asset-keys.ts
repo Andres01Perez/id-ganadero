@@ -28,6 +28,7 @@ export const ASSET_KEYS = {
   bannerHembras: "categoria.banner.hembras",
   bannerCrias: "categoria.banner.crias",
   bannerEmbriones: "categoria.banner.embriones",
+  bannerFincas: "categoria.banner.fincas",
 } as const;
 
 export const ASSET_FALLBACKS: Record<string, string> = {
