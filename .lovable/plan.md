@@ -1,186 +1,254 @@
 
-## Corregir por qué MarIA no escucha y simplificar la vista
+## Corregir MarIA: no pedir permiso para consultar, no inventar datos y responder más rápido
 
-### Diagnóstico confirmado
+### Problemas detectados
 
-El problema principal no parece ser el permiso del micrófono, porque:
+1. **MarIA preguntó si podía revisar la base de datos**
+   - Esto no debe pasar. MarIA debe consultar directamente las herramientas disponibles cuando el usuario pregunte por animales, fincas, pesos, edades, palpaciones o reproducción.
 
-- ya se obtiene token correctamente desde `elevenlabs-conversation-token`
-- el navegador sí intenta iniciar la sesión
-- en los logs aparece este fallo real:
+2. **MarIA dijo que hay 200 hembras en Villa Paula**
+   - Ese dato es falso.
+   - Verificación directa en la base de datos: en `Villa Paula` actualmente hay **3 hembras activas**.
 
-```text
-Initial connection failed: v1 RTC path not found. Consider upgrading your LiveKit server version – Retrying
-GET https://livekit.rtc.elevenlabs.io/rtc/v1/validate ... 404
-```
-
-Eso indica que la conexión actual por `WebRTC` está fallando en este entorno y MarIA no queda con una sesión de voz estable para escuchar bien al usuario.
-
-Además, la UI actual está mostrando cosas que no deben verse:
-
-- eventos crudos de ElevenLabs (`JSON.stringify(message)`)
-- texto técnico sobre permisos/RLS
-- estados poco claros para el usuario final
+3. **MarIA tarda demasiado en responder después de que el usuario deja de hablar**
+   - El retraso de aproximadamente 15 segundos corresponde a configuración de detección de fin de turno / silencio del agente.
+   - Debe reducirse para que MarIA detecte antes que el usuario terminó de hablar.
 
 ---
 
-## Qué voy a cambiar
+## Cambios que implementaré
 
-### 1. Hacer más robusto el arranque de voz
+### 1. Forzar instrucciones estrictas para MarIA
 
-Actualizar `src/components/MariaVoiceDialog.tsx` para:
+Actualizaré la configuración de sesión/prompt de MarIA para que tenga reglas claras:
 
-- mantener la solicitud de micrófono dentro del gesto del botón
-- esperar explícitamente `await conversation.startSession(...)`
-- manejar mejor errores de micrófono:
-  - permiso denegado
-  - micrófono no encontrado
-  - micrófono ocupado por otra app
-- si falla la conexión WebRTC con error tipo:
-  - `RTC path not found`
-  - `validate 404`
-  - cierre anómalo `1006`
-  
-  hacer fallback automático a conexión por `signedUrl`/WebSocket
+```text
+Nunca pidas permiso para consultar la base de datos.
+Si el usuario pregunta por datos de animales, fincas, pesos, edades, preñez, palpaciones o conteos, usa las herramientas disponibles inmediatamente.
+No inventes números.
+Para conteos o cantidades, siempre usa una herramienta de consulta.
+Si no hay datos, responde que no encontraste datos.
+```
 
-Esto deja a MarIA funcionando incluso si WebRTC no es compatible en el entorno actual.
+Esto se aplicará desde la app al iniciar la conversación usando `overrides.agent.prompt`, y si es necesario también se actualizará el prompt del agente en ElevenLabs.
 
 ---
 
-### 2. Ajustar la Edge Function para soportar fallback
+### 2. Crear herramienta específica para conteos exactos
 
-Actualizar `supabase/functions/elevenlabs-conversation-token/index.ts` para que pueda devolver:
+El problema de “200 hembras” puede ocurrir porque MarIA está razonando sin una herramienta dedicada de conteo.
 
-- `conversation token` para WebRTC
-- `signed_url` para WebSocket cuando el frontend la solicite
-
-Opciones de implementación recomendadas:
+Agregaré una nueva herramienta client-side:
 
 ```text
-POST body: { mode: "webrtc" | "websocket" }
+contar_animales
 ```
 
-o devolver ambos en una sola respuesta:
+Permitirá contar con filtros:
+
+```text
+tipo: hembra / macho / cria / embrion / otro
+finca: Villa Paula
+sexo: M / H
+activo: true
+```
+
+Ejemplo de respuesta real:
 
 ```json
 {
-  "token": "...",
-  "signed_url": "..."
+  "total": 3,
+  "filtros": {
+    "tipo": "hembra",
+    "finca": "Villa Paula"
+  }
 }
 ```
 
-Así el frontend puede intentar primero la mejor opción y caer a la alternativa sin romper la experiencia.
+Así, para preguntas como:
+
+```text
+¿Cuántas hembras tenemos en la finca Villa Paula?
+```
+
+MarIA deberá usar `contar_animales` y responder con el número exacto.
 
 ---
 
-### 3. Eliminar por completo los eventos visibles de ElevenLabs
+### 3. Mejorar `resumen_ganaderia`
 
-En `src/components/MariaVoiceDialog.tsx` quitar:
+Actualizaré `resumen_ganaderia` para que sea más útil y menos ambiguo:
 
-- `lastMessage`
-- `JSON.stringify(message)`
-- cualquier bloque visual que muestre eventos crudos del SDK
+- aceptar filtro opcional por finca
+- devolver totales por tipo
+- devolver totales por sexo
+- devolver totales exactos por finca visible
+- evitar límites que puedan distorsionar conteos
 
-`onMessage` quedará solo para lógica interna si hace falta, no para renderizarlo al usuario.
+Esto ayudará cuando el usuario haga preguntas generales como:
+
+```text
+¿Cuántos animales hay en Villa Paula?
+¿Cuántas hembras tengo?
+¿Cuántos machos hay?
+```
 
 ---
 
-### 4. Quitar el preámbulo técnico
+### 4. Corregir búsqueda por finca
 
-Eliminar el texto actual:
+Revisaré la consulta actual de `buscar_animales`, porque el filtro:
 
-```text
-MarIA necesita acceso al micrófono para escucharte. Sus respuestas respetan los permisos...
+```ts
+.ilike("fincas.nombre", ...)
 ```
 
-y reemplazarlo por copy simple, humano y corto, por ejemplo:
+puede no filtrar correctamente cuando se usa relación anidada en Supabase.
 
-```text
-Toca iniciar y háblale a MarIA.
-```
+La cambiaré por una estrategia más confiable:
 
-o
+1. Buscar primero las fincas cuyo nombre coincida.
+2. Tomar sus `id`.
+3. Filtrar animales con `.in("finca_id", fincaIds)`.
 
-```text
-Pregúntale por animales, pesos, edades o reproducción.
-```
-
-Sin mencionar RLS, permisos internos ni detalles técnicos.
+Esto hará que MarIA no mezcle animales de otras fincas.
 
 ---
 
-### 5. Rediseñar la vista para mostrar solo lo importante
+### 5. Registrar/usar la nueva herramienta en ElevenLabs
 
-Rediseñar `MariaVoiceDialog` con una experiencia más limpia y clara:
+La app tendrá la herramienta `contar_animales`, pero ElevenLabs también debe conocerla como Client Tool.
 
-#### Estado 1: inactiva
+Agregaré el soporte en React y dejaré la configuración lista para que el agente pueda llamarla.
+
+Herramientas finales:
+
 ```text
-MarIA
-Asistente de voz
-
-[ botón grande Iniciar ]
+buscar_animales
+detalle_animal
+contar_animales
+consultar_pesajes
+consultar_reproduccion
+resumen_ganaderia
 ```
-
-#### Estado 2: escuchando
-```text
-MarIA te está escuchando
-Habla ahora
-```
-
-Con:
-- halo/pulso dorado suave
-- icono de micrófono activo
-- etiqueta visual “Escuchando”
-
-#### Estado 3: hablando
-```text
-MarIA está hablando
-```
-
-Con:
-- icono/onda de audio
-- animación suave diferente a la de escucha
-- etiqueta visual “Hablando”
-
-#### Estado 4: conectando
-```text
-Conectando con MarIA…
-```
-
-Con loader simple.
-
-#### Estado 5: error amable
-Mensajes claros como:
-- “No pudimos usar el micrófono.”
-- “No se pudo conectar MarIA. Intenta de nuevo.”
-- “Revisa si tu navegador permite usar el micrófono.”
-
-Sin exponer mensajes internos del SDK.
 
 ---
 
-## Archivos a actualizar
+### 6. Reducir el tiempo de espera al hablar
+
+Haré dos ajustes:
+
+#### En la app
+Al iniciar sesión con ElevenLabs, enviaré configuración de baja latencia cuando el SDK lo permita:
+
+```ts
+connectionDelay: {
+  default: 0,
+  android: 0,
+  ios: 0
+}
+```
+
+y mantendré la conexión por WebSocket/WebRTC sin retardos artificiales.
+
+#### En ElevenLabs
+Revisaré la configuración del agente relacionada con:
+
+```text
+turn detection
+silence timeout
+end of speech detection
+responsiveness
+latency optimization
+```
+
+Objetivo:
+
+```text
+silencio para terminar turno: ~2 segundos
+```
+
+Si ElevenLabs permite actualizarlo por API, lo dejaré aplicado desde la Edge Function o una actualización del agente. Si esa parte solo está disponible desde el dashboard, dejaré indicada la configuración exacta que debe quedar en el agente.
+
+---
+
+### 7. Evitar respuestas numéricas sin herramienta
+
+Agregaré instrucciones para que MarIA no responda conteos desde memoria o suposición.
+
+Regla:
+
+```text
+Para cualquier pregunta que incluya “cuántos”, “cuántas”, “total”, “cantidad”, “número de animales”, “hembras”, “machos” o una finca específica, primero debe llamar una herramienta.
+```
+
+Esto previene respuestas inventadas como “200 hembras”.
+
+---
+
+## Archivos a modificar
+
+### `src/lib/maria-tools.ts`
+
+- agregar `contar_animales`
+- mejorar filtro por finca
+- mejorar `resumen_ganaderia`
+- devolver respuestas más explícitas para que el agente no tenga que inferir
 
 ### `src/components/MariaVoiceDialog.tsx`
-- reestructurar el flujo de inicio/parada
-- usar estados UI dedicados:
-  - `idle`
-  - `connecting`
-  - `listening`
-  - `speaking`
-  - `error`
-- usar `onModeChange`, `onStatusChange`, `onError` y `conversation.isSpeaking` para derivar la experiencia
-- ocultar mensajes/eventos internos
-- agregar fallback WebRTC → WebSocket
+
+- agregar `overrides.agent.prompt` con reglas estrictas
+- agregar configuración de baja latencia si el SDK la acepta
+- mantener UI simple: escuchando / hablando / conectando
+- no mostrar detalles técnicos al usuario
 
 ### `supabase/functions/elevenlabs-conversation-token/index.ts`
-- soportar entrega de `signed_url` además de `token`
-- mantener validación de usuario autenticado
-- conservar mensajes de error seguros y amigables
 
-### `src/components/BottomTabBar.tsx`
-- solo ajuste menor si hace falta para que el botón central refleje mejor que abre MarIA
-- mantener el acceso actual
+- revisar si se puede consultar/actualizar configuración del agente en ElevenLabs
+- mantener token y signed URL
+- si ElevenLabs permite configurar turn-taking por API, aplicar el objetivo de 2 segundos
+
+---
+
+## Pruebas
+
+Probaré estos casos:
+
+```text
+¿Cuántas hembras tenemos en la finca Villa Paula?
+```
+
+Resultado esperado:
+
+```text
+En Villa Paula hay 3 hembras activas.
+```
+
+```text
+¿Cuántos animales hay en Villa Paula?
+```
+
+Resultado esperado: conteo real desde Supabase.
+
+```text
+Busca la vaca 683/01
+```
+
+Resultado esperado: búsqueda real sin pedir permiso.
+
+```text
+¿Cuáles fueron sus últimos pesos?
+```
+
+Resultado esperado: consulta directa a `consultar_pesajes`.
+
+También validaré que:
+
+```text
+MarIA no pregunte “¿me dejas revisar la base de datos?”
+MarIA no invente conteos.
+MarIA responda aproximadamente 2 segundos después de que el usuario termina de hablar.
+```
 
 ---
 
@@ -189,42 +257,8 @@ Sin exponer mensajes internos del SDK.
 Después del cambio:
 
 ```text
-1. El usuario toca el botón central.
-2. MarIA abre una vista limpia.
-3. El usuario inicia conversación.
-4. Si WebRTC falla, la app cae automáticamente a WebSocket.
-5. MarIA ya puede escuchar correctamente.
-6. La pantalla solo muestra:
-   - conectando
-   - escuchando
-   - hablando
-   - error amigable
+Usuario: ¿Cuántas hembras tenemos en la finca Villa Paula?
+MarIA: En Villa Paula hay 3 hembras activas.
 ```
 
-Y el usuario ya no verá:
-
-- eventos JSON de ElevenLabs
-- preámbulos técnicos sobre permisos
-- mensajes internos del sistema
-
----
-
-## Detalle técnico importante
-
-La causa más fuerte detectada hoy es esta:
-
-```text
-WebRTC validate endpoint devuelve 404
-```
-
-Por eso la corrección no debe ser solo visual; también hay que endurecer la conexión con fallback.
-
-La mejora recomendada es:
-
-```text
-Intentar WebRTC primero
-→ si falla por RTC/404/1006
-→ iniciar sesión con signedUrl (WebSocket)
-```
-
-Esto resuelve tanto la sensación de “MarIA no me escucha” como la estabilidad real de la conversación.
+Sin pedir permiso, sin inventar números y con menor tiempo de espera.
