@@ -42,6 +42,7 @@ const categoryBanners: AssetItem[] = [
   { key: ASSET_KEYS.bannerHembras, label: "Banner · Hembras", ...BANNER },
   { key: ASSET_KEYS.bannerCrias, label: "Banner · Crías", ...BANNER },
   { key: ASSET_KEYS.bannerEmbriones, label: "Banner · Embriones", ...BANNER },
+  { key: ASSET_KEYS.bannerFincas, label: "Banner · Fincas", ...BANNER },
 ];
 
 const Imagenes = () => {
