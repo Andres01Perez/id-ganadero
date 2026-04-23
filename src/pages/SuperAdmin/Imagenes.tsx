@@ -119,7 +119,7 @@ const Imagenes = () => {
           <div>
             <h2 className="text-lg font-semibold mb-1">Banners de categorías</h2>
             <p className="text-sm text-muted-foreground mb-4">
-              Imagen de cabecera de las vistas /machos, /hembras, /crías y /embriones.
+              Imagen de cabecera de las vistas /fincas, /machos, /hembras, /crías y /embriones.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {categoryBanners.map((it) => (
