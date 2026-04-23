@@ -176,8 +176,11 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         setPadreId(data.padre_id ?? "");
         setCreatedBy(data.created_by ?? null);
         setFotoActualUrl(data.foto_principal_url ?? null);
-        setFotoFile(null);
+        setBannerActualUrl((data as { foto_banner_url?: string | null }).foto_banner_url ?? null);
+        setFotoBlob(null);
+        setBannerBlob(null);
         setFotoPreview(null);
+        setBannerPreview(null);
       })();
     } else {
       setNumero("");
@@ -192,25 +195,41 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setPadreId("");
       setCreatedBy(null);
       setFotoActualUrl(null);
-      setFotoFile(null);
+      setBannerActualUrl(null);
+      setFotoBlob(null);
+      setBannerBlob(null);
       setFotoPreview(null);
+      setBannerPreview(null);
     }
   }, [open, animalId, tipo, onOpenChange]);
 
   const canEdit = !isEdit || (createdBy && user?.id === createdBy) || isAdmin;
   const canDelete = isEdit && canEdit;
 
-  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagePicked = (target: CropTarget, e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFotoFile(f);
-    setFotoPreview(URL.createObjectURL(f));
+    setCropTarget(target);
+    setCropFile(f);
+    e.target.value = "";
   };
 
-  const uploadFoto = async (id: string): Promise<string | null> => {
-    if (!fotoFile) return null;
-    const blob = await resizeImage(fotoFile, 800);
-    const path = `${id}/${Date.now()}.jpg`;
+  const handleCropConfirm = (blob: Blob) => {
+    const preview = URL.createObjectURL(blob);
+    if (cropTarget === "avatar") {
+      setFotoBlob(blob);
+      setFotoPreview(preview);
+    } else if (cropTarget === "banner") {
+      setBannerBlob(blob);
+      setBannerPreview(preview);
+    }
+    setCropFile(null);
+    setCropTarget(null);
+  };
+
+  const uploadImage = async (id: string, blob: Blob, kind: CropTarget): Promise<string> => {
+    const folder = kind === "avatar" ? "avatar" : "banner";
+    const path = `${id}/${folder}/${Date.now()}.jpg`;
     const { error } = await supabase.storage
       .from("animal-fotos")
       .upload(path, blob, { contentType: "image/jpeg", upsert: true });
