@@ -33,18 +33,23 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
             </span>
           </button>
 
-          {/* Hierro central */}
+          {/* MarIA central */}
           <button
             type="button"
             onClick={() => setMariaOpen(true)}
-            className="-mt-4 h-14 w-14 rounded-full border-2 border-gold bg-black flex items-center justify-center shadow-soft transition-all active:scale-95"
+            className="-mt-4 flex flex-col items-center gap-1 text-gold-soft transition-all active:scale-95"
             aria-label="Abrir MarIA"
           >
-            <img
-              src={jpsLogo}
-              alt="JPS Ganadería"
-              className="h-full w-full object-contain p-2"
-            />
+            <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold bg-black shadow-soft">
+              <img
+                src={jpsLogo}
+                alt="MarIA"
+                className="h-full w-full object-contain p-2"
+              />
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.18em] font-medium">
+              MarIA
+            </span>
           </button>
 
           {/* Buscar */}

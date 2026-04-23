@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
-import { Bot, Mic, MicOff, PhoneOff, Volume2 } from "lucide-react";
-import { toast } from "sonner";
+import { Bot, Loader2, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { mariaClientTools } from "@/lib/maria-tools";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,31 +14,77 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const statusLabels: Record<string, string> = {
-  connected: "Conectada",
-  disconnected: "Desconectada",
-  connecting: "Conectando",
+type VoiceState = "idle" | "connecting" | "listening" | "speaking" | "error";
+
+type TokenResponse = {
+  token?: string | null;
+  signed_url?: string | null;
+};
+
+const getFriendlyError = (error: unknown) => {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError") return "Revisa si tu navegador permite usar el micrófono.";
+    if (error.name === "NotFoundError") return "No encontramos un micrófono disponible.";
+    if (error.name === "NotReadableError") return "El micrófono está ocupado por otra aplicación.";
+  }
+
+  return "No se pudo conectar MarIA. Intenta de nuevo.";
 };
 
 const MariaVoicePanel = ({ open }: { open: boolean }) => {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [lastMessage, setLastMessage] = useState<string | null>(null);
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [tokens, setTokens] = useState<TokenResponse | null>(null);
+  const fallbackStartedRef = useRef(false);
+  const connectingRef = useRef(false);
+  const fallbackTimerRef = useRef<number | null>(null);
+
+  const startWebSocketFallback = useCallback(async (signedUrl?: string | null) => {
+    if (!signedUrl || fallbackStartedRef.current || connectingRef.current) return false;
+
+    fallbackStartedRef.current = true;
+    connectingRef.current = true;
+    setVoiceState("connecting");
+
+    try {
+      await conversation.endSession();
+      await conversation.startSession({
+        signedUrl,
+        connectionType: "websocket",
+      });
+      setErrorMessage(null);
+      return true;
+    } catch (error) {
+      setVoiceState("error");
+      setErrorMessage(getFriendlyError(error));
+      return false;
+    } finally {
+      connectingRef.current = false;
+    }
+  }, []);
 
   const conversation = useConversation({
     clientTools: mariaClientTools,
     onConnect: () => {
-      setIsConnecting(false);
-      toast.success("MarIA está lista para escucharte");
+      connectingRef.current = false;
+      setErrorMessage(null);
+      setVoiceState("listening");
+      if (fallbackTimerRef.current) {
+        window.clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
     },
-    onDisconnect: () => setIsConnecting(false),
-    onError: (error) => {
-      setIsConnecting(false);
-      const message = error instanceof Error ? error.message : "No se pudo conectar con MarIA";
-      toast.error(message);
+    onDisconnect: () => {
+      connectingRef.current = false;
+      setVoiceState((current) => (current === "error" ? current : "idle"));
     },
-    onMessage: (message) => {
-      const text = JSON.stringify(message);
-      setLastMessage(text.length > 180 ? `${text.slice(0, 180)}…` : text);
+    onError: async (error) => {
+      connectingRef.current = false;
+      const fallbackStarted = await startWebSocketFallback(tokens?.signed_url);
+      if (!fallbackStarted) {
+        setVoiceState("error");
+        setErrorMessage(getFriendlyError(error));
+      }
     },
   });
 
@@ -48,63 +94,150 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
     }
   }, [conversation, open]);
 
+  useEffect(() => {
+    if (!open) {
+      setVoiceState("idle");
+      setErrorMessage(null);
+      fallbackStartedRef.current = false;
+      connectingRef.current = false;
+      if (fallbackTimerRef.current) {
+        window.clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (conversation.status === "connected") {
+      setVoiceState(conversation.isSpeaking ? "speaking" : "listening");
+    }
+  }, [conversation.isSpeaking, conversation.status]);
+
   const startConversation = useCallback(async () => {
-    setIsConnecting(true);
+    setVoiceState("connecting");
+    setErrorMessage(null);
+    fallbackStartedRef.current = false;
+    connectingRef.current = true;
+
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const { data, error } = await supabase.functions.invoke("elevenlabs-conversation-token", {
+      const { data, error } = await supabase.functions.invoke<TokenResponse>("elevenlabs-conversation-token", {
         method: "POST",
       });
 
       if (error) throw error;
-      if (!data?.token) throw new Error("No se recibió token de MarIA");
+      if (!data?.token && !data?.signed_url) throw new Error("missing-token");
 
-      conversation.startSession({
-        conversationToken: data.token,
-        connectionType: "webrtc",
-      });
+      setTokens(data);
+
+      if (data.token) {
+        fallbackTimerRef.current = window.setTimeout(() => {
+          if (conversation.status !== "connected") {
+            startWebSocketFallback(data.signed_url);
+          }
+        }, 8000);
+
+        await conversation.startSession({
+          conversationToken: data.token,
+          connectionType: "webrtc",
+        });
+        return;
+      }
+
+      await startWebSocketFallback(data.signed_url);
     } catch (error) {
-      setIsConnecting(false);
-      const message = error instanceof Error ? error.message : "Activa el micrófono para hablar con MarIA";
-      toast.error(message);
+      const fallbackStarted = await startWebSocketFallback(tokens?.signed_url);
+      if (!fallbackStarted) {
+        setVoiceState("error");
+        setErrorMessage(getFriendlyError(error));
+      }
+    } finally {
+      connectingRef.current = false;
     }
+  }, [conversation, startWebSocketFallback, tokens?.signed_url]);
+
+  const stopConversation = useCallback(async () => {
+    if (fallbackTimerRef.current) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    await conversation.endSession();
+    setVoiceState("idle");
   }, [conversation]);
 
-  const stopConversation = useCallback(() => {
-    conversation.endSession();
-  }, [conversation]);
+  const view = useMemo(() => {
+    if (voiceState === "connecting") {
+      return {
+        icon: <Loader2 className="h-9 w-9 animate-spin" />,
+        title: "Conectando con MarIA…",
+        subtitle: "Un momento",
+        badge: "Conectando",
+      };
+    }
 
-  const statusText = statusLabels[conversation.status] ?? conversation.status;
-  const activityText = conversation.status === "connected"
-    ? conversation.isSpeaking
-      ? "MarIA está respondiendo"
-      : "MarIA está escuchando"
-    : "Toca iniciar para hablar";
+    if (voiceState === "speaking") {
+      return {
+        icon: <Volume2 className="h-9 w-9" />,
+        title: "MarIA está hablando",
+        subtitle: "Escucha su respuesta",
+        badge: "Hablando",
+      };
+    }
+
+    if (voiceState === "listening") {
+      return {
+        icon: <Mic className="h-9 w-9" />,
+        title: "MarIA te está escuchando",
+        subtitle: "Habla ahora",
+        badge: "Escuchando",
+      };
+    }
+
+    if (voiceState === "error") {
+      return {
+        icon: <Mic className="h-9 w-9" />,
+        title: errorMessage ?? "No se pudo conectar MarIA.",
+        subtitle: "Intenta de nuevo",
+        badge: "Sin conexión",
+      };
+    }
+
+    return {
+      icon: <Bot className="h-9 w-9" />,
+      title: "MarIA",
+      subtitle: "Asistente de voz",
+      badge: "Lista",
+    };
+  }, [errorMessage, voiceState]);
+
+  const isActive = voiceState === "listening" || voiceState === "speaking";
+  const isConnecting = voiceState === "connecting";
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-secondary/60 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary bg-sidebar text-primary">
-            {conversation.isSpeaking ? <Volume2 className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-foreground">{activityText}</p>
-            <p className="text-xs text-muted-foreground">Consulta animales, pesos y reproducción.</p>
-          </div>
+    <div className="space-y-6 pt-2">
+      <div className="flex flex-col items-center text-center">
+        <div
+          className={cn(
+            "relative mb-5 flex h-28 w-28 items-center justify-center rounded-full border border-primary bg-sidebar text-primary shadow-gold",
+            voiceState === "listening" && "after:absolute after:inset-0 after:rounded-full after:border after:border-primary after:animate-ping",
+            voiceState === "speaking" && "before:absolute before:-inset-2 before:rounded-full before:border before:border-primary/60 before:animate-pulse",
+          )}
+        >
+          {view.icon}
         </div>
-        <Badge variant={conversation.status === "connected" ? "default" : "secondary"}>{statusText}</Badge>
+
+        <Badge variant={isActive ? "default" : "secondary"} className="mb-3">
+          {view.badge}
+        </Badge>
+        <h3 className="text-2xl font-semibold text-foreground">{view.title}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{view.subtitle}</p>
       </div>
 
-      <div className="rounded-md border border-border bg-background p-4 text-sm text-muted-foreground">
-        MarIA necesita acceso al micrófono para escucharte. Sus respuestas respetan los permisos de tu usuario y las fincas asignadas.
-      </div>
-
-      {lastMessage && (
-        <div className="max-h-24 overflow-hidden rounded-md border border-border bg-muted/70 p-3 text-xs text-muted-foreground">
-          {lastMessage}
-        </div>
+      {voiceState === "idle" && (
+        <p className="text-center text-sm text-muted-foreground">
+          Pregúntale por animales, pesos, edades o reproducción.
+        </p>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -112,19 +245,19 @@ const MariaVoicePanel = ({ open }: { open: boolean }) => {
           type="button"
           onClick={startConversation}
           disabled={isConnecting || conversation.status === "connected"}
-          className="h-11"
+          className="h-12"
         >
-          <Mic className="h-4 w-4" />
-          {isConnecting ? "Conectando…" : "Iniciar conversación"}
+          {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+          {isConnecting ? "Conectando…" : voiceState === "error" ? "Intentar de nuevo" : "Iniciar"}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={stopConversation}
-          disabled={conversation.status === "disconnected"}
-          className="h-11"
+          disabled={conversation.status === "disconnected" && !isConnecting}
+          className="h-12"
         >
-          {conversation.status === "connected" ? <PhoneOff className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+          <PhoneOff className="h-4 w-4" />
           Terminar
         </Button>
       </div>
@@ -137,9 +270,6 @@ const MariaVoiceDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md border-border bg-card text-card-foreground sm:rounded-md">
         <DialogHeader>
-          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full border border-primary bg-sidebar text-primary shadow-gold">
-            <Bot className="h-7 w-7" />
-          </div>
           <DialogTitle className="text-center text-2xl text-foreground">MarIA</DialogTitle>
           <DialogDescription className="text-center">
             Tu asistente experta en ganadería.
