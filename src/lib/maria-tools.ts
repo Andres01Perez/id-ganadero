@@ -274,9 +274,30 @@ export const mariaClientTools = {
     });
   },
 
-  resumen_ganaderia: async () => {
+  resumen_ganaderia: async (params: ToolParams = {}) => {
+    const finca = asText(params.finca);
+    let fincaIds: string[] | null = null;
+    let fincaNombres: string[] = [];
+
+    if (finca) {
+      try {
+        const resolved = await resolveFincas(finca);
+        fincaIds = resolved.ids;
+        fincaNombres = resolved.nombres;
+      } catch (error) {
+        return fail(error instanceof Error ? error.message : "No se pudo buscar la finca.");
+      }
+
+      if (fincaIds?.length === 0) {
+        return result({ total: 0, por_tipo: {}, por_sexo: {}, por_finca: {}, finca_encontrada: false });
+      }
+    }
+
+    let animalesQuery = supabase.from("animales").select("tipo, sexo, finca_id").eq("activo", true);
+    if (fincaIds) animalesQuery = animalesQuery.in("finca_id", fincaIds);
+
     const [{ data: animales, error: animalesError }, { data: fincas, error: fincasError }] = await Promise.all([
-      supabase.from("animales").select("tipo, finca_id").eq("activo", true),
+      animalesQuery,
       supabase.from("fincas").select("id, nombre").eq("activo", true),
     ]);
 
@@ -287,6 +308,11 @@ export const mariaClientTools = {
       acc[animal.tipo] = (acc[animal.tipo] ?? 0) + 1;
       return acc;
     }, {});
+    const porSexo = (animales ?? []).reduce<Record<string, number>>((acc, animal) => {
+      const sexo = animal.sexo === "M" ? "machos" : animal.sexo === "H" ? "hembras" : "sin_sexo";
+      acc[sexo] = (acc[sexo] ?? 0) + 1;
+      return acc;
+    }, {});
     const fincaNames = new Map((fincas ?? []).map((f) => [f.id, f.nombre]));
     const porFinca = (animales ?? []).reduce<Record<string, number>>((acc, animal) => {
       const name = fincaNames.get(animal.finca_id) ?? "Sin finca";
@@ -294,6 +320,6 @@ export const mariaClientTools = {
       return acc;
     }, {});
 
-    return result({ total: animales?.length ?? 0, por_tipo: porTipo, por_finca: porFinca });
+    return result({ total: animales?.length ?? 0, finca: fincaNombres.length ? fincaNombres : null, por_tipo: porTipo, por_sexo: porSexo, por_finca: porFinca });
   },
 };
