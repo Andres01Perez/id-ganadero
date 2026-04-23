@@ -409,19 +409,29 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="raza">Raza</Label>
-              <Input
-                id="raza"
-                value={raza}
-                onChange={(e) => setRaza(e.target.value)}
-              />
+              <Select value={raza} onValueChange={(value) => setRaza(value as AnimalRaza)}>
+                <SelectTrigger id="raza">
+                  <SelectValue placeholder="Selecciona raza" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RAZA_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="color">Color</Label>
-              <Input
-                id="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-              />
+              <Select value={color} onValueChange={(value) => setColor(value as AnimalColor)}>
+                <SelectTrigger id="color">
+                  <SelectValue placeholder="Selecciona color" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
