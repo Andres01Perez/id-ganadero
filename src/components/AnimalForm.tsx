@@ -204,7 +204,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   }, [open, animalId, tipo, onOpenChange]);
 
   const hasPendingImageChange = !!fotoBlob || !!bannerBlob;
-  const canEdit = !isEdit || !!user || hasPendingImageChange;
+  const canEdit = !isEdit || (createdBy && user?.id === createdBy) || isAdmin;
+  const canSave = canEdit || hasPendingImageChange;
   const canDelete = isEdit && canEdit;
 
   const handleImagePicked = (target: CropTarget, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -545,7 +546,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           <div className="flex flex-col gap-2 pt-2">
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !canEdit}
+              disabled={submitting || !canSave}
               className="bg-gold-solid text-ink hover:bg-gold-solid/90 h-12 text-base font-semibold"
             >
               {submitting ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear"}
