@@ -94,7 +94,7 @@ const HojaVidaAnimal = () => {
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/menu")}
           className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
           aria-label="Volver"
         >
