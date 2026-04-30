@@ -80,20 +80,20 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col bg-black overflow-hidden">
+    <div className="h-[100dvh] w-full flex flex-col bg-black overflow-hidden">
       {/* Hero compuesto: vaca + logo JPS embebido */}
-      <div className="flex-1 relative">
+      <div className="flex-1 min-h-0 relative">
         <img
           src={heroSrc}
           alt="JPS Ganadería"
-          className="w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
 
       {/* Banda dorada inferior - botón de inicio */}
       <button
         onClick={() => setOpen(true)}
-        className="w-full bg-gold-solid text-ink py-5 text-center tracking-jps font-semibold text-base uppercase active:brightness-95 transition-all"
+        className="flex-shrink-0 w-full bg-gold-solid text-ink py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-center tracking-jps font-semibold text-base uppercase active:brightness-95 transition-all"
       >
         Iniciar Sesión
       </button>

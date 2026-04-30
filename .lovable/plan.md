@@ -1,104 +1,59 @@
-## Diagnóstico: por qué la PWA muestra la barra del navegador
+## Login fijo a viewport en móvil (sin scroll)
 
-Revisé `public/manifest.json`, `index.html` y `public/sw.js`. La configuración base está bien (`display: "standalone"`, manifest enlazado, service worker registrado, iconos 192/512 presentes, meta de iOS correctos). Pero hay tres puntos que explican el comportamiento que ves y que conviene corregir:
+### Problema
 
-### 1. La instalación previa quedó "congelada" en modo navegador
+En `/` (página de login `src/pages/Index.tsx`) en móvil, el botón dorado "Iniciar Sesión" puede quedar debajo del fold y obligar a hacer scroll.
 
-Cuando una PWA ya está instalada en un dispositivo, **iOS y Android cachean los campos `display`, `start_url`, `scope` y `id` tal como estaban en el momento de instalar**. Cualquier cambio posterior al `manifest.json` **no se propaga** a la instalación existente. Solo se aplica si el usuario:
+### Causa
 
-```text
-1. Desinstala la app (mantener pulsado el ícono → eliminar/desinstalar).
-2. Vuelve a abrir la web en el navegador.
-3. La instala de nuevo desde el menú "Instalar app" / "Añadir a pantalla de inicio".
-```
+El contenedor usa `min-h-[100dvh]` (mínimo, no máximo) y la imagen hero está dentro de un `flex-1` sin `min-h-0`. Cuando la imagen tiene proporciones grandes, fuerza la altura del contenedor y empuja el botón fuera del viewport, generando scroll.
 
-Esto es muy probablemente lo que te está pasando: la app se instaló cuando el manifest aún no tenía `display: "standalone"` correctamente, o se añadió como "acceso directo" del navegador (no como PWA real).
+### Solución
 
-### 2. Falta `display_override` y `scope` (mejoras para nuevas instalaciones)
-
-El manifest actual solo declara `display: "standalone"`. Para forzar que tanto Android como navegadores modernos respeten el modo sin barra, conviene añadir:
-
-- `display_override: ["standalone", "fullscreen", "minimal-ui"]` — orden explícito de fallback.
-- `scope: "/"` — define el ámbito de navegación; sin él algunos navegadores devuelven al modo browser cuando navegas fuera del `start_url`.
-- `id: "/"` — ancla la identidad de la PWA para que futuras actualizaciones se apliquen como la misma app.
-- `orientation: "portrait"` — coherente con app móvil.
-- `lang` y `dir` — buena práctica.
-- Marcar el icono 512 también como `"purpose": "any maskable"` para Android.
-
-### 3. Falta el icono apple-touch-icon en tamaños grandes (iOS)
-
-iOS usa `apple-touch-icon` (180×180) para decidir si tratar la página como app nativa al añadirla a inicio. Ya existe `/icons/apple-touch-icon.png`, pero conviene declarar el tamaño explícito en el `<link>` para que iOS lo respete sin ambigüedad.
-
----
-
-## Cambios que se aplicarán
-
-### A. `public/manifest.json` — versión robusta
-
-```json
-{
-  "name": "JPS Ganadería",
-  "short_name": "JPS",
-  "description": "Control de ganadería JPS",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "display_override": ["standalone", "fullscreen", "minimal-ui"],
-  "orientation": "portrait",
-  "background_color": "#0a0a0a",
-  "theme_color": "#b79f60",
-  "lang": "es",
-  "dir": "ltr",
-  "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
-}
-```
-
-### B. `index.html` — refuerzo de meta tags iOS/Android
-
-Añadir junto a los meta existentes:
-
-```html
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="application-name" content="JPS Ganadería" />
-<meta name="apple-mobile-web-app-title" content="JPS" />
-```
-
-(`apple-mobile-web-app-capable` ya está; agregamos `mobile-web-app-capable` que es el equivalente moderno para Chrome/Android.)
-
-### C. Sin tocar `sw.js`, `vite.config.ts` ni el código React
-
-El service worker actual ya cachea solo imágenes y la lógica de actualización funciona. No hace falta cambiarlo.
-
----
-
-## Qué tendrás que hacer tú después de publicar
-
-Esto es **clave**, porque sin esto los cambios no se verán en tu instalación actual:
+En `src/pages/Index.tsx`, cambiar el layout para que la pantalla quede **anclada al viewport**:
 
 ```text
-1. Publicar (botón Publish → Update).
-2. En el dispositivo donde está instalada la PWA:
-   a. Mantener pulsado el ícono de JPS Ganadería en la pantalla de inicio.
-   b. Elegir "Eliminar app" / "Desinstalar".
-3. Abrir https://idganadero.com en Chrome (Android) o Safari (iOS).
-4. Reinstalar:
-   - Android (Chrome): menú ⋮ → "Instalar app" o "Añadir a pantalla principal".
-     IMPORTANTE: debe decir "Instalar app", no "Crear acceso directo".
-   - iOS (Safari): botón compartir → "Añadir a pantalla de inicio".
-5. Abrir la app desde el ícono del escritorio. Ya no debe aparecer la barra de URL.
+1. Contenedor raíz: h-[100dvh] (altura exacta) + overflow-hidden.
+2. Hero: flex-1 + min-h-0 + relative; la <img> en absolute inset-0
+   con object-cover, así nunca empuja el contenedor.
+3. Botón "Iniciar Sesión": flex-shrink-0 para que nunca se comprima,
+   y padding-bottom con env(safe-area-inset-bottom) para no quedar
+   tapado por la barra de gestos en iPhone.
 ```
 
-Si en Android solo aparece "Crear acceso directo" y no "Instalar app", significa que el navegador no está reconociendo el manifest — en ese caso revisaríamos con DevTools → Application → Manifest cuál validación está fallando.
+Cambios concretos:
+
+```tsx
+// Antes
+<div className="min-h-[100dvh] w-full flex flex-col bg-black overflow-hidden">
+  <div className="flex-1 relative">
+    <img src={heroSrc} className="w-full h-full object-cover" ... />
+  </div>
+  <button className="w-full bg-gold-solid ... py-5 ...">Iniciar Sesión</button>
+
+// Después
+<div className="h-[100dvh] w-full flex flex-col bg-black overflow-hidden">
+  <div className="flex-1 min-h-0 relative">
+    <img src={heroSrc} className="absolute inset-0 w-full h-full object-cover" ... />
+  </div>
+  <button className="flex-shrink-0 w-full bg-gold-solid ... py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] ...">
+    Iniciar Sesión
+  </button>
+```
+
+### Resultado
+
+- El botón "Iniciar Sesión" siempre visible en la parte inferior, sin scroll.
+- La imagen hero se adapta al espacio sobrante (recortando si hace falta) en lugar de empujar el botón.
+- Respeta la barra de gestos en iPhone.
+
+### Sin cambios en
+
+- El Sheet/modal de login interno (ya tiene su propio scroll y altura `h-[70dvh]`).
+- Comportamiento desktop (sigue funcionando igual; el hero llena la pantalla).
 
 ### Archivos que se tocarán
 
 ```text
-public/manifest.json
-index.html
+src/pages/Index.tsx
 ```
