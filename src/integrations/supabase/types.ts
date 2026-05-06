@@ -99,6 +99,66 @@ export type Database = {
           },
         ]
       }
+      animales_finca: {
+        Row: {
+          activo: boolean
+          created_at: string
+          created_by: string | null
+          edad: number | null
+          fecha_ingreso: string | null
+          fecha_salida: string | null
+          finca_id: string
+          id: string
+          nombre: string
+          notas: string | null
+          tipo_id: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string | null
+          edad?: number | null
+          fecha_ingreso?: string | null
+          fecha_salida?: string | null
+          finca_id: string
+          id?: string
+          nombre: string
+          notas?: string | null
+          tipo_id: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string | null
+          edad?: number | null
+          fecha_ingreso?: string | null
+          fecha_salida?: string | null
+          finca_id?: string
+          id?: string
+          nombre?: string
+          notas?: string | null
+          tipo_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animales_finca_finca_id_fkey"
+            columns: ["finca_id"]
+            isOneToOne: false
+            referencedRelation: "fincas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animales_finca_tipo_id_fkey"
+            columns: ["tipo_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_animal_finca"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_assets: {
         Row: {
           key: string
@@ -467,6 +527,90 @@ export type Database = {
           },
         ]
       }
+      empleado_fincas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empleado_id: string
+          finca_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empleado_id: string
+          finca_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empleado_id?: string
+          finca_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empleado_fincas_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empleado_fincas_finca_id_fkey"
+            columns: ["finca_id"]
+            isOneToOne: false
+            referencedRelation: "fincas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empleados: {
+        Row: {
+          activo: boolean
+          cedula: string | null
+          created_at: string
+          created_by: string | null
+          fecha_ingreso: string | null
+          fecha_nacimiento: string | null
+          fecha_salida: string | null
+          foto_url: string | null
+          id: string
+          nombre_completo: string
+          notas: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          activo?: boolean
+          cedula?: string | null
+          created_at?: string
+          created_by?: string | null
+          fecha_ingreso?: string | null
+          fecha_nacimiento?: string | null
+          fecha_salida?: string | null
+          foto_url?: string | null
+          id?: string
+          nombre_completo: string
+          notas?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          activo?: boolean
+          cedula?: string | null
+          created_at?: string
+          created_by?: string | null
+          fecha_ingreso?: string | null
+          fecha_nacimiento?: string | null
+          fecha_salida?: string | null
+          foto_url?: string | null
+          id?: string
+          nombre_completo?: string
+          notas?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fincas: {
         Row: {
           activo: boolean
@@ -740,6 +884,47 @@ export type Database = {
           },
         ]
       }
+      potreros: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          estado: Database["public"]["Enums"]["potrero_estado"]
+          finca_id: string
+          id: string
+          notas: string | null
+          numero: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["potrero_estado"]
+          finca_id: string
+          id?: string
+          notas?: string | null
+          numero: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          estado?: Database["public"]["Enums"]["potrero_estado"]
+          finca_id?: string
+          id?: string
+          notas?: string | null
+          numero?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "potreros_finca_id_fkey"
+            columns: ["finca_id"]
+            isOneToOne: false
+            referencedRelation: "fincas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active: boolean
@@ -767,6 +952,30 @@ export type Database = {
           email?: string
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tipos_animal_finca: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_system: boolean
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          nombre?: string
         }
         Relationships: []
       }
@@ -899,6 +1108,7 @@ export type Database = {
         | "transferencia_embrion"
       palpacion_resultado: "positivo" | "negativo"
       parto_resultado: "vivo" | "muerto" | "aborto"
+      potrero_estado: "cargado" | "descargado" | "en_renovacion"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1044,6 +1254,7 @@ export const Constants = {
       ],
       palpacion_resultado: ["positivo", "negativo"],
       parto_resultado: ["vivo", "muerto", "aborto"],
+      potrero_estado: ["cargado", "descargado", "en_renovacion"],
     },
   },
 } as const
