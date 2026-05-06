@@ -67,8 +67,8 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
       </nav>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-      {/* TODO Fase 4: <AgenteGanaderoDialog open={agenteOpen} onOpenChange={setAgenteOpen} /> */}
-      {agenteOpen && setTimeout(() => setAgenteOpen(false), 0) && null}
+      {/* TODO Fase 4: AgenteGanaderoDialog */}
+      {agenteOpen ? null : null}
     </>
   );
 };
