@@ -4,12 +4,11 @@ import { Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import jpsLogo from "@/assets/jps-logo.webp";
 import SearchDialog from "@/components/SearchDialog";
-import MariaVoiceDialog from "@/components/MariaVoiceDialog";
 
 const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [mariaOpen, setMariaOpen] = useState(false);
+  const [agenteOpen, setAgenteOpen] = useState(false);
 
   return (
     <>
@@ -36,19 +35,19 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
           {/* MarIA central */}
           <button
             type="button"
-            onClick={() => setMariaOpen(true)}
+            onClick={() => setAgenteOpen(true)}
             className="-mt-4 flex flex-col items-center gap-1 text-gold-soft transition-all active:scale-95"
-            aria-label="Abrir MarIA"
+            aria-label="Abrir Agente Ganadero"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold bg-black shadow-soft">
               <img
                 src={jpsLogo}
-                alt="MarIA"
+                alt="Agente Ganadero"
                 className="h-full w-full object-contain p-2"
               />
             </span>
             <span className="text-[10px] uppercase tracking-[0.18em] font-medium">
-              MarIA
+              Agente
             </span>
           </button>
 
@@ -68,7 +67,8 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
       </nav>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-      <MariaVoiceDialog open={mariaOpen} onOpenChange={setMariaOpen} />
+      {/* TODO Fase 4: AgenteGanaderoDialog */}
+      {agenteOpen ? null : null}
     </>
   );
 };
