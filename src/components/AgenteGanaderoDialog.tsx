@@ -37,6 +37,14 @@ const AgentePanel = ({ open }: { open: boolean }) => {
 
   const conversation = useConversation({
     clientTools: agentClientTools,
+    overrides: {
+      agent: {
+        language: "es",
+      },
+      tts: {
+        voiceId: "EXAVITQu4vr4xnSDxMaL",
+      },
+    },
     onConnect: () => {
       connectingRef.current = false;
       setErrorMessage(null);
