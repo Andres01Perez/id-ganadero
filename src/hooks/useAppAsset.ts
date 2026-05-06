@@ -44,6 +44,7 @@ const removeAssetCache = (key: string) => {
  */
 export const useAppAsset = (key: string, fallback: string): string => {
   const [synced] = useState<string>(() => readCache()[key] ?? fallback);
+  const hasCached = readCache()[key] !== undefined;
 
   const { data } = useQuery({
     queryKey: ["app_asset", key],
@@ -60,8 +61,8 @@ export const useAppAsset = (key: string, fallback: string): string => {
       const cached = readCache()[key];
       return cached ?? undefined;
     },
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: hasCached ? false : true,
     refetchOnWindowFocus: true,
   });
 
@@ -97,10 +98,43 @@ export const useAllAppAssets = () => {
   });
 };
 
+/**
+ * Bootstrap: en cuanto hay sesión autenticada, trae TODOS los assets de una
+ * sola vez, los persiste en localStorage y prepopula la cache de React Query
+ * para cada `["app_asset", key]`. Así, al navegar a cualquier pantalla, la
+ * URL real ya está en cache y no se ve el flash del fallback bundleado.
+ *
+ * Se usa una sola vez en `AuthProvider`.
+ */
+export const useAppAssetsBootstrap = (enabled: boolean) => {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["app_assets_bootstrap"],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_assets")
+        .select("key, url");
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((row) => {
+        map[row.key] = row.url;
+        // Prepopular cache individual de cada hook useAppAsset
+        qc.setQueryData(["app_asset", row.key], row.url);
+      });
+      writeCache(map);
+      return map;
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
+
 export const useInvalidateAsset = () => {
   const qc = useQueryClient();
   return (key: string) => {
     qc.invalidateQueries({ queryKey: ["app_asset", key] });
     qc.invalidateQueries({ queryKey: ["app_assets_all"] });
+    qc.invalidateQueries({ queryKey: ["app_assets_bootstrap"] });
   };
 };
