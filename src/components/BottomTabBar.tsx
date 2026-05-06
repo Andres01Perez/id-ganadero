@@ -4,6 +4,7 @@ import { Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import jpsLogo from "@/assets/jps-logo.webp";
 import SearchDialog from "@/components/SearchDialog";
+import AgenteGanaderoDialog from "@/components/AgenteGanaderoDialog";
 
 const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
   const navigate = useNavigate();
@@ -67,8 +68,7 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
       </nav>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-      {/* TODO Fase 4: AgenteGanaderoDialog */}
-      {agenteOpen ? null : null}
+      <AgenteGanaderoDialog open={agenteOpen} onOpenChange={setAgenteOpen} />
     </>
   );
 };
