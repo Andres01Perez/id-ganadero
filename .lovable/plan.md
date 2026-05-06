@@ -1,121 +1,58 @@
 
-## Objetivo
+## Garantía sobre versionado y PWA
 
-Eliminar por completo la implementación actual de **MarIA** (que no funciona bien y usa secretos manuales en Supabase) y reemplazarla por un nuevo asistente de voz llamado **Agente Ganadero**, conectado mediante el **conector oficial de ElevenLabs en Lovable**.
+Los cambios propuestos **no tocan**:
 
----
+- `public/sw.js` (Service Worker) — sigue igual: cache-first para imágenes, SWR para `/app-assets/`, **nunca** cachea HTML/JS/CSS.
+- `useAppUpdate.tsx` — sigue detectando nuevas versiones comparando el hash del bundle contra el `index.html` del servidor.
+- `vite.config.ts` (`__APP_VERSION__`, `__APP_BUILD_ID__`) — sin cambios.
+- `VersionFooter.tsx` ni el flujo de "hard reload" / "limpiar caché".
+- Registro/desregistro del SW en `main.tsx`.
 
-## Fase 1 — Limpieza de MarIA
-
-Se borran los siguientes archivos / referencias:
-
-```text
-src/components/MariaVoiceDialog.tsx       (eliminar)
-src/lib/maria-tools.ts                    (eliminar — se recreará como agent-tools.ts en fase 3)
-supabase/functions/elevenlabs-conversation-token/   (eliminar carpeta + invocar delete_edge_functions)
-src/components/BottomTabBar.tsx           (quitar import + botón central de MarIA o sustituirlo)
-```
-
-Secretos en Supabase que se eliminarán:
-
-- `ELEVENLABS_API_KEY`
-- `ELEVENLABS_AGENT_ID`
-
-(Los borraremos con la herramienta de secretos una vez confirmes; ya no se necesitan porque el conector oficial inyecta sus propias credenciales).
-
-Dependencia npm `@elevenlabs/react`: **se mantiene**, la seguimos necesitando para el nuevo agente.
+Solo se modifica **lógica de React Query + localStorage** para la URL del asset. Cuando subas una nueva versión de la app, el bundle hasheado cambiará igual que hoy y el toast "Nueva versión disponible" seguirá apareciendo. Cuando subas una nueva imagen desde Superadmin, el SW (SWR) y `refetchOnWindowFocus` la recogerán igual que hoy.
 
 ---
 
-## Fase 2 — Conectar el conector oficial de ElevenLabs
+## Problema
 
-Yo lanzo el flujo `standard_connectors--connect` con `connector_id: elevenlabs`. Tú verás un cuadro de diálogo en Lovable donde:
+Al entrar a `/menu`, `/categoria/:tipo`, `/fincas`, etc., se ve por ~200 ms la imagen **bundleada** (fallback estático importado), y luego salta a la imagen real de Supabase. Causa:
 
-1. Inicias sesión (o seleccionas) tu cuenta de ElevenLabs.
-2. Autorizas la conexión a este proyecto.
+`useAppAsset` retorna `data ?? synced ?? fallback`. En frío (sin localStorage), `data` está `undefined` mientras carga la query → renderiza `fallback` (asset bundleado viejo) → cuando llega la query, salta a la URL real.
 
-Cuando termines, Lovable inyecta automáticamente la variable `ELEVENLABS_API_KEY` (vinculada al conector, no manual) en las Edge Functions. **Nada de pegar API keys a mano.**
+`useAllAppAssets()` solo se ejecuta en el panel Superadmin, así que el usuario normal nunca tiene el localStorage precalentado en la primera sesión.
 
----
+## Solución
 
-## Fase 3 — Crear el agente "Agente Ganadero"
+### 1. Bootstrap de assets al iniciar sesión
 
-ElevenLabs requiere que el agente exista en su plataforma para poder conectarse. Te guiaré así:
+Nuevo hook `useAppAssetsBootstrap()` en `src/hooks/useAppAsset.ts`:
+- Hace UN solo `select key, url from app_assets` apenas hay sesión autenticada.
+- Escribe el snapshot completo en `localStorage` (`jps_assets_v1`).
+- Pre-popula la cache de React Query con `queryClient.setQueryData(["app_asset", key], url)` para cada fila.
+- `staleTime: 5 min`, `refetchOnWindowFocus: true` → si el superadmin sube una imagen nueva, al volver a la pestaña se refresca.
 
-### Paso A — Crear el agente en ElevenLabs (lo haces tú, te guío)
+Se llama una vez dentro de `AuthProvider` cuando hay `session`.
 
-1. Entras a [elevenlabs.io/app/agents](https://elevenlabs.io/app/agents) → **Create Agent**.
-2. Nombre: `Agente Ganadero`.
-3. **Voz** sugerida en español (te dejo elegir): `Mateo`, `Valentina` u otra de tu cuenta.
-4. **First message**: "Hola, soy el Agente Ganadero de ID Ganadero. ¿En qué te ayudo hoy?"
-5. **System prompt** (te lo entregaré completo, optimizado para ganadería: consultar animales, fincas, pesos, reproducción, sin inventar datos, respuestas cortas en español).
-6. **Language**: Spanish.
-7. **Client Tools** (las registramos en el panel de ElevenLabs con estos nombres exactos, para que coincidan con el código):
-   - `buscar_animales`
-   - `contar_animales`
-   - `detalle_animal`
-   - `consultar_pesajes`
-   - `consultar_reproduccion`
-   - `resumen_ganaderia`
+### 2. Ajustar `useAppAsset` para no flashear el fallback
 
-   Te paso la descripción y el JSON-Schema de parámetros de cada una para copiar/pegar.
-8. Copias el **Agent ID** que ElevenLabs te muestra.
+- `initialData` lee de localStorage (ya lo hace, se mantiene).
+- `staleTime: 5 * 60 * 1000` y `refetchOnMount: false` cuando ya hay `initialData` (evita refetch agresivo en cada navegación).
+- `refetchOnWindowFocus: true` se mantiene.
+- El fallback bundleado solo se usa si **no hay nada** en localStorage **ni** en la cache de React Query (cold start absoluto, primera vez de la primera sesión antes de que termine el bootstrap).
 
-### Paso B — Guardar el Agent ID
+### 3. Sin cambios en páginas
 
-El Agent ID **no es secreto** (es público en el frontend del SDK). Lo guardaremos como variable pública:
+`Menu.tsx`, `CategoriaAnimales.tsx`, `Fincas.tsx`, `Imagenes.tsx` siguen usando `useAppAsset(key, fallback)` igual.
 
-```text
-VITE_ELEVENLABS_AGENT_ID=<tu-agent-id>
-```
+## Archivos a modificar
 
-Te indicaré pegarlo en `.env` y lo leeremos con `import.meta.env.VITE_ELEVENLABS_AGENT_ID`.
+- `src/hooks/useAppAsset.ts` — añadir `useAppAssetsBootstrap()`, ajustar opciones de la query.
+- `src/hooks/useAuth.tsx` — invocar `useAppAssetsBootstrap()` cuando hay sesión.
 
----
+## Resultado esperado
 
-## Fase 4 — Implementar el Agente Ganadero en código
-
-Archivos nuevos:
-
-```text
-src/lib/agent-tools.ts                (idéntica lógica de las tools, renombradas para Agente Ganadero)
-src/components/AgenteGanaderoDialog.tsx   (reemplazo de MariaVoiceDialog)
-supabase/functions/elevenlabs-agent-token/index.ts   (edge function nueva que pide el conversation token a ElevenLabs vía la API key del conector)
-```
-
-Cambios:
-
-```text
-src/components/BottomTabBar.tsx       (botón central abre AgenteGanaderoDialog)
-```
-
-### Detalles técnicos clave
-
-- La edge function `elevenlabs-agent-token` llama a `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=...` usando `Deno.env.get("ELEVENLABS_API_KEY")` (inyectada por el conector). ElevenLabs **no** está en la lista de connector-gateway con OAuth; usa API key directa, así que esto es correcto.
-- El cliente usa `useConversation` de `@elevenlabs/react` con `connectionType: "webrtc"` y `conversationToken`.
-- Las Client Tools se pasan por `clientTools: agentClientTools` (mismas funciones, ejecutadas en el navegador con la sesión de Supabase del usuario logueado, así respetamos RLS).
-- Mantenemos fallback a WebSocket con signed URL si WebRTC falla (igual que ahora).
-
----
-
-## Fase 5 — QA
-
-- Probar: "¿Cuántas vacas tengo en La Esperanza?" → debe llamar `contar_animales` y responder con dato real.
-- Probar: "Dame el detalle del animal 042" → `detalle_animal`.
-- Verificar que el botón central del BottomTabBar abre el nuevo diálogo "Agente Ganadero".
-- Confirmar que ya no hay referencias a MarIA en el código.
-
----
-
-## Resumen de orden de ejecución (cuando apruebes)
-
-1. Borro archivos de MarIA y la edge function vieja.
-2. Disparo el conector oficial de ElevenLabs (acción tuya: aceptar el popup).
-3. Te paso instrucciones + system prompt + JSON-Schemas para crear el agente en elevenlabs.io.
-4. Tú me pegas el Agent ID, yo lo guardo en `.env`.
-5. Borro los secretos manuales `ELEVENLABS_API_KEY` y `ELEVENLABS_AGENT_ID` de Supabase.
-6. Creo edge function nueva + componente `AgenteGanaderoDialog` + tools.
-7. Actualizo BottomTabBar.
-8. Probamos juntos.
-
-¿Apruebas el plan para arrancar con la Fase 1?
+- **Primera carga (sesión nueva)**: bootstrap corre en paralelo al primer render. La primera vista puede mostrar fallback ~100 ms, pero al navegar a otras pantallas dentro de la sesión ya no hay flash.
+- **Navegaciones siguientes**: instantáneo desde localStorage, sin flash, sin refetch.
+- **Sesiones posteriores (mismo navegador)**: instantáneo desde el primer render porque localStorage persiste.
+- **Cambio de imagen desde Superadmin**: al volver a la pestaña se invalida y se ve la nueva (igual que hoy, vía SWR del SW + `refetchOnWindowFocus`).
+- **Nueva versión de la app**: detección y reload siguen funcionando exactamente igual (no se toca `useAppUpdate` ni el SW).
