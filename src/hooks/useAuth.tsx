@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useAppAssetsBootstrap } from "./useAppAsset";
 
 export type AppRole = "super_admin" | "admin" | "operario";
 
@@ -51,6 +52,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Bootstrap de assets editables apenas hay sesión (precarga global, evita flash)
+  useAppAssetsBootstrap(!!session?.user);
 
   const fetchRolesAndProfile = async (userId: string) => {
     const [rolesRes, profileRes] = await Promise.all([
