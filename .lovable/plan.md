@@ -1,58 +1,156 @@
+# Plan: Módulo de Finca (Empleados, Potreros, Animales por Finca)
 
-## Garantía sobre versionado y PWA
+## 1. Cambio de UX en `/fincas`
 
-Los cambios propuestos **no tocan**:
+Hoy al tocar una finca se abre el formulario de edición (solo admin). Cambiamos el comportamiento:
 
-- `public/sw.js` (Service Worker) — sigue igual: cache-first para imágenes, SWR para `/app-assets/`, **nunca** cachea HTML/JS/CSS.
-- `useAppUpdate.tsx` — sigue detectando nuevas versiones comparando el hash del bundle contra el `index.html` del servidor.
-- `vite.config.ts` (`__APP_VERSION__`, `__APP_BUILD_ID__`) — sin cambios.
-- `VersionFooter.tsx` ni el flujo de "hard reload" / "limpiar caché".
-- Registro/desregistro del SW en `main.tsx`.
+- **Tap en una tarjeta de finca** → navegar a `/finca/:fincaId` (nuevo menú de finca) para todos los roles.
+- **Botón lápiz** pequeño en cada tarjeta (solo admin/super_admin) → abre el `FincaForm` actual para editar nombre/ubicación/foto.
+- El FAB `+` para crear finca se mantiene igual.
 
-Solo se modifica **lógica de React Query + localStorage** para la URL del asset. Cuando subas una nueva versión de la app, el bundle hasheado cambiará igual que hoy y el toast "Nueva versión disponible" seguirá apareciendo. Cuando subas una nueva imagen desde Superadmin, el SW (SWR) y `refetchOnWindowFocus` la recogerán igual que hoy.
+## 2. Nueva página `/finca/:fincaId` — Menú de finca
 
----
+Estilo igual al `/menu` actual (header con foto de la finca, banda dorada con el nombre, grid 2-col de círculos dorados):
 
-## Problema
+- Empleados
+- Potreros
+- Animales
+- Inventario *(placeholder por ahora)*
+- Compra de ganado *(placeholder)*
+- Venta de ganado *(placeholder)*
 
-Al entrar a `/menu`, `/categoria/:tipo`, `/fincas`, etc., se ve por ~200 ms la imagen **bundleada** (fallback estático importado), y luego salta a la imagen real de Supabase. Causa:
+Header usa `fincas.foto_url` (ya existe) con fallback al banner de fincas.
 
-`useAppAsset` retorna `data ?? synced ?? fallback`. En frío (sin localStorage), `data` está `undefined` mientras carga la query → renderiza `fallback` (asset bundleado viejo) → cuando llega la query, salta a la URL real.
+## 3. Base de datos (migraciones)
 
-`useAllAppAssets()` solo se ejecuta en el panel Superadmin, así que el usuario normal nunca tiene el localStorage precalentado en la primera sesión.
+### 3.1 Empleados (multi-finca, cédula no única, vinculación opcional a usuario)
 
-## Solución
+```text
+empleados
+  id uuid pk
+  nombre_completo text not null
+  cedula text             -- no única, solo informativa
+  fecha_nacimiento date
+  fecha_ingreso date
+  fecha_salida date
+  activo boolean default true
+  foto_url text
+  notas text
+  user_id uuid            -- opcional, fk lógica a auth.users
+  created_by, created_at, updated_at
 
-### 1. Bootstrap de assets al iniciar sesión
+empleado_fincas             -- N:M
+  empleado_id uuid not null
+  finca_id uuid not null
+  pk (empleado_id, finca_id)
+```
 
-Nuevo hook `useAppAssetsBootstrap()` en `src/hooks/useAppAsset.ts`:
-- Hace UN solo `select key, url from app_assets` apenas hay sesión autenticada.
-- Escribe el snapshot completo en `localStorage` (`jps_assets_v1`).
-- Pre-popula la cache de React Query con `queryClient.setQueryData(["app_asset", key], url)` para cada fila.
-- `staleTime: 5 min`, `refetchOnWindowFocus: true` → si el superadmin sube una imagen nueva, al volver a la pestaña se refresca.
+RLS:
+- SELECT: cualquier usuario activo que tenga acceso a *alguna* de las fincas vinculadas (`exists` sobre `empleado_fincas` + `user_has_finca`).
+- INSERT/UPDATE/DELETE: solo `is_admin_or_super`.
+- `empleado_fincas`: SELECT igual que arriba; INSERT/DELETE solo admin/super.
 
-Se llama una vez dentro de `AuthProvider` cuando hay `session`.
+### 3.2 Potreros
 
-### 2. Ajustar `useAppAsset` para no flashear el fallback
+```text
+potreros
+  id uuid pk
+  finca_id uuid not null
+  numero text not null            -- "id" del potrero dentro de la finca
+  estado text not null            -- enum: 'cargado' | 'descargado' | 'en_renovacion'
+  notas text
+  created_by, created_at, updated_at
+  unique (finca_id, numero)
+```
 
-- `initialData` lee de localStorage (ya lo hace, se mantiene).
-- `staleTime: 5 * 60 * 1000` y `refetchOnMount: false` cuando ya hay `initialData` (evita refetch agresivo en cada navegación).
-- `refetchOnWindowFocus: true` se mantiene.
-- El fallback bundleado solo se usa si **no hay nada** en localStorage **ni** en la cache de React Query (cold start absoluto, primera vez de la primera sesión antes de que termine el bootstrap).
+Enum nuevo `potrero_estado`. RLS:
+- SELECT: `user_has_finca(auth.uid(), finca_id)`.
+- INSERT/UPDATE/DELETE: `is_admin_or_super` **y** `user_has_finca`.
 
-### 3. Sin cambios en páginas
+### 3.3 Animales por finca + tipos globales
 
-`Menu.tsx`, `CategoriaAnimales.tsx`, `Fincas.tsx`, `Imagenes.tsx` siguen usando `useAppAsset(key, fallback)` igual.
+```text
+tipos_animal_finca           -- catálogo global
+  id uuid pk
+  nombre text unique not null  -- 'Ternero', 'Novillo', 'Otro', + los que cree el admin
+  is_system boolean default false
+  created_by, created_at
 
-## Archivos a modificar
+animales_finca
+  id uuid pk
+  finca_id uuid not null
+  tipo_id uuid not null fk → tipos_animal_finca
+  nombre text not null
+  edad int                    -- opcional, en años (input simple)
+  fecha_ingreso date
+  fecha_salida date
+  activo boolean default true
+  notas text
+  created_by, created_at, updated_at
+```
 
-- `src/hooks/useAppAsset.ts` — añadir `useAppAssetsBootstrap()`, ajustar opciones de la query.
-- `src/hooks/useAuth.tsx` — invocar `useAppAssetsBootstrap()` cuando hay sesión.
+Seed inicial: insertar `Ternero`, `Novillo`, `Otro` con `is_system=true`.
 
-## Resultado esperado
+RLS:
+- `tipos_animal_finca`: SELECT a todos los autenticados activos; INSERT solo admin/super; UPDATE/DELETE bloqueado si `is_system=true`.
+- `animales_finca`: SELECT por `user_has_finca`; INSERT/UPDATE/DELETE admin/super + `user_has_finca`. Operario solo ve.
 
-- **Primera carga (sesión nueva)**: bootstrap corre en paralelo al primer render. La primera vista puede mostrar fallback ~100 ms, pero al navegar a otras pantallas dentro de la sesión ya no hay flash.
-- **Navegaciones siguientes**: instantáneo desde localStorage, sin flash, sin refetch.
-- **Sesiones posteriores (mismo navegador)**: instantáneo desde el primer render porque localStorage persiste.
-- **Cambio de imagen desde Superadmin**: al volver a la pestaña se invalida y se ve la nueva (igual que hoy, vía SWR del SW + `refetchOnWindowFocus`).
-- **Nueva versión de la app**: detección y reload siguen funcionando exactamente igual (no se toca `useAppUpdate` ni el SW).
+### 3.4 Storage
+
+Reutilizamos el bucket `app-assets` con prefijo `empleados/{empleadoId}.{ext}` para fotos.
+
+## 4. Rutas y archivos nuevos
+
+```text
+src/pages/Finca/
+  Layout.tsx           (header foto + banda dorada + back)
+  MenuFinca.tsx        (/finca/:fincaId)
+  Empleados.tsx        (/finca/:fincaId/empleados)
+  EmpleadoDetalle.tsx  (/finca/:fincaId/empleados/:id)  -- opcional: edit en dialog en su lugar
+  Potreros.tsx         (/finca/:fincaId/potreros)
+  Animales.tsx         (/finca/:fincaId/animales)
+
+src/components/finca/
+  EmpleadoForm.tsx     (dialog crear/editar; admin only; foto con ImageCropDialog circular)
+  EmpleadoAvatar.tsx   (foto o ícono User; aplica filter grayscale+opacity si !activo)
+  PotreroForm.tsx      (dialog: número + select estado)
+  AnimalFincaForm.tsx  (dialog: nombre, tipo con select + opción "Otro" → input crea tipo nuevo, edad, fechas, activo, notas)
+```
+
+Rutas registradas en `src/App.tsx` con `ProtectedRoute` (todas requieren login; CRUD se restringe en UI por `roles`).
+
+## 5. UI por pantalla
+
+### Empleados (`/finca/:fincaId/empleados`)
+- Layout idéntico a `/categoria/hembra`: header con foto de finca, banda dorada "Empleados", lista con avatar circular + nombre + cédula.
+- Si `!activo`: avatar con `grayscale opacity-60` y texto en gris claro.
+- Tap en tarjeta → abre `EmpleadoForm` (admin: edición / operario: solo lectura, todos los inputs `disabled`).
+- FAB `+` solo para admin/super.
+
+### Potreros
+- Lista compacta de filas: `Potrero #{numero}` + badge de estado (cargado=verde, descargado=gris, renovación=ámbar) + ícono lápiz al final (admin).
+- FAB `+` admin.
+
+### Animales (inventario de finca)
+- Lista similar a empleados pero sin foto; muestra nombre + tipo + estado.
+- Form con select de tipo: la última opción es "Otro…" → al elegirla aparece un input `Nuevo tipo` + botón "Crear"; al guardar, inserta en `tipos_animal_finca` y deja seleccionado el nuevo id.
+- Filtro/buscador opcional al inicio (no requerido por ahora; lo dejo fuera).
+
+## 6. Permisos por rol (resumen)
+
+| Acción | super_admin | admin | operario |
+|---|---|---|---|
+| Ver módulos finca | ✓ | ✓ | ✓ (solo fincas asignadas) |
+| Crear/editar/eliminar empleados | ✓ | ✓ | ✗ |
+| Crear/editar/eliminar potreros | ✓ | ✓ | ✗ |
+| Crear/editar/eliminar animales finca | ✓ | ✓ | ✗ |
+| Crear nuevo tipo de animal | ✓ | ✓ | ✗ |
+
+Se hace doble guardia: RLS en BD + ocultar/disabled en UI.
+
+## 7. No incluido en este plan
+
+- Funcionalidades 4 (Inventario), 5 (Compra) y 6 (Venta) — quedan como tarjetas placeholder en el menú de finca, navegando a un `PlaceholderPage` hasta que las definamos.
+- Cumpleaños / cálculo de edad: solo se calcula en el front a partir de `fecha_nacimiento` para mostrar; sin notificaciones todavía.
+
+¿Procedo con la implementación?
