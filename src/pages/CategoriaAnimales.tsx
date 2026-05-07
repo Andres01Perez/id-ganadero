@@ -87,7 +87,7 @@ const CategoriaAnimales = () => {
   }, [animals]);
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-20">
+    <div className="min-h-[100dvh] bg-background pb-safe-plus">
       <FincaActivaChip />
       {/* Header foto */}
       <header className="relative aspect-[865/503] overflow-hidden">

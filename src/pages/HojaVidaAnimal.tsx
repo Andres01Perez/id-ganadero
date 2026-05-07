@@ -77,7 +77,7 @@ const HojaVidaAnimal = () => {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-20">
+    <div className="min-h-[100dvh] bg-background pb-safe-plus">
       {/* Foto grande */}
       <header className="relative aspect-[865/503] bg-muted overflow-hidden">
         {animal.foto_banner_url || animal.foto_principal_url ? (
