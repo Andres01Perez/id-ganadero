@@ -294,6 +294,7 @@ export const agentClientTools = {
     const finca = asText(params.finca);
     let fincaIds: string[] | null = null;
     let fincaNombres: string[] = [];
+    const scope = getScope(params);
 
     if (finca) {
       try {
@@ -306,6 +307,9 @@ export const agentClientTools = {
       if (fincaIds?.length === 0) {
         return result({ total: 0, por_tipo: {}, por_sexo: {}, por_finca: {}, finca_encontrada: false });
       }
+    } else if (scope === "actual" && agentFincaContext) {
+      fincaIds = [agentFincaContext.id];
+      fincaNombres = [agentFincaContext.nombre];
     }
 
     let animalesQuery = supabase.from("animales").select("tipo, sexo, finca_id").eq("activo", true);
