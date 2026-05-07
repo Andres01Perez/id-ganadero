@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useFinca } from "@/contexts/FincaContext";
-import { useAppAsset } from "@/hooks/useAppAsset";
-import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaActivaChip from "@/components/FincaActivaChip";
 import PotreroForm, { type PotreroEstado } from "@/components/PotreroForm";
@@ -33,21 +30,13 @@ const estadoClass: Record<PotreroEstado, string> = {
 
 const FincaPotreros = () => {
   const navigate = useNavigate();
-  const { roles } = useAuth();
   const { fincaActiva } = useFinca();
-  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
 
   const [potreros, setPotreros] = useState<Potrero[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-
-  const fallbackBanner = useAppAsset(
-    ASSET_KEYS.bannerFincas,
-    ASSET_FALLBACKS[ASSET_KEYS.bannerFincas],
-  );
-  const banner = fincaActiva?.foto_url || fallbackBanner;
 
   const load = async () => {
     if (!fincaActiva) return;
@@ -86,7 +75,6 @@ const FincaPotreros = () => {
     setFormOpen(true);
   };
   const openEdit = (id: string) => {
-    if (!isAdmin) return;
     setEditId(id);
     setFormOpen(true);
   };
@@ -94,20 +82,15 @@ const FincaPotreros = () => {
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
       <FincaActivaChip />
-      <header className="relative aspect-[865/503] overflow-hidden">
-        <img src={banner} alt="" className="w-full h-full object-cover" loading="eager" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
+      <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-base flex items-center">
         <button
           onClick={() => navigate("/menu-finca")}
-          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
+          className="ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-      </header>
-
-      <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-base">
-        Potreros
+        <span className="flex-1 -ml-10">Potreros</span>
       </div>
 
       <div className="px-4 pt-4">
@@ -154,15 +137,13 @@ const FincaPotreros = () => {
         )}
       </div>
 
-      {isAdmin && (
-        <button
-          onClick={openCreate}
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 h-14 w-14 rounded-full bg-gold-solid text-ink shadow-gold flex items-center justify-center active:scale-95 transition-transform z-30"
-          aria-label="Agregar"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      )}
+      <button
+        onClick={openCreate}
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-5 h-14 w-14 rounded-full bg-gold-solid text-ink shadow-gold flex items-center justify-center active:scale-95 transition-transform z-30"
+        aria-label="Agregar"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <PotreroForm
         open={formOpen}
