@@ -71,15 +71,15 @@ const FincaAnimales = () => {
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
       <FincaActivaChip />
-      <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-base flex items-center">
+      <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button
           onClick={() => navigate("/menu-finca")}
-          className="ml-2 h-8 w-8 rounded-full flex items-center justify-center"
+          className="relative z-10 ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="flex-1 -ml-10">Animales de la finca</span>
+        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">Animales de la finca</span>
       </div>
 
       <div className="px-4 pt-4">
