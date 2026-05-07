@@ -1,156 +1,106 @@
-# Plan: Módulo de Finca (Empleados, Potreros, Animales por Finca)
 
-## 1. Cambio de UX en `/fincas`
+# Refactor: Finca activa como contexto global
 
-Hoy al tocar una finca se abre el formulario de edición (solo admin). Cambiamos el comportamiento:
+## 1. Concepto
 
-- **Tap en una tarjeta de finca** → navegar a `/finca/:fincaId` (nuevo menú de finca) para todos los roles.
-- **Botón lápiz** pequeño en cada tarjeta (solo admin/super_admin) → abre el `FincaForm` actual para editar nombre/ubicación/foto.
-- El FAB `+` para crear finca se mantiene igual.
+Toda la app vive "dentro de una finca". Tras login el usuario elige (o se selecciona automáticamente) una **finca activa** que se guarda en `localStorage` + `FincaContext`. Todas las consultas (animales, empleados, potreros, agente IA…) filtran por ese `fincaId`. Para ver otra finca el usuario toca el chip "📍 Nombre · Cambiar" en el header y vuelve a `/fincas`.
 
-## 2. Nueva página `/finca/:fincaId` — Menú de finca
+No metemos `:fincaId` en cada URL: las rutas existentes no se tocan, solo cambia el filtro interno. Más simple y más natural para usuarios poco técnicos.
 
-Estilo igual al `/menu` actual (header con foto de la finca, banda dorada con el nombre, grid 2-col de círculos dorados):
-
-- Empleados
-- Potreros
-- Animales
-- Inventario *(placeholder por ahora)*
-- Compra de ganado *(placeholder)*
-- Venta de ganado *(placeholder)*
-
-Header usa `fincas.foto_url` (ya existe) con fallback al banner de fincas.
-
-## 3. Base de datos (migraciones)
-
-### 3.1 Empleados (multi-finca, cédula no única, vinculación opcional a usuario)
+## 2. Flujo de navegación
 
 ```text
-empleados
-  id uuid pk
-  nombre_completo text not null
-  cedula text             -- no única, solo informativa
-  fecha_nacimiento date
-  fecha_ingreso date
-  fecha_salida date
-  activo boolean default true
-  foto_url text
-  notas text
-  user_id uuid            -- opcional, fk lógica a auth.users
-  created_by, created_at, updated_at
+Login OK
+  ├─ 0 fincas accesibles  → pantalla "No tienes fincas asignadas"
+  ├─ 1 finca              → set activa → /menu
+  └─ 2+ fincas            → /fincas (modo selector)
 
-empleado_fincas             -- N:M
-  empleado_id uuid not null
-  finca_id uuid not null
-  pk (empleado_id, finca_id)
+/fincas (selector)
+  └─ tap finca → set activa → /menu
+  └─ lápiz (admin) → editar finca (no cambia activa)
+  └─ FAB + (admin) → crear finca
+
+/menu  (genético — finca activa)
+  ├─ Header: chip "📍 La Esperanza · Cambiar" → /fincas
+  ├─ Toros / Hembras / Crías / Embriones (ya existen)
+  └─ NUEVO botón grande "Gestión de finca" → /menu-finca
+
+/menu-finca  (operación — finca activa)
+  ├─ Mismo header con chip
+  └─ Empleados · Potreros · Animales (finca) · Inventario · Compra · Venta
 ```
 
-RLS:
-- SELECT: cualquier usuario activo que tenga acceso a *alguna* de las fincas vinculadas (`exists` sobre `empleado_fincas` + `user_has_finca`).
-- INSERT/UPDATE/DELETE: solo `is_admin_or_super`.
-- `empleado_fincas`: SELECT igual que arriba; INSERT/DELETE solo admin/super.
+## 3. FincaContext (nuevo)
 
-### 3.2 Potreros
+`src/contexts/FincaContext.tsx`:
+- `fincaActiva: Finca | null`
+- `fincasAccesibles: Finca[]` (cargadas una vez al login)
+- `setFincaActiva(finca)` → guarda en `localStorage["jps_finca_activa_id"]`
+- `clearFincaActiva()` → al hacer logout
+- Hidratación inicial: lee `localStorage`, valida que la finca aún esté en `fincasAccesibles`; si no, la limpia.
 
-```text
-potreros
-  id uuid pk
-  finca_id uuid not null
-  numero text not null            -- "id" del potrero dentro de la finca
-  estado text not null            -- enum: 'cargado' | 'descargado' | 'en_renovacion'
-  notas text
-  created_by, created_at, updated_at
-  unique (finca_id, numero)
-```
+Provider montado en `App.tsx` dentro de `AuthProvider`.
 
-Enum nuevo `potrero_estado`. RLS:
-- SELECT: `user_has_finca(auth.uid(), finca_id)`.
-- INSERT/UPDATE/DELETE: `is_admin_or_super` **y** `user_has_finca`.
+Hook helper `useFincaActiva()` que **lanza error** si se usa sin finca activa, así detectamos páginas que deberían redirigir.
 
-### 3.3 Animales por finca + tipos globales
+## 4. Cambios por archivo
 
-```text
-tipos_animal_finca           -- catálogo global
-  id uuid pk
-  nombre text unique not null  -- 'Ternero', 'Novillo', 'Otro', + los que cree el admin
-  is_system boolean default false
-  created_by, created_at
+### Auth y entrada
+- `src/pages/Auth.tsx` (o componente login): tras login exitoso, cargar fincas accesibles del usuario y aplicar lógica de redirección (0/1/2+).
+- Nuevo `src/components/RequireFinca.tsx`: wrapper que redirige a `/fincas` si no hay finca activa. Envuelve `/menu`, `/menu-finca`, `/categoria/*`, `/animal/*`, `/finca-modulo/*`.
 
-animales_finca
-  id uuid pk
-  finca_id uuid not null
-  tipo_id uuid not null fk → tipos_animal_finca
-  nombre text not null
-  edad int                    -- opcional, en años (input simple)
-  fecha_ingreso date
-  fecha_salida date
-  activo boolean default true
-  notas text
-  created_by, created_at, updated_at
-```
+### `/fincas` (`src/pages/Fincas.tsx`)
+- Tap card → `setFincaActiva(f)` + `navigate('/menu')`.
+- Lápiz pequeño (admin/super) en cada card → abre `FincaForm`.
+- FAB + queda igual.
+- Si llega aquí "vacío" (0 fincas), mostrar empty state.
 
-Seed inicial: insertar `Ternero`, `Novillo`, `Otro` con `is_system=true`.
+### `/menu` (`src/pages/Menu.tsx`)
+- Header: agrega componente `<FincaActivaChip />` arriba (chip discreto, ícono pin + nombre, tap → `/fincas`).
+- Filtrar conteos/listados por `fincaActiva.id`.
+- Agregar tarjeta nueva "Gestión de finca" → `/menu-finca`.
 
-RLS:
-- `tipos_animal_finca`: SELECT a todos los autenticados activos; INSERT solo admin/super; UPDATE/DELETE bloqueado si `is_system=true`.
-- `animales_finca`: SELECT por `user_has_finca`; INSERT/UPDATE/DELETE admin/super + `user_has_finca`. Operario solo ve.
+### `/menu-finca` (NUEVO `src/pages/MenuFinca.tsx`)
+- Misma estructura visual que `/menu`, con `<FincaActivaChip />`.
+- 6 tarjetas: Empleados, Potreros, Animales (finca), Inventario, Compra, Venta.
+- Las 3 últimas como placeholders por ahora.
 
-### 3.4 Storage
+### Categorías genéticas
+- `src/pages/CategoriaAnimales.tsx`: agregar `.eq('finca_id', fincaActiva.id)` al query principal y al conteo.
+- `src/components/AnimalForm.tsx`: preseleccionar `finca_id = fincaActiva.id` y ocultar el selector (o mostrarlo solo lectura). Admins igual no necesitan elegir porque están "dentro" de la finca.
 
-Reutilizamos el bucket `app-assets` con prefijo `empleados/{empleadoId}.{ext}` para fotos.
+### Módulos de finca (Empleados, Potreros, Animales)
+- `src/pages/Finca/Empleados.tsx`, `Potreros.tsx`, `Animales.tsx`: crear filtrando por `fincaActiva.id`. Forms preseleccionan la finca.
+- Empleados: al crear, automáticamente se inserta fila en `empleado_fincas` con la finca activa (admin puede luego asignar a más fincas desde la edición del empleado).
 
-## 4. Rutas y archivos nuevos
+### Agente IA por voz
+- **Operario**: el botón/FAB del agente NO se renderiza.
+- **Admin / super_admin**: visible. El agente recibe contexto: "El usuario está actualmente en la finca <Nombre>. Por defecto responde sobre esa finca. Si te preguntan explícitamente por todas o por otra finca, puedes consultar globalmente."
+- Client tools del agente (consultar animales, etc.) reciben `fincaIdContexto` por defecto pero aceptan parámetro `scope: "actual" | "todas" | fincaId` para flexibilidad de admin.
 
-```text
-src/pages/Finca/
-  Layout.tsx           (header foto + banda dorada + back)
-  MenuFinca.tsx        (/finca/:fincaId)
-  Empleados.tsx        (/finca/:fincaId/empleados)
-  EmpleadoDetalle.tsx  (/finca/:fincaId/empleados/:id)  -- opcional: edit en dialog en su lugar
-  Potreros.tsx         (/finca/:fincaId/potreros)
-  Animales.tsx         (/finca/:fincaId/animales)
+### Header / chip
+- `src/components/FincaActivaChip.tsx`: chip pequeño (icono `MapPin`, nombre finca, separador, "Cambiar"). Estilo discreto en gold/black sutil. Tap → `/fincas`.
 
-src/components/finca/
-  EmpleadoForm.tsx     (dialog crear/editar; admin only; foto con ImageCropDialog circular)
-  EmpleadoAvatar.tsx   (foto o ícono User; aplica filter grayscale+opacity si !activo)
-  PotreroForm.tsx      (dialog: número + select estado)
-  AnimalFincaForm.tsx  (dialog: nombre, tipo con select + opción "Otro" → input crea tipo nuevo, edad, fechas, activo, notas)
-```
+### Logout
+- `useAuth` logout: llamar `clearFincaActiva()`.
 
-Rutas registradas en `src/App.tsx` con `ProtectedRoute` (todas requieren login; CRUD se restringe en UI por `roles`).
+## 5. Base de datos
 
-## 5. UI por pantalla
+**Sin cambios de schema.** Todo el filtrado se hace en cliente con `.eq('finca_id', ...)` aprovechando las RLS ya existentes (que ya permiten ver solo fincas accesibles, así que un admin malicioso tampoco puede pedir una finca a la que no tiene acceso).
 
-### Empleados (`/finca/:fincaId/empleados`)
-- Layout idéntico a `/categoria/hembra`: header con foto de finca, banda dorada "Empleados", lista con avatar circular + nombre + cédula.
-- Si `!activo`: avatar con `grayscale opacity-60` y texto en gris claro.
-- Tap en tarjeta → abre `EmpleadoForm` (admin: edición / operario: solo lectura, todos los inputs `disabled`).
-- FAB `+` solo para admin/super.
+## 6. Permisos por rol (recordatorio)
+- **super_admin / admin**: ven el chip, pueden cambiar finca, ven el agente IA, CRUD completo en módulos de finca.
+- **operario**: ve el chip y puede cambiar entre sus fincas asignadas, NO ve el agente IA, lectura en módulos de finca, CRUD en categorías genéticas según permisos actuales.
 
-### Potreros
-- Lista compacta de filas: `Potrero #{numero}` + badge de estado (cargado=verde, descargado=gris, renovación=ámbar) + ícono lápiz al final (admin).
-- FAB `+` admin.
+## 7. Cosas que NO entran en este paso
+- Inventario, Compra, Venta (placeholders).
+- URLs con `:fincaId` (se puede agregar después si se quiere link compartible).
+- Cambios en RLS.
 
-### Animales (inventario de finca)
-- Lista similar a empleados pero sin foto; muestra nombre + tipo + estado.
-- Form con select de tipo: la última opción es "Otro…" → al elegirla aparece un input `Nuevo tipo` + botón "Crear"; al guardar, inserta en `tipos_animal_finca` y deja seleccionado el nuevo id.
-- Filtro/buscador opcional al inicio (no requerido por ahora; lo dejo fuera).
+## 8. Preguntas que tengo (puedes responder al aprobar o me dices "tal cual")
 
-## 6. Permisos por rol (resumen)
+1. **Admin sin finca activa entra al agente IA**: ¿debería forzarlo a elegir una finca primero, o permitir modo "global"? Mi sugerencia: **forzar elegir una** (consistencia y simplicidad).
+2. **Cuando un admin crea una finca nueva**: ¿la seteamos como activa automáticamente? Sugerencia: **sí**.
+3. **Editar finca desde lápiz en `/fincas`**: ¿debe cambiar también la finca activa o solo abrir el editor? Sugerencia: **solo editor, no cambia activa**.
 
-| Acción | super_admin | admin | operario |
-|---|---|---|---|
-| Ver módulos finca | ✓ | ✓ | ✓ (solo fincas asignadas) |
-| Crear/editar/eliminar empleados | ✓ | ✓ | ✗ |
-| Crear/editar/eliminar potreros | ✓ | ✓ | ✗ |
-| Crear/editar/eliminar animales finca | ✓ | ✓ | ✗ |
-| Crear nuevo tipo de animal | ✓ | ✓ | ✗ |
-
-Se hace doble guardia: RLS en BD + ocultar/disabled en UI.
-
-## 7. No incluido en este plan
-
-- Funcionalidades 4 (Inventario), 5 (Compra) y 6 (Venta) — quedan como tarjetas placeholder en el menú de finca, navegando a un `PlaceholderPage` hasta que las definamos.
-- Cumpleaños / cálculo de edad: solo se calcula en el front a partir de `fecha_nacimiento` para mostrar; sin notificaciones todavía.
-
-¿Procedo con la implementación?
+Si cualquiera de estas no te cuadra, dímelo al aprobar y ajusto antes de implementar.
