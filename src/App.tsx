@@ -11,6 +11,7 @@ import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import AnimalSeguimiento from "./pages/AnimalSeguimiento";
 import Fincas from "./pages/Fincas";
+import MenuFinca from "./pages/MenuFinca";
 import NotFound from "./pages/NotFound";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import SuperAdminLayout from "./pages/SuperAdmin/Layout";
@@ -20,7 +21,9 @@ import SuperAdminImagenes from "./pages/SuperAdmin/Imagenes";
 import SuperAdminInformacionFinca from "./pages/SuperAdmin/InformacionFinca";
 import SuperAdminGestion from "./pages/SuperAdmin/Gestion";
 import { AuthProvider } from "./hooks/useAuth";
+import { FincaProvider } from "./contexts/FincaContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequireFinca from "./components/RequireFinca";
 import { useAppUpdate } from "./hooks/useAppUpdate";
 import SafeAreaTopBar from "./components/SafeAreaTopBar";
 
@@ -48,6 +51,7 @@ const App = () => (
         <div className="flex flex-col min-h-[100dvh]">
           <ConditionalSafeArea />
           <AuthProvider>
+            <FincaProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/sa" element={<SuperAdminLogin />} />
@@ -73,7 +77,29 @@ const App = () => (
                 path="/menu"
                 element={
                   <ProtectedRoute>
-                    <Menu />
+                    <RequireFinca>
+                      <Menu />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/menu-finca"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <MenuFinca />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/finca/:modulo"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <PlaceholderPage title="Módulo de finca" />
+                    </RequireFinca>
                   </ProtectedRoute>
                 }
               />
@@ -89,7 +115,9 @@ const App = () => (
                 path="/categoria/:tipo"
                 element={
                   <ProtectedRoute>
-                    <CategoriaAnimales />
+                    <RequireFinca>
+                      <CategoriaAnimales />
+                    </RequireFinca>
                   </ProtectedRoute>
                 }
               />
@@ -127,6 +155,7 @@ const App = () => (
               />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </FincaProvider>
           </AuthProvider>
         </div>
       </BrowserRouter>

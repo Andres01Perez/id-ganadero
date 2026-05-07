@@ -1,5 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Contexto de finca activa para el agente (set desde AgenteGanaderoDialog)
+let agentFincaContext: { id: string; nombre: string } | null = null;
+export const setAgentFincaContext = (f: { id: string; nombre: string } | null) => {
+  agentFincaContext = f;
+};
+const getScope = (params: Record<string, unknown>): "actual" | "todas" | string => {
+  const s = typeof params.scope === "string" ? params.scope.toLowerCase() : "actual";
+  if (s === "todas" || s === "all" || s === "global") return "todas";
+  if (s && s !== "actual") return s; // permite pasar nombre/id de otra finca
+  return "actual";
+};
+
 type AnimalSummary = {
   id: string;
   numero: string;
@@ -99,6 +111,7 @@ export const agentClientTools = {
     const color = asText(params.color);
     const limit = asLimit(params.limite ?? params.limit);
 
+    const scope = getScope(params);
     let fincaIds: string[] | null = null;
     if (finca) {
       try {
@@ -108,6 +121,8 @@ export const agentClientTools = {
       } catch (error) {
         return fail(error instanceof Error ? error.message : "No se pudo buscar la finca.");
       }
+    } else if (scope === "actual" && agentFincaContext) {
+      fincaIds = [agentFincaContext.id];
     }
 
     let query = supabase
@@ -137,22 +152,30 @@ export const agentClientTools = {
       const tipo = normalizeTipo(params.tipo ?? params.clase ?? params.categoria);
       const sexo = normalizeSexo(params.sexo);
       const fincaText = asText(params.finca);
+      const scope = getScope(params);
       const { ids: fincaIds, nombres: fincaNombres } = await resolveFincas(fincaText);
 
       if (fincaText && fincaIds?.length === 0) {
         return result({ total: 0, filtros: { tipo, sexo, finca: fincaText, activos: true } });
       }
 
+      let effectiveIds = fincaIds;
+      let effectiveNombres = fincaNombres;
+      if (!fincaText && scope === "actual" && agentFincaContext) {
+        effectiveIds = [agentFincaContext.id];
+        effectiveNombres = [agentFincaContext.nombre];
+      }
+
       let query = supabase.from("animales").select("id", { count: "exact", head: true }).eq("activo", true);
       if (tipo) query = query.eq("tipo", tipo);
       if (sexo) query = query.eq("sexo", sexo);
-      if (fincaIds) query = query.in("finca_id", fincaIds);
+      if (effectiveIds) query = query.in("finca_id", effectiveIds);
 
       const { count, error } = await query;
       if (error) return fail(error.message);
       return result({
         total: count ?? 0,
-        filtros: { tipo, sexo, finca: fincaNombres.length ? fincaNombres : fincaText || null, activos: true },
+        filtros: { tipo, sexo, finca: effectiveNombres.length ? effectiveNombres : fincaText || null, activos: true },
         instruccion: "Responde únicamente con este conteo exacto. No inventes ni redondees.",
       });
     } catch (error) {
@@ -271,6 +294,7 @@ export const agentClientTools = {
     const finca = asText(params.finca);
     let fincaIds: string[] | null = null;
     let fincaNombres: string[] = [];
+    const scope = getScope(params);
 
     if (finca) {
       try {
@@ -283,6 +307,9 @@ export const agentClientTools = {
       if (fincaIds?.length === 0) {
         return result({ total: 0, por_tipo: {}, por_sexo: {}, por_finca: {}, finca_encontrada: false });
       }
+    } else if (scope === "actual" && agentFincaContext) {
+      fincaIds = [agentFincaContext.id];
+      fincaNombres = [agentFincaContext.nombre];
     }
 
     let animalesQuery = supabase.from("animales").select("tipo, sexo, finca_id").eq("activo", true);

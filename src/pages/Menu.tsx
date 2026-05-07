@@ -9,7 +9,8 @@ import iconEmbriones from "@/assets/menu-icons/embriones.webp";
 import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
 import VersionFooter from "@/components/VersionFooter";
-import { LogOut } from "lucide-react";
+import FincaActivaChip from "@/components/FincaActivaChip";
+import { LogOut, Settings2 } from "lucide-react";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS } from "@/lib/asset-keys";
 
@@ -54,10 +55,12 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
 
 const Menu = () => {
   const { signOut } = useAuth();
+  const navigate = useNavigate();
   const banner = useAppAsset(ASSET_KEYS.menuBanner, menuHeader);
 
   return (
     <div className="min-h-[100dvh] bg-background pb-24">
+      <FincaActivaChip />
       <header className="relative aspect-[865/503] overflow-hidden">
         <img
           src={banner}
@@ -85,6 +88,14 @@ const Menu = () => {
             <CircleButton key={item.to} item={item} />
           ))}
         </div>
+
+        <button
+          onClick={() => navigate("/menu-finca")}
+          className="mt-8 w-full flex items-center justify-center gap-2 bg-gold-solid text-ink py-4 rounded-xl font-semibold tracking-jps uppercase text-sm shadow-gold active:scale-[0.99] transition-transform"
+        >
+          <Settings2 className="h-5 w-5" />
+          Gestión de finca
+        </button>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-40">
