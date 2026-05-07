@@ -1,91 +1,57 @@
-# Pantallas reales de /menu-finca
+# Cierre de Funcionalidad 1 (Empleados) y 2 (Potreros)
 
-Reemplazar el placeholder genérico de `/finca/:modulo` por tres páginas reales filtradas por `fincaActiva`: **Empleados**, **Potreros** y **Animales**. Inventario / Compra / Venta seguirán como placeholder por ahora.
+Cerramos los 6 puntos pendientes detectados en el análisis previo. Sin tocar el schema de tablas (todos los campos ya existen); solo creamos un bucket de storage para fotos de empleados.
 
-## 1. Routing (`src/App.tsx`)
+## 1. Storage: bucket `empleado-fotos`
 
-Eliminar la ruta única `"/finca/:modulo"` con `PlaceholderPage` y registrar rutas explícitas:
+Migración SQL:
 
-- `/finca/empleados` → `<FincaEmpleados />`
-- `/finca/potreros` → `<FincaPotreros />`
-- `/finca/animales` → `<FincaAnimales />`
-- `/finca/inventario`, `/finca/compra`, `/finca/venta` → `<PlaceholderPage />` (placeholder hasta que se implementen)
+- Crear bucket público `empleado-fotos`.
+- RLS sobre `storage.objects` para ese bucket:
+  - SELECT: cualquier usuario autenticado activo (`is_active_user(auth.uid())`).
+  - INSERT/UPDATE/DELETE: solo `is_admin_or_super(auth.uid())`.
+- Convención de paths: `{empleado_id}/{timestamp}.jpg`.
 
-Todas envueltas en `ProtectedRoute` + `RequireFinca`, igual que hoy.
+## 2. `EmpleadoForm.tsx` — foto + fecha de salida
 
-## 2. Empleados (`src/pages/finca/Empleados.tsx`)
+Cambios al sheet:
 
-Lista de empleados de la finca activa + alta/edición.
+- **Foto del empleado** (sección al inicio, igual que `AnimalForm`):
+  - Botón cámara → `ImageCropDialog` con aspecto 1:1 (output 512×512).
+  - Preview circular con borde dorado.
+  - Si no hay foto: icono `User` de lucide centrado.
+  - Subida diferida: tras crear/actualizar empleado, sube el blob al bucket `empleado-fotos` y hace `update empleados set foto_url=...`.
+- **Fecha de salida** (`fecha_salida`, date input).
+- **Toggle Activo/Inactivo** (Switch):
+  - Si pasa de activo→inactivo y `fecha_salida` está vacía, prefilla con hoy (editable).
+  - Si pasa a activo de nuevo, `fecha_salida` se limpia.
+- Reemplazar el botón "Desactivar" por el toggle (más explícito); mantener botón rojo "Eliminar definitivamente" solo para super_admin (opcional, fuera de alcance — no se incluye, queda solo el toggle).
+- Validar con `zod`: `fecha_salida` opcional, debe ser ≥ `fecha_ingreso` si ambas existen.
 
-**Datos**
-- Query: `empleados` join con `empleado_fincas` filtrado por `finca_id = fincaActiva.id`. Implementación: primero `select empleado_id from empleado_fincas where finca_id=...`, luego `select * from empleados where id in (...) and activo=true`.
-- Mutaciones (admin/super_admin):
-  - Crear empleado → insert en `empleados` (con `created_by = user.id`) + insert en `empleado_fincas (empleado_id, finca_id)`.
-  - Editar → update en `empleados`.
-  - Desactivar → `update empleados set activo=false`.
-- Operario: solo lectura (FAB y botón editar ocultos).
+## 3. `pages/finca/Empleados.tsx` — mostrar inactivos + edad + cumpleaños + icono
 
-**UI**
-- Estructura visual idéntica a `CategoriaAnimales` (header con banner de la finca, banda dorada "Empleados", lista, FAB `+`, `BottomTabBar`, `FincaActivaChip`).
-- Cada item: nombre completo, cédula, fecha ingreso, avatar circular (`foto_url` o iniciales).
-- Tap en el item → abre el sheet en modo edición.
-- Buscador rápido por nombre/cédula (input arriba de la lista).
+- Quitar el filtro `.eq("activo", true)` para traer también inactivos.
+- Ordenar: activos primero, luego inactivos, ambos por nombre.
+- Tarjeta de empleado:
+  - Avatar: si `foto_url` → imagen; si no → círculo dorado con icono `User` (lucide), reemplazando las iniciales actuales.
+  - Línea secundaria: `CC {cedula} · {edad} años{ · 🎂 hoy?}`.
+  - Helper `calcularEdad(fechaNac)` y `esCumpleHoy(fechaNac)` en `src/lib/empleado-utils.ts`.
+  - Badge dorado pequeño "🎂 ¡Cumpleaños hoy!" cuando aplique.
+  - Si `activo === false`: aplicar `opacity-40 grayscale` a toda la tarjeta + badge "Inactivo" en gris.
+- El buscador sigue filtrando por nombre/cédula en el conjunto completo (activos + inactivos).
 
-**Form (`EmpleadoForm.tsx` – nuevo componente)**
-- Sheet bottom como `AnimalForm`.
-- Campos: `nombre_completo*`, `cedula`, `fecha_nacimiento`, `fecha_ingreso`, `notas`, `foto_url` (opcional, subida a `app-assets` o `animal-fotos` con prefix `empleados/`).
-- Validación con `zod`.
-- Botones: Guardar, Desactivar (solo edición y admin).
+## 4. Detalles técnicos
 
-## 3. Potreros (`src/pages/finca/Potreros.tsx`)
+- Reutilizar `ImageCropDialog` existente (mismo patrón que `AnimalForm`).
+- Helper de upload reutilizado en `EmpleadoForm` (función local `uploadFoto(empleadoId, blob)`).
+- Tipos: el campo `foto_url` ya existe en `empleados`; no requiere cambio en `types.ts`.
+- Tema: black + gold, mobile-first, sin colores hardcoded (tokens del design system).
+- Accesibilidad: `aria-label` en botones de cámara y toggle.
 
-**Datos**
-- Query: `potreros` filtrado por `finca_id = fincaActiva.id`, ordenado por `numero`.
-- Estado posible: `descargado` / `cargado` (enum `potrero_estado` ya existente; ver tabla — solo se conoce `descargado` por defecto, asumimos los dos valores estándar; el `Select` se basará en los valores reales del enum: leer en runtime si hay duda, o codificar `["descargado","cargado","mantenimiento"]` como fallback y dejar el `select` libre).
-- Admin: crear/editar/eliminar; operario: solo lectura.
+## Fuera de alcance (lo dejamos para después)
+- Notificaciones de cumpleaños del día en el menú principal.
+- Historial de cambios de estado del empleado.
+- Vincular empleado ↔ usuario auth (`empleados.user_id` ya existe pero la UI de vinculación se hará en el panel super-admin).
 
-**UI**
-- Header banner (foto de la finca activa) + banda dorada "Potreros".
-- Buscador rápido por número/notas.
-- Grid 2 columnas con tarjetas: número grande, badge de estado (color verde=descargado, ámbar=cargado), notas truncadas.
-- FAB `+` (admin).
-- Tap en tarjeta → abre `PotreroForm`.
-
-**Form (`PotreroForm.tsx` – nuevo)**
-- Sheet bottom.
-- Campos: `numero*`, `estado*` (Select), `notas` (textarea).
-- Botones Guardar / Eliminar (admin).
-
-## 4. Animales por finca (`src/pages/finca/Animales.tsx`)
-
-Vista unificada que une las 4 categorías (machos, hembras, crías, embriones) de la finca activa.
-
-**Datos**
-- Query única a `animales` con `eq("finca_id", fincaActiva.id)`, `eq("activo", true)`, `order("numero")`.
-- Conteo por tipo en memoria.
-
-**UI**
-- Header banner (foto finca) + banda dorada "Animales de la finca".
-- Tabs/pills horizontales: `Todos | Machos | Hembras | Crías | Embriones` (con contador entre paréntesis).
-- Buscador por número/nombre.
-- Lista con el mismo diseño que `CategoriaAnimales` (avatar, nombre, número, badge del tipo).
-- Tap → `/animal/:id` (hoja de vida existente).
-- FAB `+` que abre `AnimalForm` reutilizado:
-  - Si la pestaña activa es una categoría concreta, se pasa `tipo={activeTab}`.
-  - Si es "Todos", se muestra primero un mini-selector de tipo y luego se abre el form.
-
-Reutilizamos el componente `AnimalForm` existente (ya preselecciona la `fincaActiva`).
-
-## 5. Detalles técnicos
-
-- Estructura de carpetas nueva: `src/pages/finca/` para las tres páginas.
-- Componentes nuevos: `src/components/EmpleadoForm.tsx`, `src/components/PotreroForm.tsx`.
-- Ningún cambio de schema en Supabase: las tablas `empleados`, `empleado_fincas`, `potreros`, `animales` y sus RLS ya soportan todo el flujo.
-- Tipado: TypeScript estricto, `zod` para validación, `sonner` para toasts.
-- Tema: black + gold actual (`bg-card`, `border-gold`, `bg-gold-solid`, `tracking-jps`), mobile-first, mismas dimensiones de header/banda dorada que el resto.
-- Permisos en UI: usar `useAuth().roles` para mostrar/ocultar FAB y acciones (`admin` o `super_admin` editan; `operario` solo lee).
-- `MenuFinca`: las 3 tarjetas ya enlazan a las rutas correctas, no requiere cambios.
-
-## Fuera de alcance
-- Inventario, Compra y Venta (siguen como placeholder, se implementarán después).
-- Asignar empleado a múltiples fincas desde esta vista (se puede agregar luego en un panel admin).
+## Resultado esperado
+Funcionalidad 1 (Empleados) y 2 (Potreros) quedan 100% según el spec, listas para pasar a las siguientes 3 funcionalidades.
