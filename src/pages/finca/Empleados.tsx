@@ -4,8 +4,6 @@ import { ArrowLeft, Plus, Search, User, Cake } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFinca } from "@/contexts/FincaContext";
-import { useAppAsset } from "@/hooks/useAppAsset";
-import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaActivaChip from "@/components/FincaActivaChip";
 import EmpleadoForm from "@/components/EmpleadoForm";
@@ -35,11 +33,6 @@ const FincaEmpleados = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  const fallbackBanner = useAppAsset(
-    ASSET_KEYS.bannerFincas,
-    ASSET_FALLBACKS[ASSET_KEYS.bannerFincas],
-  );
-  const banner = fincaActiva?.foto_url || fallbackBanner;
 
   const load = async () => {
     if (!fincaActiva) return;
@@ -107,20 +100,15 @@ const FincaEmpleados = () => {
   return (
     <div className="min-h-[100dvh] bg-background pb-20">
       <FincaActivaChip />
-      <header className="relative aspect-[865/503] overflow-hidden">
-        <img src={banner} alt="" className="w-full h-full object-cover" loading="eager" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
+      <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-base flex items-center">
         <button
           onClick={() => navigate("/menu-finca")}
-          className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
+          className="ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-      </header>
-
-      <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-base">
-        Empleados
+        <span className="flex-1 -ml-10">Empleados</span>
       </div>
 
       <div className="px-4 pt-4">
