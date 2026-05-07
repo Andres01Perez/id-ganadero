@@ -111,6 +111,7 @@ export const agentClientTools = {
     const color = asText(params.color);
     const limit = asLimit(params.limite ?? params.limit);
 
+    const scope = getScope(params);
     let fincaIds: string[] | null = null;
     if (finca) {
       try {
@@ -120,6 +121,8 @@ export const agentClientTools = {
       } catch (error) {
         return fail(error instanceof Error ? error.message : "No se pudo buscar la finca.");
       }
+    } else if (scope === "actual" && agentFincaContext) {
+      fincaIds = [agentFincaContext.id];
     }
 
     let query = supabase
@@ -149,22 +152,30 @@ export const agentClientTools = {
       const tipo = normalizeTipo(params.tipo ?? params.clase ?? params.categoria);
       const sexo = normalizeSexo(params.sexo);
       const fincaText = asText(params.finca);
+      const scope = getScope(params);
       const { ids: fincaIds, nombres: fincaNombres } = await resolveFincas(fincaText);
 
       if (fincaText && fincaIds?.length === 0) {
         return result({ total: 0, filtros: { tipo, sexo, finca: fincaText, activos: true } });
       }
 
+      let effectiveIds = fincaIds;
+      let effectiveNombres = fincaNombres;
+      if (!fincaText && scope === "actual" && agentFincaContext) {
+        effectiveIds = [agentFincaContext.id];
+        effectiveNombres = [agentFincaContext.nombre];
+      }
+
       let query = supabase.from("animales").select("id", { count: "exact", head: true }).eq("activo", true);
       if (tipo) query = query.eq("tipo", tipo);
       if (sexo) query = query.eq("sexo", sexo);
-      if (fincaIds) query = query.in("finca_id", fincaIds);
+      if (effectiveIds) query = query.in("finca_id", effectiveIds);
 
       const { count, error } = await query;
       if (error) return fail(error.message);
       return result({
         total: count ?? 0,
-        filtros: { tipo, sexo, finca: fincaNombres.length ? fincaNombres : fincaText || null, activos: true },
+        filtros: { tipo, sexo, finca: effectiveNombres.length ? effectiveNombres : fincaText || null, activos: true },
         instruccion: "Responde únicamente con este conteo exacto. No inventes ni redondees.",
       });
     } catch (error) {
