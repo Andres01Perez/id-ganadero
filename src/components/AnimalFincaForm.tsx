@@ -118,25 +118,28 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
 
     let finalTipoId = tipoId;
     if (tipoId === NEW_TIPO) {
-      if (!isAdmin) {
-        toast.error("Solo administradores pueden crear tipos");
-        return;
-      }
       const nombreT = nuevoTipo.trim();
       if (!nombreT) {
         toast.error("Ingresa el nombre del nuevo tipo");
         return;
       }
-      const { data: t, error: te } = await supabase
-        .from("tipos_animal_finca")
-        .insert({ nombre: nombreT, created_by: user.id })
-        .select("id")
-        .single();
-      if (te || !t) {
-        toast.error(te?.message ?? "No se pudo crear el tipo");
-        return;
+      const existente = tipos.find(
+        (t) => t.nombre.toLowerCase() === nombreT.toLowerCase(),
+      );
+      if (existente) {
+        finalTipoId = existente.id;
+      } else {
+        const { data: t, error: te } = await supabase
+          .from("tipos_animal_finca")
+          .insert({ nombre: nombreT, created_by: user.id })
+          .select("id")
+          .single();
+        if (te || !t) {
+          toast.error(te?.message ?? "No se pudo crear el tipo");
+          return;
+        }
+        finalTipoId = t.id;
       }
-      finalTipoId = t.id;
     }
 
     const parsed = schema.safeParse({
@@ -236,9 +239,7 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
                     {t.nombre}
                   </SelectItem>
                 ))}
-                {isAdmin && (
-                  <SelectItem value={NEW_TIPO}>+ Nuevo tipo…</SelectItem>
-                )}
+                <SelectItem value={NEW_TIPO}>Otro…</SelectItem>
               </SelectContent>
             </Select>
             {tipoId === NEW_TIPO && (
@@ -246,7 +247,8 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
                 className="mt-2"
                 value={nuevoTipo}
                 onChange={(e) => setNuevoTipo(e.target.value)}
-                placeholder="Ej. Caballo, Perro, Gallina"
+                placeholder="Escribe el nuevo tipo (ej. Caballo, Perro)"
+                autoFocus
               />
             )}
           </div>
