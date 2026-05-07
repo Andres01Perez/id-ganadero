@@ -18,8 +18,8 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
     <>
       <nav
         className={cn(
-          "bg-black border-t border-gold/40 shadow-soft",
-          fixed && "fixed bottom-0 left-0 right-0 z-40 pb-safe"
+          "bg-black border-t border-gold/40 shadow-soft pb-safe",
+          fixed && "fixed bottom-0 left-0 right-0 z-40"
         )}
       >
         <div className="flex items-end justify-between px-8 py-2">
