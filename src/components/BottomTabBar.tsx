@@ -5,9 +5,12 @@ import { cn } from "@/lib/utils";
 import jpsLogo from "@/assets/jps-logo.webp";
 import SearchDialog from "@/components/SearchDialog";
 import AgenteGanaderoDialog from "@/components/AgenteGanaderoDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
   const navigate = useNavigate();
+  const { roles } = useAuth();
+  const canUseAgente = roles.includes("admin") || roles.includes("super_admin");
   const [searchOpen, setSearchOpen] = useState(false);
   const [agenteOpen, setAgenteOpen] = useState(false);
 
@@ -33,24 +36,28 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
             </span>
           </button>
 
-          {/* MarIA central */}
-          <button
-            type="button"
-            onClick={() => setAgenteOpen(true)}
-            className="-mt-4 flex flex-col items-center gap-1 text-gold-soft transition-all active:scale-95"
-            aria-label="Abrir Agente Ganadero"
-          >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold bg-black shadow-soft">
-              <img
-                src={jpsLogo}
-                alt="Agente Ganadero"
-                className="h-full w-full object-contain p-2"
-              />
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.18em] font-medium">
-              Agente
-            </span>
-          </button>
+          {/* MarIA central — solo admins/super */}
+          {canUseAgente ? (
+            <button
+              type="button"
+              onClick={() => setAgenteOpen(true)}
+              className="-mt-4 flex flex-col items-center gap-1 text-gold-soft transition-all active:scale-95"
+              aria-label="Abrir Agente Ganadero"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-gold bg-black shadow-soft">
+                <img
+                  src={jpsLogo}
+                  alt="Agente Ganadero"
+                  className="h-full w-full object-contain p-2"
+                />
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.18em] font-medium">
+                Agente
+              </span>
+            </button>
+          ) : (
+            <span className="w-14" aria-hidden />
+          )}
 
           {/* Buscar */}
           <button
@@ -68,7 +75,7 @@ const BottomTabBar = ({ fixed = true }: { fixed?: boolean }) => {
       </nav>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
-      <AgenteGanaderoDialog open={agenteOpen} onOpenChange={setAgenteOpen} />
+      {canUseAgente && <AgenteGanaderoDialog open={agenteOpen} onOpenChange={setAgenteOpen} />}
     </>
   );
 };
