@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Search } from "lucide-react";
+import { ArrowLeft, Plus, Search, User, Cake } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFinca } from "@/contexts/FincaContext";
@@ -11,26 +11,16 @@ import FincaActivaChip from "@/components/FincaActivaChip";
 import EmpleadoForm from "@/components/EmpleadoForm";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { calcularEdad, esCumpleHoy } from "@/lib/empleado-utils";
 
 type Empleado = {
   id: string;
   nombre_completo: string;
   cedula: string | null;
   fecha_ingreso: string | null;
+  fecha_nacimiento: string | null;
   foto_url: string | null;
-};
-
-const Initials = ({ name }: { name: string }) => {
-  const init = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((n) => n[0]?.toUpperCase() ?? "")
-    .join("");
-  return (
-    <div className="w-14 h-14 rounded-full border-[3px] border-gold bg-card flex items-center justify-center shrink-0">
-      <span className="text-base font-bold text-gold-deep">{init || "?"}</span>
-    </div>
-  );
+  activo: boolean;
 };
 
 const FincaEmpleados = () => {
@@ -71,15 +61,20 @@ const FincaEmpleados = () => {
     }
     const { data, error } = await supabase
       .from("empleados")
-      .select("id, nombre_completo, cedula, fecha_ingreso, foto_url")
+      .select("id, nombre_completo, cedula, fecha_ingreso, fecha_nacimiento, foto_url, activo")
       .in("id", ids)
-      .eq("activo", true)
       .order("nombre_completo");
     if (error) {
       toast.error(error.message);
       setEmpleados([]);
     } else {
-      setEmpleados(data ?? []);
+      const list = (data ?? []) as Empleado[];
+      // activos primero
+      list.sort((a, b) => {
+        if (a.activo !== b.activo) return a.activo ? -1 : 1;
+        return a.nombre_completo.localeCompare(b.nombre_completo);
+      });
+      setEmpleados(list);
     }
     setLoading(false);
   };
@@ -157,32 +152,49 @@ const FincaEmpleados = () => {
             )}
           </div>
         ) : (
-          filtered.map((e) => (
-            <button
-              key={e.id}
-              onClick={() => openEdit(e.id)}
-              className="w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform text-left"
-            >
-              {e.foto_url ? (
-                <img
-                  src={e.foto_url}
-                  alt=""
-                  className="w-14 h-14 rounded-full object-cover border-[3px] border-gold shrink-0"
-                />
-              ) : (
-                <Initials name={e.nombre_completo} />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-base text-ink leading-tight truncate">
-                  {e.nombre_completo}
-                </p>
-                <p className="text-xs text-muted-foreground tracking-wide">
-                  {e.cedula ? `CC ${e.cedula}` : "Sin cédula"}
-                  {e.fecha_ingreso ? ` · Ingreso ${e.fecha_ingreso}` : ""}
-                </p>
-              </div>
-            </button>
-          ))
+          filtered.map((e) => {
+            const edad = calcularEdad(e.fecha_nacimiento);
+            const cumple = esCumpleHoy(e.fecha_nacimiento);
+            const inactivo = !e.activo;
+            return (
+              <button
+                key={e.id}
+                onClick={() => openEdit(e.id)}
+                className={`w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform text-left ${
+                  inactivo ? "opacity-40 grayscale" : ""
+                }`}
+              >
+                <div className="w-14 h-14 rounded-full border-[3px] border-gold bg-card overflow-hidden flex items-center justify-center shrink-0">
+                  {e.foto_url ? (
+                    <img src={e.foto_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-7 w-7 text-gold-deep" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-base text-ink leading-tight truncate">
+                      {e.nombre_completo}
+                    </p>
+                    {inactivo && (
+                      <span className="text-[10px] uppercase tracking-jps font-semibold border border-border rounded-full px-2 py-0.5 text-muted-foreground">
+                        Inactivo
+                      </span>
+                    )}
+                    {cumple && !inactivo && (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-jps font-semibold rounded-full px-2 py-0.5 bg-gold-solid text-ink">
+                        <Cake className="h-3 w-3" /> Cumpleaños
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground tracking-wide">
+                    {e.cedula ? `CC ${e.cedula}` : "Sin cédula"}
+                    {edad !== null ? ` · ${edad} años` : ""}
+                  </p>
+                </div>
+              </button>
+            );
+          })
         )}
       </div>
 
