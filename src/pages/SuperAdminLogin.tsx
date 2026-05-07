@@ -56,7 +56,7 @@ const SuperAdminLogin = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-black flex items-center justify-center p-6">
+    <div className="min-h-[100dvh] w-full bg-black flex items-center justify-center p-6 pt-safe pb-safe pl-safe pr-safe">
       <div className="w-full max-w-sm bg-neutral-900 border border-gold/40 rounded-2xl p-8 shadow-gold">
         <div className="flex flex-col items-center text-center mb-6">
           <div className="h-12 w-12 rounded-full bg-gold-solid text-ink flex items-center justify-center mb-3">

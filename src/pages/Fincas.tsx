@@ -65,7 +65,7 @@ const Fincas = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-20">
+    <div className="min-h-[100dvh] bg-background pb-safe-plus">
       <header className="relative aspect-[865/503] overflow-hidden">
         <img src={headerImg} alt="" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/40" />

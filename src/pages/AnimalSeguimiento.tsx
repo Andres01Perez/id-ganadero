@@ -196,7 +196,7 @@ const AnimalSeguimiento = () => {
   const previous = rows[1];
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-24">
+    <div className="min-h-[100dvh] bg-background pb-safe-plus">
       <SeguimientoHeader animalName={animal.nombre ?? "Sin nombre"} animalNumber={animal.numero} config={config} onBack={() => navigate(`/animal/${id}`)} />
 
       <main className="px-4 py-4 space-y-4">

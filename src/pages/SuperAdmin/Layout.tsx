@@ -29,7 +29,7 @@ const SuperAdminLayout = () => {
 
   return (
     <div className="min-h-[100dvh] flex bg-background text-foreground">
-      <aside className="w-60 shrink-0 bg-black text-gold-soft flex flex-col border-r border-gold/30">
+      <aside className="w-60 shrink-0 bg-black text-gold-soft flex flex-col border-r border-gold/30 pt-safe pb-safe pl-safe">
         <div className="px-4 py-5 border-b border-gold/20 flex items-center gap-3">
           <img src={jpsLogo} alt="JPS" className="h-9 w-9 object-contain" />
           <div>
@@ -71,7 +71,7 @@ const SuperAdminLayout = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 overflow-x-hidden pt-safe pb-safe pr-safe">
         <div className="max-w-7xl mx-auto p-6 lg:p-8">
           <Outlet />
         </div>

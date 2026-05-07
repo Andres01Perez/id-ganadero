@@ -98,7 +98,7 @@ const FincaEmpleados = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-20">
+    <div className="min-h-[100dvh] bg-background pb-safe-plus">
       <FincaActivaChip />
       <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button

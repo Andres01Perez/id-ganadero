@@ -46,7 +46,7 @@ const MenuFinca = () => {
   const banner = fincaActiva?.foto_url || fallbackBanner;
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-24">
+    <div className="min-h-[100dvh] bg-background pb-safe-plus">
       <FincaActivaChip />
       <header className="relative aspect-[865/503] overflow-hidden">
         <img src={banner} alt={fincaActiva?.nombre ?? ""} className="w-full h-full object-cover" loading="eager" />
