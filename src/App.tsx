@@ -12,6 +12,9 @@ import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import AnimalSeguimiento from "./pages/AnimalSeguimiento";
 import Fincas from "./pages/Fincas";
 import MenuFinca from "./pages/MenuFinca";
+import FincaEmpleados from "./pages/finca/Empleados";
+import FincaPotreros from "./pages/finca/Potreros";
+import FincaAnimales from "./pages/finca/Animales";
 import NotFound from "./pages/NotFound";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import SuperAdminLayout from "./pages/SuperAdmin/Layout";
@@ -89,6 +92,36 @@ const App = () => (
                   <ProtectedRoute>
                     <RequireFinca>
                       <MenuFinca />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/finca/empleados"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <FincaEmpleados />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/finca/potreros"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <FincaPotreros />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/finca/animales"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <FincaAnimales />
                     </RequireFinca>
                   </ProtectedRoute>
                 }
