@@ -1,0 +1,1 @@
+DELETE FROM public.tipos_animal_finca WHERE id = '9c55b3a7-f0a8-465f-be51-dc6af721e5b4';
