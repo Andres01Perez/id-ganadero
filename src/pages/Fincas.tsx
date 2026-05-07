@@ -21,15 +21,6 @@ const Fincas = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Auto-seleccionar única finca y redirigir
-  useEffect(() => {
-    if (loadingFincas) return;
-    if (fincasAccesibles.length === 1) {
-      setFincaActiva(fincasAccesibles[0]);
-      navigate("/menu", { replace: true });
-    }
-  }, [loadingFincas, fincasAccesibles, setFincaActiva, navigate]);
-
   // Conteo de operarios por finca (admins)
   useEffect(() => {
     if (!isAdmin || fincasAccesibles.length === 0) {

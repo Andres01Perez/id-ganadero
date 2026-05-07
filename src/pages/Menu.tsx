@@ -10,7 +10,7 @@ import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
 import VersionFooter from "@/components/VersionFooter";
 import FincaActivaChip from "@/components/FincaActivaChip";
-import { LogOut, Settings2 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS } from "@/lib/asset-keys";
 
@@ -27,7 +27,7 @@ const items: CircleItem[] = [
   { label: "Hembras", to: "/categoria/hembra", assetKey: ASSET_KEYS.iconHembras, fallback: iconHembras },
   { label: "Crías", to: "/categoria/cria", assetKey: ASSET_KEYS.iconCrias, fallback: iconCrias },
   { label: "Embriones", to: "/categoria/embrion", assetKey: ASSET_KEYS.iconEmbriones, fallback: iconEmbriones },
-  { label: "Otros", to: "/generalidades", assetKey: ASSET_KEYS.iconOtros, fallback: iconGeneralidades },
+  { label: "Gestión", to: "/menu-finca", assetKey: ASSET_KEYS.iconOtros, fallback: iconGeneralidades },
 ];
 
 const CircleButton = ({ item }: { item: CircleItem }) => {
@@ -55,7 +55,6 @@ const CircleButton = ({ item }: { item: CircleItem }) => {
 
 const Menu = () => {
   const { signOut } = useAuth();
-  const navigate = useNavigate();
   const banner = useAppAsset(ASSET_KEYS.menuBanner, menuHeader);
 
   return (
@@ -88,14 +87,6 @@ const Menu = () => {
             <CircleButton key={item.to} item={item} />
           ))}
         </div>
-
-        <button
-          onClick={() => navigate("/menu-finca")}
-          className="mt-8 w-full flex items-center justify-center gap-2 bg-gold-solid text-ink py-4 rounded-xl font-semibold tracking-jps uppercase text-sm shadow-gold active:scale-[0.99] transition-transform"
-        >
-          <Settings2 className="h-5 w-5" />
-          Gestión de finca
-        </button>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-40">

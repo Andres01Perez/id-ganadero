@@ -45,9 +45,8 @@ const schema = z.object({
 });
 
 const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
   const { fincaActiva } = useFinca();
-  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
   const isEdit = !!potreroId;
 
   const [numero, setNumero] = useState("");
@@ -82,8 +81,8 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
   }, [open, potreroId, onOpenChange]);
 
   const handleSubmit = async () => {
-    if (!user || !fincaActiva || !isAdmin) {
-      toast.error("Solo administradores");
+    if (!user || !fincaActiva) {
+      toast.error("Sesión inválida");
       return;
     }
     const parsed = schema.safeParse({ numero, estado, notas });
