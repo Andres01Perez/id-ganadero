@@ -1,5 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Contexto de finca activa para el agente (set desde AgenteGanaderoDialog)
+let agentFincaContext: { id: string; nombre: string } | null = null;
+export const setAgentFincaContext = (f: { id: string; nombre: string } | null) => {
+  agentFincaContext = f;
+};
+const getScope = (params: Record<string, unknown>): "actual" | "todas" | string => {
+  const s = typeof params.scope === "string" ? params.scope.toLowerCase() : "actual";
+  if (s === "todas" || s === "all" || s === "global") return "todas";
+  if (s && s !== "actual") return s; // permite pasar nombre/id de otra finca
+  return "actual";
+};
+
 type AnimalSummary = {
   id: string;
   numero: string;
