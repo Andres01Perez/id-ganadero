@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useFinca } from "@/contexts/FincaContext";
-import { useAppAsset } from "@/hooks/useAppAsset";
-import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaActivaChip from "@/components/FincaActivaChip";
 import PotreroForm, { type PotreroEstado } from "@/components/PotreroForm";
@@ -33,21 +30,13 @@ const estadoClass: Record<PotreroEstado, string> = {
 
 const FincaPotreros = () => {
   const navigate = useNavigate();
-  const { roles } = useAuth();
   const { fincaActiva } = useFinca();
-  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
 
   const [potreros, setPotreros] = useState<Potrero[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-
-  const fallbackBanner = useAppAsset(
-    ASSET_KEYS.bannerFincas,
-    ASSET_FALLBACKS[ASSET_KEYS.bannerFincas],
-  );
-  const banner = fincaActiva?.foto_url || fallbackBanner;
 
   const load = async () => {
     if (!fincaActiva) return;
