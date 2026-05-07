@@ -67,6 +67,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    try {
+      localStorage.removeItem("jps_finca_activa_id");
+    } catch {
+      /* noop */
+    }
     setSession(null);
     setUser(null);
     setRoles([]);
