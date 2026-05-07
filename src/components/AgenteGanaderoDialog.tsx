@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Bot, Loader2, Mic, PhoneOff, Volume2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { agentClientTools } from "@/lib/agent-tools";
+import { agentClientTools, setAgentFincaContext } from "@/lib/agent-tools";
+import { useFinca } from "@/contexts/FincaContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,10 @@ const friendlyError = (error: unknown) => {
 };
 
 const AgentePanel = ({ open }: { open: boolean }) => {
+  const { fincaActiva } = useFinca();
+  useEffect(() => {
+    setAgentFincaContext(fincaActiva ? { id: fincaActiva.id, nombre: fincaActiva.nombre } : null);
+  }, [fincaActiva]);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const tokensRef = useRef<TokenResponse | null>(null);
