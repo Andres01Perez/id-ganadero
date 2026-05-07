@@ -2,19 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFinca, type FincaActiva } from "@/contexts/FincaContext";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaForm from "@/components/FincaForm";
-import { ArrowLeft, MapPin, Plus, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Pencil, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
-
-type Finca = {
-  id: string;
-  nombre: string;
-  ubicacion: string | null;
-  hectareas: number | null;
-};
 
 const Fincas = () => {
   const navigate = useNavigate();
@@ -22,61 +16,61 @@ const Fincas = () => {
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
   const headerImg = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
 
-  const [fincas, setFincas] = useState<Finca[]>([]);
+  const { fincasAccesibles, loading: loadingFincas, setFincaActiva, reloadFincas } = useFinca();
   const [opCounts, setOpCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("fincas")
-      .select("id, nombre, ubicacion, hectareas")
-      .eq("activo", true)
-      .order("nombre");
-    if (error) {
-      toast.error("No se pudieron cargar las fincas");
-      setLoading(false);
+  // Auto-seleccionar única finca y redirigir
+  useEffect(() => {
+    if (loadingFincas) return;
+    if (fincasAccesibles.length === 1) {
+      setFincaActiva(fincasAccesibles[0]);
+      navigate("/menu", { replace: true });
+    }
+  }, [loadingFincas, fincasAccesibles, setFincaActiva, navigate]);
+
+  // Conteo de operarios por finca (admins)
+  useEffect(() => {
+    if (!isAdmin || fincasAccesibles.length === 0) {
+      setOpCounts({});
       return;
     }
-    setFincas(data ?? []);
-
-    if (isAdmin && data && data.length > 0) {
-      const { data: accesos } = await supabase
+    (async () => {
+      const { data } = await supabase
         .from("user_finca_acceso")
         .select("finca_id")
-        .in(
-          "finca_id",
-          data.map((f) => f.id)
-        );
+        .in("finca_id", fincasAccesibles.map((f) => f.id));
       const counts: Record<string, number> = {};
-      (accesos ?? []).forEach((a) => {
+      (data ?? []).forEach((a) => {
         counts[a.finca_id] = (counts[a.finca_id] ?? 0) + 1;
       });
       setOpCounts(counts);
-    }
+    })();
+  }, [isAdmin, fincasAccesibles]);
 
-    setLoading(false);
+  const handleSelect = (f: FincaActiva) => {
+    setFincaActiva(f);
+    navigate("/menu");
   };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
-
-  // Preload header image (already eager) — fincas list has no per-item photos,
-  // so no per-row preload needed here.
 
   const openNew = () => {
     setEditingId(null);
     setFormOpen(true);
   };
 
-  const openEdit = (id: string) => {
+  const openEdit = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (!isAdmin) return;
     setEditingId(id);
     setFormOpen(true);
+  };
+
+  const handleSaved = async () => {
+    const list = await reloadFincas();
+    // Si se acaba de crear (no había editingId) y hay una nueva, podríamos activarla.
+    // Por simplicidad mantenemos selección manual.
+    void list;
   };
 
   return (
@@ -94,31 +88,32 @@ const Fincas = () => {
       </header>
 
       <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-base">
-        Fincas
+        Selecciona una finca
       </div>
 
       <div className="px-4 py-4 space-y-3">
-        {loading ? (
+        {loadingFincas ? (
           <p className="text-center text-sm text-muted-foreground py-8">Cargando…</p>
-        ) : fincas.length === 0 ? (
+        ) : fincasAccesibles.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-sm text-muted-foreground">No hay fincas registradas</p>
-            {isAdmin && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Toca el botón + para agregar
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">No tienes fincas asignadas</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isAdmin ? "Toca el botón + para crear una finca." : "Pide a un administrador que te asigne una finca."}
+            </p>
           </div>
         ) : (
-          fincas.map((f) => (
+          fincasAccesibles.map((f) => (
             <button
               key={f.id}
-              onClick={() => openEdit(f.id)}
-              disabled={!isAdmin}
-              className="w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform disabled:active:scale-100"
+              onClick={() => handleSelect(f)}
+              className="w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform"
             >
-              <div className="w-14 h-14 rounded-full border-[3px] border-gold bg-white flex items-center justify-center shrink-0">
-                <MapPin className="h-6 w-6 text-gold-deep" />
+              <div className="w-14 h-14 rounded-full border-[3px] border-gold bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                {f.foto_url ? (
+                  <img src={f.foto_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <MapPin className="h-6 w-6 text-gold-deep" />
+                )}
               </div>
               <div className="flex-1 text-left min-w-0">
                 <p className="font-bold text-base text-ink leading-tight truncate">{f.nombre}</p>
@@ -132,6 +127,20 @@ const Fincas = () => {
                 <span className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/60 rounded-full px-2 py-1 shrink-0">
                   <Users className="h-3 w-3" />
                   {opCounts[f.id] ?? 0}
+                </span>
+              )}
+              {isAdmin && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => openEdit(e, f.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") openEdit(e as unknown as React.MouseEvent, f.id);
+                  }}
+                  className="h-9 w-9 rounded-full bg-secondary/60 flex items-center justify-center shrink-0 active:scale-95"
+                  aria-label="Editar finca"
+                >
+                  <Pencil className="h-4 w-4 text-ink" />
                 </span>
               )}
             </button>
@@ -153,7 +162,7 @@ const Fincas = () => {
         open={formOpen}
         onOpenChange={setFormOpen}
         fincaId={editingId}
-        onSaved={load}
+        onSaved={handleSaved}
       />
 
       <BottomTabBar />
