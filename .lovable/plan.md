@@ -1,57 +1,91 @@
-# Cierre de Funcionalidad 1 (Empleados) y 2 (Potreros)
+## Cambios solicitados
 
-Cerramos los 6 puntos pendientes detectados en el análisis previo. Sin tocar el schema de tablas (todos los campos ya existen); solo creamos un bucket de storage para fotos de empleados.
+### 1. Menú principal: "Otros" → "Gestión"
 
-## 1. Storage: bucket `empleado-fotos`
+En `src/pages/Menu.tsx`:
 
-Migración SQL:
+- Renombrar el ítem `"Otros"` a `"Gestión"`.
+- Cambiar su ruta de `/generalidades` a `/menu-finca`.
+- Eliminar el botón inferior "Gestión de finca" (queda redundante).
+- Mantener el icono actual (`iconGeneralidades` / `ASSET_KEYS.iconOtros`) como fallback.
 
-- Crear bucket público `empleado-fotos`.
-- RLS sobre `storage.objects` para ese bucket:
-  - SELECT: cualquier usuario autenticado activo (`is_active_user(auth.uid())`).
-  - INSERT/UPDATE/DELETE: solo `is_admin_or_super(auth.uid())`.
-- Convención de paths: `{empleado_id}/{timestamp}.jpg`.
+### 2. Mostrar siempre la pantalla de fincas
 
-## 2. `EmpleadoForm.tsx` — foto + fecha de salida
+En `src/pages/Fincas.tsx`:
 
-Cambios al sheet:
+- Eliminar el `useEffect` que auto-selecciona y redirige cuando hay 1 sola finca. El usuario siempre verá la lista y deberá tocarla para entrar.
+- `RequireFinca` no se ve afectado: el chip y el contexto siguen funcionando; cuando el usuario toque la finca se navega a `/menu`.
 
-- **Foto del empleado** (sección al inicio, igual que `AnimalForm`):
-  - Botón cámara → `ImageCropDialog` con aspecto 1:1 (output 512×512).
-  - Preview circular con borde dorado.
-  - Si no hay foto: icono `User` de lucide centrado.
-  - Subida diferida: tras crear/actualizar empleado, sube el blob al bucket `empleado-fotos` y hace `update empleados set foto_url=...`.
-- **Fecha de salida** (`fecha_salida`, date input).
-- **Toggle Activo/Inactivo** (Switch):
-  - Si pasa de activo→inactivo y `fecha_salida` está vacía, prefilla con hoy (editable).
-  - Si pasa a activo de nuevo, `fecha_salida` se limpia.
-- Reemplazar el botón "Desactivar" por el toggle (más explícito); mantener botón rojo "Eliminar definitivamente" solo para super_admin (opcional, fuera de alcance — no se incluye, queda solo el toggle).
-- Validar con `zod`: `fecha_salida` opcional, debe ser ≥ `fecha_ingreso` si ambas existen.
+### 3. Animales de finca: tabla propia, no usar `animales` (genéticos)
 
-## 3. `pages/finca/Empleados.tsx` — mostrar inactivos + edad + cumpleaños + icono
+La tabla `animales_finca` ya existe en Supabase con campos: `nombre`, `tipo_id` → `tipos_animal_finca`, `edad`, `fecha_ingreso`, `fecha_salida`, `notas`, `activo`. Estos son "otros animales" de la finca (caballos, perros, gallinas, etc. si el usuario da click en otros se debe crear el tipo de animal en la tabla de tipos para ser seleccionado por otros), no el ganado de control genético.
 
-- Quitar el filtro `.eq("activo", true)` para traer también inactivos.
-- Ordenar: activos primero, luego inactivos, ambos por nombre.
-- Tarjeta de empleado:
-  - Avatar: si `foto_url` → imagen; si no → círculo dorado con icono `User` (lucide), reemplazando las iniciales actuales.
-  - Línea secundaria: `CC {cedula} · {edad} años{ · 🎂 hoy?}`.
-  - Helper `calcularEdad(fechaNac)` y `esCumpleHoy(fechaNac)` en `src/lib/empleado-utils.ts`.
-  - Badge dorado pequeño "🎂 ¡Cumpleaños hoy!" cuando aplique.
-  - Si `activo === false`: aplicar `opacity-40 grayscale` a toda la tarjeta + badge "Inactivo" en gris.
-- El buscador sigue filtrando por nombre/cédula en el conjunto completo (activos + inactivos).
+Reescribir `src/pages/finca/Animales.tsx`:
 
-## 4. Detalles técnicos
+- Quitar tabs por sexo/categoría y `AnimalForm` (que es para genética).
+- Listar `animales_finca` con join a `tipos_animal_finca` filtrando por `finca_id`.
+- Búsqueda por nombre / tipo.
+- CRUD completo disponible para **todos los usuarios con acceso a la finca** (admins y operarios). Las RLS actuales de `animales_finca` exigen `is_admin_or_super`, así que se debe **migrar** las policies para permitir insert/update/delete a cualquier usuario con `user_has_finca`.
 
-- Reutilizar `ImageCropDialog` existente (mismo patrón que `AnimalForm`).
-- Helper de upload reutilizado en `EmpleadoForm` (función local `uploadFoto(empleadoId, blob)`).
-- Tipos: el campo `foto_url` ya existe en `empleados`; no requiere cambio en `types.ts`.
-- Tema: black + gold, mobile-first, sin colores hardcoded (tokens del design system).
-- Accesibilidad: `aria-label` en botones de cámara y toggle.
+Crear `src/components/AnimalFincaForm.tsx` (Sheet):
 
-## Fuera de alcance (lo dejamos para después)
-- Notificaciones de cumpleaños del día en el menú principal.
-- Historial de cambios de estado del empleado.
-- Vincular empleado ↔ usuario auth (`empleados.user_id` ya existe pero la UI de vinculación se hará en el panel super-admin).
+- Campos: `nombre` (req), `tipo_id` (Select de `tipos_animal_finca`, opción para crear nuevo tipo inline si es admin), `edad` (number opt), `fecha_ingreso`, `fecha_salida`, `notas`, switch `activo`.
+- Insert con `created_by = auth.uid()` y `finca_id = fincaActiva.id`.
 
-## Resultado esperado
-Funcionalidad 1 (Empleados) y 2 (Potreros) quedan 100% según el spec, listas para pasar a las siguientes 3 funcionalidades.
+### 4. Potreros: CRUD para operarios
+
+- Migrar RLS de `potreros`: cambiar insert/update/delete de `is_admin_or_super(...) AND user_has_finca(...)` a sólo `user_has_finca(auth.uid(), finca_id)` (con `is_active_user`).
+- En `src/pages/finca/Potreros.tsx` quitar la guarda `isAdmin` para mostrar el FAB y permitir abrir el formulario de edición a todos los usuarios con acceso a la finca.
+
+### 5. Eliminar banners en sub-vistas de finca
+
+Quitar el `<header>` con imagen (banner aspect-[865/503]) y reemplazarlo por una barra simple con botón "Volver" + título dorado (`bg-gold-solid`) en:
+
+- `src/pages/finca/Empleados.tsx`
+- `src/pages/finca/Potreros.tsx`
+- `src/pages/finca/Animales.tsx`
+- `src/pages/PlaceholderPage.tsx` (usado por `/finca/inventario`, `/finca/compra`, `/finca/venta`) — verificar y eliminar banner si lo tiene.
+
+Mantener `FincaActivaChip` arriba.
+
+## Migración SQL requerida
+
+```sql
+-- animales_finca: permitir CRUD a operarios con acceso a la finca
+DROP POLICY "insert animales_finca admin" ON public.animales_finca;
+DROP POLICY "update animales_finca admin" ON public.animales_finca;
+DROP POLICY "delete animales_finca admin" ON public.animales_finca;
+
+CREATE POLICY "insert animales_finca by finca" ON public.animales_finca
+  FOR INSERT TO authenticated
+  WITH CHECK (is_active_user(auth.uid()) AND user_has_finca(auth.uid(), finca_id));
+CREATE POLICY "update animales_finca by finca" ON public.animales_finca
+  FOR UPDATE TO authenticated
+  USING (user_has_finca(auth.uid(), finca_id));
+CREATE POLICY "delete animales_finca by finca" ON public.animales_finca
+  FOR DELETE TO authenticated
+  USING (user_has_finca(auth.uid(), finca_id));
+
+-- potreros: idem
+DROP POLICY "insert potreros admin" ON public.potreros;
+DROP POLICY "update potreros admin" ON public.potreros;
+DROP POLICY "delete potreros admin" ON public.potreros;
+
+CREATE POLICY "insert potreros by finca" ON public.potreros
+  FOR INSERT TO authenticated
+  WITH CHECK (is_active_user(auth.uid()) AND user_has_finca(auth.uid(), finca_id));
+CREATE POLICY "update potreros by finca" ON public.potreros
+  FOR UPDATE TO authenticated
+  USING (user_has_finca(auth.uid(), finca_id));
+CREATE POLICY "delete potreros by finca" ON public.potreros
+  FOR DELETE TO authenticated
+  USING (user_has_finca(auth.uid(), finca_id));
+```
+
+Empleados se mantiene admin-only (no se solicitó cambio).
+
+## Archivos afectados
+
+- **Edit**: `src/pages/Menu.tsx`, `src/pages/Fincas.tsx`, `src/pages/finca/Empleados.tsx`, `src/pages/finca/Potreros.tsx`, `src/pages/finca/Animales.tsx`, `src/pages/PlaceholderPage.tsx`
+- **New**: `src/components/AnimalFincaForm.tsx`
+- **Migration**: nueva en `supabase/migrations/`
