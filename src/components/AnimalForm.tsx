@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useFinca } from "@/contexts/FincaContext";
 import { toast } from "sonner";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import {
@@ -68,6 +69,7 @@ const sexoFromTipo = (tipo: AnimalTipo): "M" | "H" | undefined => {
 
 const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const { user, roles } = useAuth();
+  const { fincaActiva } = useFinca();
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
   const isEdit = !!animalId;
 
@@ -191,7 +193,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setSexo(sexoFromTipo(tipo) ?? "");
       setRaza("Brahman");
       setColor("");
-      setFincaId("");
+      setFincaId(fincaActiva?.id ?? "");
       setMadreId("");
       setPadreId("");
       setCreatedBy(null);
@@ -202,7 +204,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setFotoPreview(null);
       setBannerPreview(null);
     }
-  }, [open, animalId, tipo, onOpenChange]);
+  }, [open, animalId, tipo, onOpenChange, fincaActiva?.id]);
 
   const hasPendingImageChange = !!fotoBlob || !!bannerBlob;
   const canEdit = !isEdit || (createdBy && user?.id === createdBy) || isAdmin;
@@ -500,27 +502,29 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="finca">Finca *</Label>
-            <select
-              id="finca"
-              value={fincaId}
-              onChange={(e) => setFincaId(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">— Selecciona una finca —</option>
-              {fincas.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.nombre}
-                </option>
-              ))}
-            </select>
-            {fincas.length === 0 && !isAdmin && (
-              <p className="text-xs text-destructive mt-1">
-                No tienes fincas asignadas. Pide a un admin que te asigne una.
-              </p>
-            )}
-          </div>
+          {!fincaActiva && (
+            <div>
+              <Label htmlFor="finca">Finca *</Label>
+              <select
+                id="finca"
+                value={fincaId}
+                onChange={(e) => setFincaId(e.target.value)}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">— Selecciona una finca —</option>
+                {fincas.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.nombre}
+                  </option>
+                ))}
+              </select>
+              {fincas.length === 0 && !isAdmin && (
+                <p className="text-xs text-destructive mt-1">
+                  No tienes fincas asignadas. Pide a un admin que te asigne una.
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <Label htmlFor="madre">Madre</Label>
