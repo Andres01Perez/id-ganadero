@@ -163,6 +163,36 @@ const App = () => (
                 }
               />
               <Route
+                path="/otros"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <Otros />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/otros/ganado-inactivo"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <GanadoInactivo />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/otros/movimientos"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <Movimientos />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/finca/:modulo"
                 element={
                   <ProtectedRoute>
