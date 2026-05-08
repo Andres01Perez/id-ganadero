@@ -38,7 +38,7 @@ const items: ModuloItem[] = [
   { label: "Animales", to: "/finca/animales", icon: CowIcon },
   { label: "Inventario", to: "/categoria-inventario", icon: Package },
   { label: "Compra/Venta", to: "/finca/compra-venta", icon: ArrowLeftRight },
-  { label: "Ajustes", to: "/finca/ajustes", icon: Settings },
+  { label: "Otros", to: "/otros", icon: Settings },
 ];
 
 const CircleButton = ({ item }: { item: ModuloItem }) => {
