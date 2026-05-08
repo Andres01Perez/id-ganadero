@@ -1,5 +1,25 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Grid3x3, Beef, Package, ShoppingCart, DollarSign } from "lucide-react";
+import { ArrowLeft, Users, Grid3x3, Package, ArrowLeftRight, Settings } from "lucide-react";
+
+const CowIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M4 7c0-1.5 1-2.5 2.5-2.5S9 5.5 9 7" />
+    <path d="M15 7c0-1.5 1-2.5 2.5-2.5S20 5.5 20 7" />
+    <path d="M5 7h14v6a7 7 0 0 1-14 0V7z" />
+    <path d="M9 13h.01" />
+    <path d="M15 13h.01" />
+    <path d="M10 17c.5.6 1.2 1 2 1s1.5-.4 2-1" />
+  </svg>
+);
 import { useFinca } from "@/contexts/FincaContext";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaActivaChip from "@/components/FincaActivaChip";
@@ -15,10 +35,10 @@ type ModuloItem = {
 const items: ModuloItem[] = [
   { label: "Empleados", to: "/finca/empleados", icon: Users },
   { label: "Potreros", to: "/finca/potreros", icon: Grid3x3 },
-  { label: "Animales", to: "/finca/animales", icon: Beef },
+  { label: "Animales", to: "/finca/animales", icon: CowIcon },
   { label: "Inventario", to: "/categoria-inventario", icon: Package },
-  { label: "Compra", to: "/finca/compra", icon: ShoppingCart },
-  { label: "Venta", to: "/finca/venta", icon: DollarSign },
+  { label: "Compra/Venta", to: "/finca/compra-venta", icon: ArrowLeftRight },
+  { label: "Ajustes", to: "/finca/ajustes", icon: Settings },
 ];
 
 const CircleButton = ({ item }: { item: ModuloItem }) => {
