@@ -35,10 +35,10 @@ type ModuloItem = {
 const items: ModuloItem[] = [
   { label: "Empleados", to: "/finca/empleados", icon: Users },
   { label: "Potreros", to: "/finca/potreros", icon: Grid3x3 },
-  { label: "Animales", to: "/finca/animales", icon: Beef },
+  { label: "Animales", to: "/finca/animales", icon: CowIcon },
   { label: "Inventario", to: "/categoria-inventario", icon: Package },
-  { label: "Compra", to: "/finca/compra", icon: ShoppingCart },
-  { label: "Venta", to: "/finca/venta", icon: DollarSign },
+  { label: "Compra/Venta", to: "/finca/compra-venta", icon: ArrowLeftRight },
+  { label: "Ajustes", to: "/finca/ajustes", icon: Settings },
 ];
 
 const CircleButton = ({ item }: { item: ModuloItem }) => {
