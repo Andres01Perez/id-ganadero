@@ -227,6 +227,25 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
             <UnidadMedidaSelect value={unidadId} onChange={setUnidadId} />
           </div>
 
+          {!isEdit && (
+            <div>
+              <Label htmlFor="ci">Cantidad inicial (opcional)</Label>
+              <Input
+                id="ci"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={cantidadInicial}
+                onChange={(e) => setCantidadInicial(e.target.value)}
+                placeholder="Deja vacío si aún no tienes existencias"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Si la ingresas, se registrará como una entrada hoy.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="pm">Punto mínimo</Label>
