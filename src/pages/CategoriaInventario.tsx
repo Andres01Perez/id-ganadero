@@ -77,27 +77,24 @@ const CategoriaInventario = () => {
         </span>
       </div>
 
-      <div className="px-8 py-10 space-y-5 max-w-xs mx-auto">
+      <div className="px-8 py-10 space-y-4 max-w-xs mx-auto">
         {items.map((item) => {
-          const Icon = item.icon;
           const crit = criticos[item.to];
           return (
-            <button
-              key={item.to}
-              onClick={() => navigate(`/inventario/${item.to}`)}
-              className="relative w-full aspect-square rounded-2xl border-2 border-gold shadow-soft bg-card flex flex-col items-center justify-center gap-3 active:scale-95 transition-transform"
-            >
-              <Icon className="h-14 w-14 text-gold-deep" />
-              <span className="text-base font-bold tracking-jps uppercase text-foreground">
+            <div key={item.to} className="relative">
+              <button
+                onClick={() => navigate(`/inventario/${item.to}`)}
+                className="w-full bg-gold-solid text-ink rounded-full py-3 px-4 text-sm font-semibold uppercase tracking-wider shadow-gold active:scale-95 transition-transform"
+              >
                 {item.label}
-              </span>
+              </button>
               {crit > 0 && (
                 <span className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-1 shadow">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {crit}
                 </span>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
