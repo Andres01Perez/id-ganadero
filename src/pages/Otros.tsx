@@ -41,7 +41,7 @@ const Otros = () => {
           <button
             key={o.to}
             onClick={() => navigate(o.to)}
-            className="bg-gold-solid text-ink rounded-full py-3 px-6 text-sm font-semibold uppercase tracking-wider shadow-gold active:scale-95 transition-transform"
+            className="w-64 text-center bg-gold-solid text-ink rounded-full py-3 px-6 text-sm font-semibold uppercase tracking-wider shadow-gold active:scale-95 transition-transform"
           >
             {o.label}
           </button>
