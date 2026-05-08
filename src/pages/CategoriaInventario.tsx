@@ -77,33 +77,29 @@ const CategoriaInventario = () => {
         </span>
       </div>
 
-      <div className="px-6 py-10">
-        <div className="grid grid-cols-1 gap-6 justify-items-center">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const crit = criticos[item.to];
-            return (
-              <button
-                key={item.to}
-                onClick={() => navigate(`/inventario/${item.to}`)}
-                className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
-              >
-                <div className="relative w-32 h-32 rounded-full border-[3px] border-gold shadow-soft bg-card flex items-center justify-center">
-                  <Icon className="h-14 w-14 text-gold-deep" />
-                  {crit > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[28px] h-7 px-2 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-1 shadow">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      {crit}
-                    </span>
-                  )}
-                </div>
-                <span className="text-base font-bold tracking-jps uppercase text-foreground">
-                  {item.label}
+      <div className="px-8 py-10 space-y-5 max-w-xs mx-auto">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const crit = criticos[item.to];
+          return (
+            <button
+              key={item.to}
+              onClick={() => navigate(`/inventario/${item.to}`)}
+              className="relative w-full aspect-square rounded-2xl border-2 border-gold shadow-soft bg-card flex flex-col items-center justify-center gap-3 active:scale-95 transition-transform"
+            >
+              <Icon className="h-14 w-14 text-gold-deep" />
+              <span className="text-base font-bold tracking-jps uppercase text-foreground">
+                {item.label}
+              </span>
+              {crit > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-[28px] h-7 px-2 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center gap-1 shadow">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {crit}
                 </span>
-              </button>
-            );
-          })}
-        </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <BottomTabBar />

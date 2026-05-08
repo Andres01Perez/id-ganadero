@@ -56,6 +56,7 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
   const [laboratorio, setLaboratorio] = useState("");
   const [viaAdmin, setViaAdmin] = useState("");
   const [ubicacion, setUbicacion] = useState("");
+  const [cantidadInicial, setCantidadInicial] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -97,6 +98,7 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
       setLaboratorio("");
       setViaAdmin("");
       setUbicacion("");
+      setCantidadInicial("");
     }
   }, [open, productoId, onOpenChange]);
 
@@ -134,13 +136,32 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
           .eq("id", productoId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("inventario_productos").insert({
-          ...payload,
-          finca_id: fincaActiva.id,
-          categoria,
-          created_by: user.id,
-        });
+        const { data: created, error } = await supabase
+          .from("inventario_productos")
+          .insert({
+            ...payload,
+            finca_id: fincaActiva.id,
+            categoria,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
+        const qty = Number(cantidadInicial);
+        if (created?.id && cantidadInicial.trim() !== "" && !Number.isNaN(qty) && qty > 0) {
+          const { error: movErr } = await supabase.from("inventario_movimientos").insert({
+            producto_id: created.id,
+            tipo: "entrada",
+            cantidad: qty,
+            fecha: new Date().toISOString().slice(0, 10),
+            notas: "Cantidad inicial",
+            responsable_id: user.id,
+          });
+          if (movErr) {
+            console.error(movErr);
+            toast.warning("Producto creado, pero no se registró la cantidad inicial");
+          }
+        }
       }
       toast.success(isEdit ? "Producto actualizado" : "Producto creado");
       await onSaved?.();
@@ -205,6 +226,25 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
             <Label>Unidad de medida *</Label>
             <UnidadMedidaSelect value={unidadId} onChange={setUnidadId} />
           </div>
+
+          {!isEdit && (
+            <div>
+              <Label htmlFor="ci">Cantidad inicial (opcional)</Label>
+              <Input
+                id="ci"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={cantidadInicial}
+                onChange={(e) => setCantidadInicial(e.target.value)}
+                placeholder="Deja vacío si aún no tienes existencias"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Si la ingresas, se registrará como una entrada hoy.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
