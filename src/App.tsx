@@ -15,6 +15,9 @@ import MenuFinca from "./pages/MenuFinca";
 import FincaEmpleados from "./pages/finca/Empleados";
 import FincaPotreros from "./pages/finca/Potreros";
 import FincaAnimales from "./pages/finca/Animales";
+import Otros from "./pages/Otros";
+import GanadoInactivo from "./pages/otros/GanadoInactivo";
+import Movimientos from "./pages/otros/Movimientos";
 import CategoriaInventario from "./pages/CategoriaInventario";
 import InventarioLista from "./pages/InventarioLista";
 import InventarioProducto from "./pages/InventarioProducto";
@@ -155,6 +158,36 @@ const App = () => (
                   <ProtectedRoute>
                     <RequireFinca>
                       <InventarioProducto />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/otros"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <Otros />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/otros/ganado-inactivo"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <GanadoInactivo />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/otros/movimientos"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <Movimientos />
                     </RequireFinca>
                   </ProtectedRoute>
                 }
