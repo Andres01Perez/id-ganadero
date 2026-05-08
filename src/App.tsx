@@ -15,6 +15,9 @@ import MenuFinca from "./pages/MenuFinca";
 import FincaEmpleados from "./pages/finca/Empleados";
 import FincaPotreros from "./pages/finca/Potreros";
 import FincaAnimales from "./pages/finca/Animales";
+import CategoriaInventario from "./pages/CategoriaInventario";
+import InventarioLista from "./pages/InventarioLista";
+import InventarioProducto from "./pages/InventarioProducto";
 import NotFound from "./pages/NotFound";
 import SuperAdminLogin from "./pages/SuperAdminLogin";
 import SuperAdminLayout from "./pages/SuperAdmin/Layout";
@@ -122,6 +125,36 @@ const App = () => (
                   <ProtectedRoute>
                     <RequireFinca>
                       <FincaAnimales />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/categoria-inventario"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <CategoriaInventario />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventario/:categoria"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <InventarioLista />
+                    </RequireFinca>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventario/producto/:id"
+                element={
+                  <ProtectedRoute>
+                    <RequireFinca>
+                      <InventarioProducto />
                     </RequireFinca>
                   </ProtectedRoute>
                 }

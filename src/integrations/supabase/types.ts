@@ -701,6 +701,118 @@ export type Database = {
           },
         ]
       }
+      inventario_movimientos: {
+        Row: {
+          cantidad: number
+          created_at: string
+          fecha: string
+          id: string
+          notas: string | null
+          producto_id: string
+          responsable_id: string
+          tipo: Database["public"]["Enums"]["inventario_movimiento_tipo"]
+        }
+        Insert: {
+          cantidad: number
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          producto_id: string
+          responsable_id: string
+          tipo: Database["public"]["Enums"]["inventario_movimiento_tipo"]
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          fecha?: string
+          id?: string
+          notas?: string | null
+          producto_id?: string
+          responsable_id?: string
+          tipo?: Database["public"]["Enums"]["inventario_movimiento_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_movimientos_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventario_productos: {
+        Row: {
+          activo: boolean
+          categoria: Database["public"]["Enums"]["inventario_categoria"]
+          created_at: string
+          created_by: string | null
+          fecha_vencimiento: string | null
+          finca_id: string
+          id: string
+          importancia: Database["public"]["Enums"]["inventario_importancia"]
+          laboratorio: string | null
+          marca: string | null
+          nombre: string
+          notas: string | null
+          punto_minimo: number
+          tipo_alimento: string | null
+          ubicacion: string | null
+          unidad_id: string
+          updated_at: string
+          via_administracion: string | null
+        }
+        Insert: {
+          activo?: boolean
+          categoria: Database["public"]["Enums"]["inventario_categoria"]
+          created_at?: string
+          created_by?: string | null
+          fecha_vencimiento?: string | null
+          finca_id: string
+          id?: string
+          importancia?: Database["public"]["Enums"]["inventario_importancia"]
+          laboratorio?: string | null
+          marca?: string | null
+          nombre: string
+          notas?: string | null
+          punto_minimo?: number
+          tipo_alimento?: string | null
+          ubicacion?: string | null
+          unidad_id: string
+          updated_at?: string
+          via_administracion?: string | null
+        }
+        Update: {
+          activo?: boolean
+          categoria?: Database["public"]["Enums"]["inventario_categoria"]
+          created_at?: string
+          created_by?: string | null
+          fecha_vencimiento?: string | null
+          finca_id?: string
+          id?: string
+          importancia?: Database["public"]["Enums"]["inventario_importancia"]
+          laboratorio?: string | null
+          marca?: string | null
+          nombre?: string
+          notas?: string | null
+          punto_minimo?: number
+          tipo_alimento?: string | null
+          ubicacion?: string | null
+          unidad_id?: string
+          updated_at?: string
+          via_administracion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_productos_unidad_id_fkey"
+            columns: ["unidad_id"]
+            isOneToOne: false
+            referencedRelation: "unidades_medida"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medicaciones: {
         Row: {
           animal_id: string
@@ -979,6 +1091,33 @@ export type Database = {
         }
         Relationships: []
       }
+      unidades_medida: {
+        Row: {
+          abreviatura: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_system: boolean
+          nombre: string
+        }
+        Insert: {
+          abreviatura?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          nombre: string
+        }
+        Update: {
+          abreviatura?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          nombre?: string
+        }
+        Relationships: []
+      }
       user_finca_acceso: {
         Row: {
           created_at: string
@@ -1086,6 +1225,10 @@ export type Database = {
         Args: { _animal_id: string; _user_id: string }
         Returns: boolean
       }
+      user_can_access_producto: {
+        Args: { _producto_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_has_finca: {
         Args: { _finca_id: string; _user_id: string }
         Returns: boolean
@@ -1101,6 +1244,9 @@ export type Database = {
         | "implantado"
         | "perdido"
         | "nacido"
+      inventario_categoria: "alimentacion" | "medicina" | "otros"
+      inventario_importancia: "estandar" | "baja" | "media" | "alta"
+      inventario_movimiento_tipo: "entrada" | "salida"
       metodo_cruce:
         | "monta_directa"
         | "inseminacion_artificial"
@@ -1246,6 +1392,9 @@ export const Constants = {
         "perdido",
         "nacido",
       ],
+      inventario_categoria: ["alimentacion", "medicina", "otros"],
+      inventario_importancia: ["estandar", "baja", "media", "alta"],
+      inventario_movimiento_tipo: ["entrada", "salida"],
       metodo_cruce: [
         "monta_directa",
         "inseminacion_artificial",

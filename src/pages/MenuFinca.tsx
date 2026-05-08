@@ -16,7 +16,7 @@ const items: ModuloItem[] = [
   { label: "Empleados", to: "/finca/empleados", icon: Users },
   { label: "Potreros", to: "/finca/potreros", icon: Grid3x3 },
   { label: "Animales", to: "/finca/animales", icon: Beef },
-  { label: "Inventario", to: "/finca/inventario", icon: Package },
+  { label: "Inventario", to: "/categoria-inventario", icon: Package },
   { label: "Compra", to: "/finca/compra", icon: ShoppingCart },
   { label: "Venta", to: "/finca/venta", icon: DollarSign },
 ];
