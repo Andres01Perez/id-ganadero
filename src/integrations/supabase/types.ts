@@ -201,6 +201,7 @@ export type Database = {
           accion: string
           cambios: Json | null
           created_at: string
+          finca_id: string | null
           id: string
           registro_id: string
           tabla: string
@@ -211,6 +212,7 @@ export type Database = {
           accion: string
           cambios?: Json | null
           created_at?: string
+          finca_id?: string | null
           id?: string
           registro_id: string
           tabla: string
@@ -221,6 +223,7 @@ export type Database = {
           accion?: string
           cambios?: Json | null
           created_at?: string
+          finca_id?: string | null
           id?: string
           registro_id?: string
           tabla?: string
