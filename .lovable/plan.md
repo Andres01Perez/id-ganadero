@@ -1,36 +1,70 @@
-## Ajustes al módulo Inventario
+## Objetivo
 
-### 1. Cantidad inicial opcional al crear producto
+Simplificar el módulo "Animales de la finca" para registrar solo **tipo de animal + cantidad** (sin nombres, fechas, estado ni tabla separada de tipos).
 
-En `src/components/InventarioProductoForm.tsx` se agrega un nuevo campo opcional **"Cantidad inicial"** (numérico, ≥ 0, vacío = no crear movimiento). Aplica a las 3 categorías (alimentación, medicina, otros).
+Resultado final esperado en pantalla:
+```
+- Caballos     10
+- Yeguas        3
+- Novillos      8
+- Gallinas    500
+```
 
-Comportamiento:
+## Cambios en base de datos
 
-- Solo se muestra al **crear** un producto, no al editar (en edición se siguen usando movimientos).
-- Si el usuario ingresa una cantidad > 0, después del `insert` del producto se inserta automáticamente un movimiento en `inventario_movimientos` con:
-  - `tipo: 'entrada'`
-  - `cantidad`: lo ingresado
-  - `fecha`: hoy
-  - `notas`: "Cantidad inicial"
-  - `responsable_id`: `user.id`
-- Si falla la creación del movimiento, se muestra toast de advertencia pero el producto queda creado (el usuario puede registrarlo después manualmente).
-- Posición sugerida en el form: justo encima de "Punto mínimo / Importancia".
+**Tabla `animales_finca` — rediseño:**
+- Eliminar columnas: `tipo_id`, `nombre`, `edad`, `fecha_ingreso`, `fecha_salida`, `activo`, `notas`.
+- Agregar columnas:
+  - `tipo` (text, NOT NULL) — ej. "Caballos", "Novillos".
+  - `cantidad` (integer, NOT NULL, default 0, >= 0).
+- Agregar índice único `(finca_id, lower(tipo))` para evitar duplicados por finca.
+- Mantener: `id`, `finca_id`, `created_by`, `created_at`, `updated_at`.
+- Las políticas RLS actuales siguen sirviendo (se basan en `finca_id`), no se tocan.
 
-No se requieren cambios de base de datos ni de RLS (el flujo ya está soportado).
+**Tabla `tipos_animal_finca`:**
+- Eliminar la tabla por completo (ya no se usará).
 
-### 2. Vista `/categoria-inventario` con 3 botones cuadrados
+> Nota: los datos actuales de `animales_finca` se perderán con esta migración (la estructura cambia). Es información de pruebas; si tienes registros que quieras conservar pídemelo y los migramos antes.
 
-Rediseño visual de `src/pages/CategoriaInventario.tsx`:
+## Cambios en código
 
-- Reemplazar los actuales botones circulares por **3 tarjetas cuadradas** (Alimentación, Medicina, Otros).
-- Layout: una sola columna centrada, tarjetas con ancho controlado (`max-w-xs mx-auto`), espaciadas verticalmente (`space-y-4`), con margen superior y laterales generosos para que queden centradas tanto vertical como horizontalmente respecto al área visible.
-- Cada botón: cuadrado (`aspect-square` o `h-32 w-full max-w-[16rem]`), `rounded-2xl`, fondo `bg-card`, borde `border-2 border-gold`, `shadow-soft`, ícono grande arriba (Wheat / Stethoscope / Wrench en `text-gold-deep`) y label debajo en mayúsculas con `tracking-jps`.
-- Mantener el badge rojo de productos críticos en la esquina superior derecha.
-- Conservar header dorado, `FincaActivaChip` y `BottomTabBar`.
+**`src/pages/finca/Animales.tsx`** (listado):
+- Quitar buscador y avatar.
+- Mostrar lista simple: nombre del tipo a la izquierda, cantidad grande a la derecha.
+- Tap sobre un item → abre el form para editar tipo/cantidad o eliminar.
+- FAB "+" → abre el form para crear nuevo registro.
 
-### Archivos a modificar
+**`src/components/AnimalFincaForm.tsx`** (formulario):
+- Reducir a 2 campos:
+  - **Animal** (input de texto, ej. "Caballos").
+  - **Cantidad** (input numérico, entero ≥ 0).
+- Botones: Guardar / Eliminar (en edición).
+- Quitar toda la lógica de tipos, fechas, edad, notas, switch activo.
 
-- `src/components/InventarioProductoForm.tsx` — nuevo campo + lógica de movimiento inicial.
-- `src/pages/CategoriaInventario.tsx` — rediseño visual a botones cuadrados centrados.
+**`src/integrations/supabase/types.ts`:**
+- Se regenera automáticamente tras la migración.
 
-Sin cambios en base de datos, rutas, ni en otras pantallas del módulo.
+## Detalles técnicos
+
+```text
+animales_finca (final)
+├── id            uuid pk
+├── finca_id      uuid not null
+├── tipo          text not null
+├── cantidad      int  not null default 0 check (cantidad >= 0)
+├── created_by    uuid
+├── created_at    timestamptz
+└── updated_at    timestamptz
+
+unique index: (finca_id, lower(tipo))
+```
+
+Orden de la migración:
+1. `DROP TABLE tipos_animal_finca CASCADE` (esto remueve la FK desde `animales_finca.tipo_id`).
+2. `ALTER TABLE animales_finca` para borrar columnas obsoletas y agregar `tipo` + `cantidad`.
+3. Crear índice único.
+4. Mantener trigger de `updated_at` si existe.
+
+## Confirmación
+
+¿Procedo con esta simplificación? Si tienes datos en `animales_finca` que quieras conservar, dímelo antes para hacer un mapeo manual; de lo contrario asumo que se pueden descartar.
