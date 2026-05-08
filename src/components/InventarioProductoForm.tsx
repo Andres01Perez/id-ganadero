@@ -98,6 +98,7 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
       setLaboratorio("");
       setViaAdmin("");
       setUbicacion("");
+      setCantidadInicial("");
     }
   }, [open, productoId, onOpenChange]);
 
