@@ -56,6 +56,7 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
   const [laboratorio, setLaboratorio] = useState("");
   const [viaAdmin, setViaAdmin] = useState("");
   const [ubicacion, setUbicacion] = useState("");
+  const [cantidadInicial, setCantidadInicial] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
