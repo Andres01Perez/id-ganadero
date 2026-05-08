@@ -136,13 +136,32 @@ const InventarioProductoForm = ({ open, onOpenChange, categoria, productoId, onS
           .eq("id", productoId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("inventario_productos").insert({
-          ...payload,
-          finca_id: fincaActiva.id,
-          categoria,
-          created_by: user.id,
-        });
+        const { data: created, error } = await supabase
+          .from("inventario_productos")
+          .insert({
+            ...payload,
+            finca_id: fincaActiva.id,
+            categoria,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
+        const qty = Number(cantidadInicial);
+        if (created?.id && cantidadInicial.trim() !== "" && !Number.isNaN(qty) && qty > 0) {
+          const { error: movErr } = await supabase.from("inventario_movimientos").insert({
+            producto_id: created.id,
+            tipo: "entrada",
+            cantidad: qty,
+            fecha: new Date().toISOString().slice(0, 10),
+            notas: "Cantidad inicial",
+            responsable_id: user.id,
+          });
+          if (movErr) {
+            console.error(movErr);
+            toast.warning("Producto creado, pero no se registró la cantidad inicial");
+          }
+        }
       }
       toast.success(isEdit ? "Producto actualizado" : "Producto creado");
       await onSaved?.();
