@@ -101,45 +101,30 @@ export type Database = {
       }
       animales_finca: {
         Row: {
-          activo: boolean
+          cantidad: number
           created_at: string
           created_by: string | null
-          edad: number | null
-          fecha_ingreso: string | null
-          fecha_salida: string | null
           finca_id: string
           id: string
-          nombre: string
-          notas: string | null
-          tipo_id: string
+          tipo: string
           updated_at: string
         }
         Insert: {
-          activo?: boolean
+          cantidad?: number
           created_at?: string
           created_by?: string | null
-          edad?: number | null
-          fecha_ingreso?: string | null
-          fecha_salida?: string | null
           finca_id: string
           id?: string
-          nombre: string
-          notas?: string | null
-          tipo_id: string
+          tipo: string
           updated_at?: string
         }
         Update: {
-          activo?: boolean
+          cantidad?: number
           created_at?: string
           created_by?: string | null
-          edad?: number | null
-          fecha_ingreso?: string | null
-          fecha_salida?: string | null
           finca_id?: string
           id?: string
-          nombre?: string
-          notas?: string | null
-          tipo_id?: string
+          tipo?: string
           updated_at?: string
         }
         Relationships: [
@@ -148,13 +133,6 @@ export type Database = {
             columns: ["finca_id"]
             isOneToOne: false
             referencedRelation: "fincas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "animales_finca_tipo_id_fkey"
-            columns: ["tipo_id"]
-            isOneToOne: false
-            referencedRelation: "tipos_animal_finca"
             referencedColumns: ["id"]
           },
         ]
@@ -1064,30 +1042,6 @@ export type Database = {
           email?: string
           id?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      tipos_animal_finca: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          is_system: boolean
-          nombre: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_system?: boolean
-          nombre: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_system?: boolean
-          nombre?: string
         }
         Relationships: []
       }
