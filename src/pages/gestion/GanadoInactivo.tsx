@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useFinca } from "@/contexts/FincaContext";
 import BottomTabBar from "@/components/BottomTabBar";
-import FincaActivaChip from "@/components/FincaActivaChip";
 import AnimalAvatar from "@/components/AnimalAvatar";
 import {
   AlertDialog,
@@ -35,18 +33,15 @@ const tipoLabel: Record<string, string> = {
 
 const GanadoInactivo = () => {
   const navigate = useNavigate();
-  const { fincaActiva } = useFinca();
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [target, setTarget] = useState<Animal | null>(null);
 
   const load = async () => {
-    if (!fincaActiva) return;
     setLoading(true);
     const { data, error } = await supabase
       .from("animales")
       .select("id, numero, nombre, tipo, foto_principal_url")
-      .eq("finca_id", fincaActiva.id)
       .eq("activo", false)
       .order("updated_at", { ascending: false });
     if (error) toast.error(error.message);
@@ -56,8 +51,7 @@ const GanadoInactivo = () => {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fincaActiva?.id]);
+  }, []);
 
   const reactivar = async () => {
     if (!target) return;
@@ -76,10 +70,9 @@ const GanadoInactivo = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-safe-plus">
-      <FincaActivaChip />
       <header className="bg-gold-solid text-ink px-4 py-4 flex items-center gap-3">
         <button
-          onClick={() => navigate("/otros")}
+          onClick={() => navigate("/menu/gestion")}
           className="h-9 w-9 rounded-full bg-black/10 flex items-center justify-center"
           aria-label="Volver"
         >
