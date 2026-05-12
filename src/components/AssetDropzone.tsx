@@ -186,6 +186,14 @@ const AssetDropzone = ({
           if (inputRef.current) inputRef.current.value = "";
         }}
       />
+
+      <AssetLocationDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        assetKey={previewKey ?? assetKey}
+        imageUrl={display}
+        label={label}
+      />
     </div>
   );
 };
