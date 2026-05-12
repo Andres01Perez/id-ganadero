@@ -19,6 +19,8 @@ type Animal = {
   raza: string | null;
   foto_principal_url: string | null;
   foto_banner_url: string | null;
+  finca_id: string | null;
+  fincas: { nombre: string | null } | null;
 };
 
 const pills = [
@@ -51,7 +53,7 @@ const HojaVidaAnimal = () => {
     if (!id) return;
     const { data, error } = await supabase
       .from("animales")
-      .select("id, numero, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url, foto_banner_url")
+      .select("id, numero, nombre, tipo, sexo, fecha_nacimiento, numero_registro, color, raza, foto_principal_url, foto_banner_url, finca_id, fincas(nombre)")
       .eq("id", id)
       .maybeSingle();
     if (error || !data) {
@@ -142,6 +144,9 @@ const HojaVidaAnimal = () => {
           <dd className="font-semibold">
             {animal.sexo === "M" ? "Macho" : animal.sexo === "H" ? "Hembra" : "—"}
           </dd>
+
+          <dt className="text-muted-foreground">Finca</dt>
+          <dd className="font-semibold">{animal.fincas?.nombre ?? "—"}</dd>
         </dl>
       </section>
 

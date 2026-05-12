@@ -31,7 +31,7 @@ type ProductoRow = {
 const VALID: Categoria[] = ["alimentacion", "medicina", "otros"];
 
 const InventarioLista = () => {
-  const { categoria } = useParams<{ categoria: string }>();
+  const { categoria, fincaId } = useParams<{ categoria: string; fincaId: string }>();
   const navigate = useNavigate();
   const { fincaActiva } = useFinca();
   const cat = (VALID.includes(categoria as Categoria) ? categoria : "alimentacion") as Categoria;
@@ -100,7 +100,7 @@ const InventarioLista = () => {
       <FincaActivaChip />
       <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button
-          onClick={() => navigate("/categoria-inventario")}
+          onClick={() => navigate(`/finca/${fincaId}/inventario`)}
           className="relative z-10 ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
@@ -142,7 +142,7 @@ const InventarioLista = () => {
             return (
               <button
                 key={p.id}
-                onClick={() => navigate(`/inventario/producto/${p.id}`)}
+                onClick={() => navigate(`/finca/${fincaId}/inventario/producto/${p.id}`)}
                 className="w-full flex items-center gap-4 bg-card rounded-xl p-3 shadow-soft active:scale-[0.99] transition-transform text-left"
               >
                 <div className="w-12 h-12 rounded-full border-[3px] border-gold bg-card flex items-center justify-center shrink-0">

@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useFinca } from "@/contexts/FincaContext";
-import { useAuth } from "@/hooks/useAuth";
 import BottomTabBar from "@/components/BottomTabBar";
-import FincaActivaChip from "@/components/FincaActivaChip";
 import { formatAuditEvent, TABLA_OPCIONES } from "@/lib/audit-format";
 import { toast } from "sonner";
 import {
@@ -36,10 +33,6 @@ const RANGOS = [
 
 const Movimientos = () => {
   const navigate = useNavigate();
-  const { fincaActiva } = useFinca();
-  const { roles } = useAuth();
-  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
-
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [tabla, setTabla] = useState<string>("all");
@@ -50,14 +43,10 @@ const Movimientos = () => {
     setLoading(true);
     let q = (supabase as any)
       .from("audit_log")
-      .select("id, tabla, accion, cambios, usuario_display_name, created_at, finca_id")
+      .select("id, tabla, accion, cambios, usuario_display_name, created_at")
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE + 1);
 
-    // Si no es admin, RLS ya filtra por finca. Si es admin, restringimos a la finca activa.
-    if (isAdmin && fincaActiva) {
-      q = q.eq("finca_id", fincaActiva.id);
-    }
     if (tabla !== "all") q = q.eq("tabla", tabla);
     if (rango !== "0") {
       const dias = parseInt(rango, 10);
@@ -81,7 +70,7 @@ const Movimientos = () => {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fincaActiva?.id, tabla, rango]);
+  }, [tabla, rango]);
 
   const fmtFecha = (iso: string) => {
     const d = new Date(iso);
@@ -96,10 +85,9 @@ const Movimientos = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-safe-plus">
-      <FincaActivaChip />
       <header className="bg-gold-solid text-ink px-4 py-4 flex items-center gap-3">
         <button
-          onClick={() => navigate("/otros")}
+          onClick={() => navigate("/menu/gestion")}
           className="h-9 w-9 rounded-full bg-black/10 flex items-center justify-center"
           aria-label="Volver"
         >

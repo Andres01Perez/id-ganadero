@@ -1,30 +1,25 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import BottomTabBar from "@/components/BottomTabBar";
-import FincaActivaChip from "@/components/FincaActivaChip";
-import { useFinca } from "@/contexts/FincaContext";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 
 const opciones: { label: string; to: string }[] = [
-  { label: "Ganado Inactivo", to: "/otros/ganado-inactivo" },
-  { label: "Movimientos", to: "/otros/movimientos" },
+  { label: "Ganado Inactivo", to: "/gestion/ganado-inactivo" },
+  { label: "Movimientos", to: "/gestion/movimientos" },
 ];
 
-const Otros = () => {
+const MenuGestion = () => {
   const navigate = useNavigate();
-  const { fincaActiva } = useFinca();
-  const fallbackBanner = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
-  const banner = fincaActiva?.foto_url || fallbackBanner;
+  const banner = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
 
   return (
     <div className="min-h-[100dvh] bg-background pb-safe-plus">
-      <FincaActivaChip />
       <header className="relative aspect-[865/503] overflow-hidden">
-        <img src={banner} alt={fincaActiva?.nombre ?? ""} className="w-full h-full object-cover" loading="eager" />
+        <img src={banner} alt="" className="w-full h-full object-cover" loading="eager" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/50" />
         <button
-          onClick={() => navigate("/menu-finca")}
+          onClick={() => navigate("/menu")}
           className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
           aria-label="Volver"
         >
@@ -33,7 +28,7 @@ const Otros = () => {
       </header>
 
       <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-sm">
-        Otros
+        Gestión
       </div>
 
       <div className="px-6 py-8 flex flex-col items-center gap-4">
@@ -53,4 +48,4 @@ const Otros = () => {
   );
 };
 
-export default Otros;
+export default MenuGestion;

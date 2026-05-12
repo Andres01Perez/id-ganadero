@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Search, User, Cake } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,7 @@ type Empleado = {
 
 const FincaEmpleados = () => {
   const navigate = useNavigate();
+  const { fincaId } = useParams<{ fincaId: string }>();
   const { roles } = useAuth();
   const { fincaActiva } = useFinca();
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
@@ -102,7 +103,7 @@ const FincaEmpleados = () => {
       <FincaActivaChip />
       <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button
-          onClick={() => navigate("/menu-finca")}
+          onClick={() => navigate(`/finca/${fincaId}/menu-finca`)}
           className="relative z-10 ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
