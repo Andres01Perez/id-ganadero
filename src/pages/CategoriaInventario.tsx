@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Wheat, Stethoscope, Wrench, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useFinca } from "@/contexts/FincaContext";
@@ -21,6 +21,7 @@ const items: Item[] = [
 
 const CategoriaInventario = () => {
   const navigate = useNavigate();
+  const { fincaId } = useParams<{ fincaId: string }>();
   const { fincaActiva } = useFinca();
   const [criticos, setCriticos] = useState<Record<Categoria, number>>({
     alimentacion: 0,
@@ -66,7 +67,7 @@ const CategoriaInventario = () => {
       <FincaActivaChip />
       <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button
-          onClick={() => navigate("/menu-finca")}
+          onClick={() => navigate(`/finca/${fincaId}/menu-finca`)}
           className="relative z-10 ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
@@ -83,7 +84,7 @@ const CategoriaInventario = () => {
           return (
             <div key={item.to} className="relative">
               <button
-                onClick={() => navigate(`/inventario/${item.to}`)}
+                onClick={() => navigate(`/finca/${fincaId}/inventario/${item.to}`)}
                 className="w-full bg-gold-solid text-ink rounded-full py-3 px-4 text-sm font-semibold uppercase tracking-wider shadow-gold active:scale-95 transition-transform"
               >
                 {item.label}

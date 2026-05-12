@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useFinca } from "@/contexts/FincaContext";
@@ -16,6 +16,7 @@ type AnimalFinca = {
 
 const FincaAnimales = () => {
   const navigate = useNavigate();
+  const { fincaId } = useParams<{ fincaId: string }>();
   const { fincaActiva } = useFinca();
   const [animals, setAnimals] = useState<AnimalFinca[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ const FincaAnimales = () => {
       <FincaActivaChip />
       <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button
-          onClick={() => navigate("/menu-finca")}
+          onClick={() => navigate(`/finca/${fincaId}/menu-finca`)}
           className="relative z-10 ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >

@@ -42,7 +42,7 @@ type Movimiento = {
 };
 
 const InventarioProducto = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, fincaId } = useParams<{ id: string; fincaId: string }>();
   const navigate = useNavigate();
   const [producto, setProducto] = useState<Producto | null>(null);
   const [movs, setMovs] = useState<Movimiento[]>([]);
@@ -97,7 +97,7 @@ const InventarioProducto = () => {
       return;
     }
     toast.success("Producto eliminado");
-    navigate(`/inventario/${producto.categoria}`);
+    navigate(`/finca/${fincaId}/inventario/${producto.categoria}`);
   };
 
   if (loading || !producto) {
@@ -117,7 +117,7 @@ const InventarioProducto = () => {
       <FincaActivaChip />
       <div className="relative bg-gold-solid text-ink py-3 tracking-jps font-semibold uppercase text-base">
         <button
-          onClick={() => navigate(`/inventario/${producto.categoria}`)}
+          onClick={() => navigate(`/finca/${fincaId}/inventario/${producto.categoria}`)}
           className="relative z-10 ml-2 h-8 w-8 rounded-full flex items-center justify-center"
           aria-label="Volver"
         >
