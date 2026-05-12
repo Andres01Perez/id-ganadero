@@ -1,31 +1,59 @@
 ## Objetivo
-Permitir cambiar desde `/superadmin/imagenes` el banner de la página `/finca/:id/menu-finca` (banner global usado como fallback cuando la finca no tiene foto propia). El banner de `/fincas` ya existe y se deja tal cual.
+En `/superadmin/imagenes` mostrar, junto a cada imagen editable, un **mockup de la pantalla real** donde aparece esa imagen, para que el superadmin vea exactamente dónde quedará posicionada.
 
-## Cambios
+## Enfoque
 
-### 1. Nueva clave de asset
-En `src/lib/asset-keys.ts`:
-- Añadir `bannerMenuFinca: "categoria.banner.menu_finca"` a `ASSET_KEYS`.
-- Añadir su fallback en `ASSET_FALLBACKS` (reutilizar `listaHeader` o el mismo `bannerFincas`).
+Cada `AssetDropzone` añade un botón discreto **"Ver ubicación"** (o ícono `Eye`) que abre un `Dialog` con un mockup en marco de teléfono (mobile-first, igual que la app real) que pinta la pantalla correspondiente al asset, usando la imagen actual.
 
-### 2. Panel Superadmin
-En `src/pages/SuperAdmin/Imagenes.tsx`, dentro de `categoryBanners`, agregar:
-- `{ key: ASSET_KEYS.bannerMenuFinca, label: "Banner · Menú de finca", ...BANNER }`
+No se reusan las páginas reales — se hacen **mocks ligeros y estáticos** con HTML+Tailwind: rectángulos de placeholder para los demás elementos (botones, textos, otras imágenes) y la imagen del asset destacada con un anillo dorado pulsante para llamar la atención.
 
-Así aparece junto a los otros banners con el mismo crop 865/503 que ya usan las cabeceras.
+## Mockups a crear
 
-### 3. Uso en `/finca/:id/menu-finca`
-En `src/pages/MenuFinca.tsx` cambiar la línea del fallback:
-- `const fallbackBanner = useAppAsset(ASSET_KEYS.bannerMenuFinca, ASSET_FALLBACKS[ASSET_KEYS.bannerMenuFinca]);`
-- Mantener `fincaActiva?.foto_url || fallbackBanner` para que la foto de la finca siga teniendo prioridad.
+Un componente `AssetLocationPreview` con un switch por `assetKey` que renderiza la plantilla correspondiente:
 
-### 4. Texto descriptivo
-Actualizar la descripción de la sección "Banners de categorías" para mencionar también `/finca/:id/menu-finca`.
+1. **Logo (`global.logo`)** — barra superior + login: marco de teléfono con la barra negra superior y el logo centrado, más una mini vista del login con el logo arriba.
+2. **Login hero (`global.login_hero`)** — pantalla de login con la imagen ocupando la parte superior (3/4) y el formulario simulado abajo.
+3. **Banner del menú (`menu.banner`)** — pantalla `/menu`: banner arriba (aspect 865/503), saludo, y grid 2x3 de tarjetas placeholder.
+4. **Iconos del menú (`menu.icon.*`)** — grid del menú con las 6 tarjetas; la del icono editado se resalta con anillo dorado.
+5. **Banners de categoría (`categoria.banner.machos|hembras|crias|embriones|fincas`)** — pantalla de lista: banner arriba, lista de items placeholder; etiqueta con el nombre de la categoría.
+6. **Banner de menú-finca (`categoria.banner.menu_finca`)** — pantalla `/finca/:id/menu-finca`: banner arriba con label "fallback cuando la finca no tiene foto" + grid 2x3 de módulos.
+7. **Foto de finca (pestaña Fincas)** — tarjeta de finca dentro de una mini lista en `/fincas`, con la foto ocupando la cabecera de la card.
+
+## Cambios concretos
+
+### Nuevo archivo `src/components/AssetLocationPreview.tsx`
+- Recibe `assetKey`, `imageUrl`, `label`.
+- Renderiza un marco de teléfono (`w-[280px] aspect-[9/19] rounded-[2rem] border-8 border-foreground/80 bg-background overflow-hidden`).
+- Dentro, switch por `assetKey` que retorna una de las plantillas mock.
+- El elemento que representa la imagen real usa `<img src={imageUrl}>` con anillo dorado animado (`ring-2 ring-primary animate-pulse`).
+- Resto de elementos: barras `bg-muted`, círculos, textos placeholder con `bg-muted-foreground/20`.
+
+### Nuevo archivo `src/components/AssetLocationDialog.tsx`
+- `Dialog` de shadcn que envuelve `AssetLocationPreview`.
+- Header: "Ubicación en la app" + nombre del asset.
+- Footer pequeño explicando la ruta donde aparece (ej: "Visible en /menu, parte superior").
+
+### Editar `src/components/AssetDropzone.tsx`
+- Añadir prop opcional `previewKey?: string` (por defecto = `assetKey`).
+- En la cabecera del card añadir botón ícono `Eye` que abre el dialog.
+- Estado local `previewOpen`.
+
+### Editar `src/pages/SuperAdmin/Imagenes.tsx`
+- Sin cambios estructurales, sólo asegurar que cada `AssetDropzone` recibe el `assetKey` (ya lo hace).
+- Para la pestaña "Fotos de fincas", añadir el mismo botón en `FincaPhotoCard` con un `previewKey` especial tipo `"finca.foto"`.
+
+## Detalles de diseño
+- Marco mobile coherente con la app real (negro + dorado).
+- Mocks minimalistas, no realistas en contenido (sin imágenes externas) — todo con bloques de `bg-muted` y bordes redondeados.
+- La imagen editada **se ve real** dentro del mock.
+- Anillo dorado `ring-primary` + pequeña etiqueta "esta imagen" flotante con flecha.
+- Animación sutil de entrada del anillo.
 
 ## Verificación
-- Entrar a `/superadmin/imagenes` → pestaña "Marca · Banners" → ver dos tarjetas nuevas/existentes: "Banner · Fincas" y "Banner · Menú de finca".
-- Subir imagen al "Banner · Menú de finca" y abrir una finca **sin foto propia** → debe mostrarse la imagen subida.
-- Abrir una finca **con foto propia** → sigue mostrando la foto de la finca (prioridad).
+- Ir a `/superadmin/imagenes`, hacer clic en `Eye` de "Banner del menú" → abre dialog con un teléfono mostrando `/menu` y el banner real arriba.
+- Probar con cada categoría de asset (logo, hero, iconos, banners, menú-finca, foto de finca) → cada uno muestra una pantalla diferente y reconocible.
+- Cambiar la imagen y reabrir el preview → el mock se actualiza con la nueva imagen.
+- En móvil (390px) el dialog encaja sin scroll horizontal.
 
 ## Notas técnicas
-No se requieren migraciones de base de datos ni cambios de RLS: `app_assets` ya soporta cualquier clave nueva con las políticas existentes para super_admin.
+Sin cambios de base de datos, ni edge functions, ni nuevos assets. Todo es UI estática reutilizando shadcn `Dialog`, `lucide-react` (`Eye`), y los tokens del design system.
