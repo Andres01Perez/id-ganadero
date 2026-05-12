@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
+import MenuGestion from "./pages/MenuGestion";
 import Admin from "./pages/Admin";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import CategoriaAnimales from "./pages/CategoriaAnimales";
@@ -15,9 +16,8 @@ import MenuFinca from "./pages/MenuFinca";
 import FincaEmpleados from "./pages/finca/Empleados";
 import FincaPotreros from "./pages/finca/Potreros";
 import FincaAnimales from "./pages/finca/Animales";
-import Otros from "./pages/Otros";
-import GanadoInactivo from "./pages/otros/GanadoInactivo";
-import Movimientos from "./pages/otros/Movimientos";
+import GanadoInactivo from "./pages/gestion/GanadoInactivo";
+import Movimientos from "./pages/gestion/Movimientos";
 import CategoriaInventario from "./pages/CategoriaInventario";
 import InventarioLista from "./pages/InventarioLista";
 import InventarioProducto from "./pages/InventarioProducto";
@@ -45,7 +45,6 @@ const AppUpdateWatcher = () => {
 
 const ConditionalSafeArea = () => {
   const { pathname } = useLocation();
-  // Oculto en panel superadmin (desktop-first)
   if (pathname.startsWith("/superadmin") || pathname === "/sa") return null;
   return <SafeAreaTopBar />;
 };
@@ -82,165 +81,53 @@ const App = () => (
                 <Route path="finca/:fincaId" element={<SuperAdminInformacionFinca />} />
               </Route>
 
+              {/* Menú principal y animales globales (sin requerir finca) */}
+              <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
+              <Route path="/menu/gestion" element={<ProtectedRoute><MenuGestion /></ProtectedRoute>} />
+              <Route path="/gestion/ganado-inactivo" element={<ProtectedRoute><GanadoInactivo /></ProtectedRoute>} />
+              <Route path="/gestion/movimientos" element={<ProtectedRoute><Movimientos /></ProtectedRoute>} />
+              <Route path="/categoria/:tipo" element={<ProtectedRoute><CategoriaAnimales /></ProtectedRoute>} />
+              <Route path="/animal/:id" element={<ProtectedRoute><HojaVidaAnimal /></ProtectedRoute>} />
+              <Route path="/animal/:id/seguimiento/:tipo" element={<ProtectedRoute><AnimalSeguimiento /></ProtectedRoute>} />
+
+              {/* Selección de finca */}
+              <Route path="/fincas" element={<ProtectedRoute><Fincas /></ProtectedRoute>} />
+
+              {/* Módulos por finca */}
               <Route
-                path="/menu"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <Menu />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/menu-finca"
+                element={<ProtectedRoute><RequireFinca><MenuFinca /></RequireFinca></ProtectedRoute>}
               />
               <Route
-                path="/menu-finca"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <MenuFinca />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/empleados"
+                element={<ProtectedRoute><RequireFinca><FincaEmpleados /></RequireFinca></ProtectedRoute>}
               />
               <Route
-                path="/finca/empleados"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <FincaEmpleados />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/potreros"
+                element={<ProtectedRoute><RequireFinca><FincaPotreros /></RequireFinca></ProtectedRoute>}
               />
               <Route
-                path="/finca/potreros"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <FincaPotreros />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/animales-finca"
+                element={<ProtectedRoute><RequireFinca><FincaAnimales /></RequireFinca></ProtectedRoute>}
               />
               <Route
-                path="/finca/animales"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <FincaAnimales />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/inventario"
+                element={<ProtectedRoute><RequireFinca><CategoriaInventario /></RequireFinca></ProtectedRoute>}
               />
               <Route
-                path="/categoria-inventario"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <CategoriaInventario />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/inventario/:categoria"
+                element={<ProtectedRoute><RequireFinca><InventarioLista /></RequireFinca></ProtectedRoute>}
               />
               <Route
-                path="/inventario/:categoria"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <InventarioLista />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
+                path="/finca/:fincaId/inventario/producto/:id"
+                element={<ProtectedRoute><RequireFinca><InventarioProducto /></RequireFinca></ProtectedRoute>}
               />
-              <Route
-                path="/inventario/producto/:id"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <InventarioProducto />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/otros"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <Otros />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/otros/ganado-inactivo"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <GanadoInactivo />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/otros/movimientos"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <Movimientos />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/finca/:modulo"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <PlaceholderPage title="Módulo de finca" />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
-              />
+
               <Route
                 path="/admin"
                 element={
                   <ProtectedRoute requireRoles={["admin", "super_admin"]}>
                     <Admin />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/categoria/:tipo"
-                element={
-                  <ProtectedRoute>
-                    <RequireFinca>
-                      <CategoriaAnimales />
-                    </RequireFinca>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/animal/:id"
-                element={
-                  <ProtectedRoute>
-                    <HojaVidaAnimal />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/animal/:id/seguimiento/:tipo"
-                element={
-                  <ProtectedRoute>
-                    <AnimalSeguimiento />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/fincas"
-                element={
-                  <ProtectedRoute>
-                    <Fincas />
                   </ProtectedRoute>
                 }
               />

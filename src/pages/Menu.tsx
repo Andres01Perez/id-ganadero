@@ -9,7 +9,6 @@ import iconEmbriones from "@/assets/menu-icons/embriones.webp";
 import iconGeneralidades from "@/assets/menu-icons/generalidades.webp";
 import BottomTabBar from "@/components/BottomTabBar";
 import VersionFooter from "@/components/VersionFooter";
-import FincaActivaChip from "@/components/FincaActivaChip";
 import { LogOut } from "lucide-react";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS } from "@/lib/asset-keys";
@@ -27,7 +26,7 @@ const items: CircleItem[] = [
   { label: "Hembras", to: "/categoria/hembra", assetKey: ASSET_KEYS.iconHembras, fallback: iconHembras },
   { label: "Crías", to: "/categoria/cria", assetKey: ASSET_KEYS.iconCrias, fallback: iconCrias },
   { label: "Embriones", to: "/categoria/embrion", assetKey: ASSET_KEYS.iconEmbriones, fallback: iconEmbriones },
-  { label: "Gestión", to: "/menu-finca", assetKey: ASSET_KEYS.iconOtros, fallback: iconGeneralidades },
+  { label: "Gestión", to: "/menu/gestion", assetKey: ASSET_KEYS.iconOtros, fallback: iconGeneralidades },
 ];
 
 const CircleButton = ({ item }: { item: CircleItem }) => {
@@ -59,7 +58,6 @@ const Menu = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-24">
-      <FincaActivaChip />
       <header className="relative aspect-[865/503] overflow-hidden">
         <img
           src={banner}

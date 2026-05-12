@@ -1,8 +1,17 @@
-import { Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, useParams } from "react-router-dom";
 import { useFinca } from "@/contexts/FincaContext";
 
 const RequireFinca = ({ children }: { children: React.ReactNode }) => {
-  const { fincaActiva, loading } = useFinca();
+  const { fincaId } = useParams<{ fincaId?: string }>();
+  const { fincaActiva, fincasAccesibles, loading, setFincaActiva } = useFinca();
+
+  // Sincroniza la finca activa con el parámetro de la URL
+  useEffect(() => {
+    if (loading || !fincaId) return;
+    const match = fincasAccesibles.find((f) => f.id === fincaId);
+    if (match && fincaActiva?.id !== fincaId) setFincaActiva(match);
+  }, [fincaId, loading, fincasAccesibles, fincaActiva?.id, setFincaActiva]);
 
   if (loading) {
     return (
@@ -12,7 +21,12 @@ const RequireFinca = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!fincaActiva) return <Navigate to="/fincas" replace />;
+  if (fincaId) {
+    const match = fincasAccesibles.find((f) => f.id === fincaId);
+    if (!match) return <Navigate to="/fincas" replace />;
+  } else if (!fincaActiva) {
+    return <Navigate to="/fincas" replace />;
+  }
   return <>{children}</>;
 };
 

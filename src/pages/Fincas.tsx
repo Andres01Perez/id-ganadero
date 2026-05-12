@@ -42,7 +42,7 @@ const Fincas = () => {
 
   const handleSelect = (f: FincaActiva) => {
     setFincaActiva(f);
-    navigate("/menu");
+    navigate(`/finca/${f.id}/menu-finca`);
   };
 
   const openNew = () => {
