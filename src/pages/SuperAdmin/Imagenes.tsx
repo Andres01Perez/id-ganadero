@@ -264,6 +264,14 @@ const FincaPhotoCard = ({
         onConfirm={uploadBlob}
         onCancel={() => setPendingFile(null)}
       />
+
+      <AssetLocationDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        assetKey="finca.foto"
+        imageUrl={finca.foto_url ?? ""}
+        label={finca.nombre}
+      />
     </div>
   );
 };
