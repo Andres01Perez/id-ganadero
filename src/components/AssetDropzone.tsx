@@ -27,11 +27,13 @@ const AssetDropzone = ({
   cropAspect,
   outputSize,
   className = "",
+  previewKey,
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const invalidate = useInvalidateAsset();
 
   const handlePicked = (file: File) => {
