@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useInvalidateAsset, setAssetCache } from "@/hooks/useAppAsset";
 import ImageCropDialog from "@/components/ImageCropDialog";
+import AssetLocationDialog from "@/components/AssetLocationDialog";
 
 type Props = {
   assetKey: string;
