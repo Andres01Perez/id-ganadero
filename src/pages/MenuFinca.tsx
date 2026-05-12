@@ -1,56 +1,46 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Grid3x3, Package, ArrowLeftRight, Settings } from "lucide-react";
-
-const CowIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.75"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M4 7c0-1.5 1-2.5 2.5-2.5S9 5.5 9 7" />
-    <path d="M15 7c0-1.5 1-2.5 2.5-2.5S20 5.5 20 7" />
-    <path d="M5 7h14v6a7 7 0 0 1-14 0V7z" />
-    <path d="M9 13h.01" />
-    <path d="M15 13h.01" />
-    <path d="M10 17c.5.6 1.2 1 2 1s1.5-.4 2-1" />
-  </svg>
-);
+import { ArrowLeft } from "lucide-react";
 import { useFinca } from "@/contexts/FincaContext";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaActivaChip from "@/components/FincaActivaChip";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
+import imgEmpleados from "@/assets/menu-finca/empleados.webp";
+import imgPotreros from "@/assets/menu-finca/potreros.webp";
+import imgAnimales from "@/assets/menu-finca/animales.webp";
+import imgInventario from "@/assets/menu-finca/inventario.webp";
+import imgCompraVenta from "@/assets/menu-finca/compra-venta.webp";
+import imgOtros from "@/assets/menu-finca/otros.webp";
 
 type ModuloItem = {
   label: string;
   to: string;
-  icon: React.ComponentType<{ className?: string }>;
+  image: string;
 };
 
 const items: ModuloItem[] = [
-  { label: "Empleados", to: "/finca/empleados", icon: Users },
-  { label: "Potreros", to: "/finca/potreros", icon: Grid3x3 },
-  { label: "Animales", to: "/finca/animales", icon: CowIcon },
-  { label: "Inventario", to: "/categoria-inventario", icon: Package },
-  { label: "Compra/Venta", to: "/finca/compra-venta", icon: ArrowLeftRight },
-  { label: "Otros", to: "/otros", icon: Settings },
+  { label: "Empleados", to: "/finca/empleados", image: imgEmpleados },
+  { label: "Potreros", to: "/finca/potreros", image: imgPotreros },
+  { label: "Animales", to: "/finca/animales", image: imgAnimales },
+  { label: "Inventario", to: "/categoria-inventario", image: imgInventario },
+  { label: "Compra/Venta", to: "/finca/compra-venta", image: imgCompraVenta },
+  { label: "Otros", to: "/otros", image: imgOtros },
 ];
 
 const CircleButton = ({ item }: { item: ModuloItem }) => {
   const navigate = useNavigate();
-  const Icon = item.icon;
   return (
     <button
       onClick={() => navigate(item.to)}
       className="flex flex-col items-center gap-2 active:scale-95 transition-transform"
     >
-      <div className="w-24 h-24 rounded-full border-[3px] border-gold shadow-soft bg-card flex items-center justify-center">
-        <Icon className="h-10 w-10 text-gold-deep" />
+      <div className="w-24 h-24 rounded-full border-[3px] border-gold shadow-soft bg-card overflow-hidden">
+        <img
+          src={item.image}
+          alt={item.label}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
       <span className="text-sm font-bold tracking-jps uppercase text-foreground">
         {item.label}
