@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
-import { useFinca } from "@/contexts/FincaContext";
 import FincaActivaChip from "@/components/FincaActivaChip";
 
 import BottomTabBar from "@/components/BottomTabBar";
@@ -29,7 +28,7 @@ const titles: Record<string, string> = {
 const CategoriaAnimales = () => {
   const { tipo } = useParams<{ tipo: string }>();
   const navigate = useNavigate();
-  const { fincaActiva } = useFinca();
+  
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -51,7 +50,6 @@ const CategoriaAnimales = () => {
   const headerImg = useAppAsset(bannerKey, ASSET_FALLBACKS[bannerKey]);
 
   const load = async () => {
-    if (!fincaActiva) return;
     setLoading(true);
     setLoadError(null);
     const { data, error } = await supabase
@@ -59,7 +57,6 @@ const CategoriaAnimales = () => {
       .select("id, numero, nombre, foto_principal_url")
       .eq("tipo", validTipo)
       .eq("activo", true)
-      .eq("finca_id", fincaActiva.id)
       .order("numero");
     if (error) {
       setAnimals([]);
@@ -74,7 +71,7 @@ const CategoriaAnimales = () => {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validTipo, fincaActiva?.id]);
+  }, [validTipo]);
 
   // Preload first 10 photos so they hit the cache before the user scrolls
   useEffect(() => {
