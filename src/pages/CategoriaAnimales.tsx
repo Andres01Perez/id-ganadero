@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
-import FincaActivaChip from "@/components/FincaActivaChip";
+
 
 import BottomTabBar from "@/components/BottomTabBar";
 import AnimalForm from "@/components/AnimalForm";
@@ -85,7 +85,7 @@ const CategoriaAnimales = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-safe-plus">
-      <FincaActivaChip />
+      
       {/* Header foto */}
       <header className="relative aspect-[865/503] overflow-hidden">
         <img src={headerImg} alt="" className="w-full h-full object-cover" loading="eager" />
