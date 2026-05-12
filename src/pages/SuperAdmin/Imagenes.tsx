@@ -166,6 +166,7 @@ const FincaPhotoCard = ({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handlePicked = (file: File) => {
     if (!file.type.startsWith("image/")) {
