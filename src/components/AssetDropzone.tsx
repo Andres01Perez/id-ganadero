@@ -15,6 +15,7 @@ type Props = {
   cropAspect: number;
   outputSize: { width: number; height: number };
   className?: string;
+  previewKey?: string;
 };
 
 const AssetDropzone = ({
