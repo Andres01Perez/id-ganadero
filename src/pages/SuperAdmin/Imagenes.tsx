@@ -6,7 +6,8 @@ import ImageCropDialog from "@/components/ImageCropDialog";
 import { useAllAppAssets } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS, fincaAssetKey } from "@/lib/asset-keys";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
+import { Upload, Eye } from "lucide-react";
+import AssetLocationDialog from "@/components/AssetLocationDialog";
 
 type Finca = { id: string; nombre: string; foto_url: string | null };
 
@@ -165,6 +166,7 @@ const FincaPhotoCard = ({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handlePicked = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -201,7 +203,21 @@ const FincaPhotoCard = ({
 
   return (
     <div className="bg-card border border-border rounded-xl p-4">
-      <p className="font-semibold text-sm mb-3">{finca.nombre}</p>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="font-semibold text-sm">{finca.nombre}</p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPreviewOpen(true);
+          }}
+          className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Ver dónde aparece esta imagen"
+          aria-label="Ver ubicación"
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -247,6 +263,14 @@ const FincaPhotoCard = ({
         label={finca.nombre}
         onConfirm={uploadBlob}
         onCancel={() => setPendingFile(null)}
+      />
+
+      <AssetLocationDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        assetKey="finca.foto"
+        imageUrl={finca.foto_url ?? ""}
+        label={finca.nombre}
       />
     </div>
   );

@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useInvalidateAsset, setAssetCache } from "@/hooks/useAppAsset";
 import ImageCropDialog from "@/components/ImageCropDialog";
+import AssetLocationDialog from "@/components/AssetLocationDialog";
 
 type Props = {
   assetKey: string;
@@ -14,6 +15,7 @@ type Props = {
   cropAspect: number;
   outputSize: { width: number; height: number };
   className?: string;
+  previewKey?: string;
 };
 
 const AssetDropzone = ({
@@ -25,11 +27,13 @@ const AssetDropzone = ({
   cropAspect,
   outputSize,
   className = "",
+  previewKey,
 }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const invalidate = useInvalidateAsset();
 
   const handlePicked = (file: File) => {
@@ -97,6 +101,18 @@ const AssetDropzone = ({
     <div className={`bg-card border border-border rounded-xl p-4 ${className}`}>
       <div className="flex items-center justify-between gap-2 mb-3">
         <p className="font-semibold text-sm">{label}</p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setPreviewOpen(true);
+          }}
+          className="h-7 w-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Ver dónde aparece esta imagen"
+          aria-label="Ver ubicación"
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </button>
       </div>
       <div
         onDragOver={(e) => {
@@ -169,6 +185,14 @@ const AssetDropzone = ({
           setPendingFile(null);
           if (inputRef.current) inputRef.current.value = "";
         }}
+      />
+
+      <AssetLocationDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        assetKey={previewKey ?? assetKey}
+        imageUrl={display}
+        label={label}
       />
     </div>
   );
