@@ -23,7 +23,7 @@ const MenuFinca = () => {
   const navigate = useNavigate();
   const { fincaId } = useParams<{ fincaId: string }>();
   const { fincaActiva } = useFinca();
-  const fallbackBanner = useAppAsset(ASSET_KEYS.bannerFincas, ASSET_FALLBACKS[ASSET_KEYS.bannerFincas]);
+  const fallbackBanner = useAppAsset(ASSET_KEYS.bannerMenuFinca, ASSET_FALLBACKS[ASSET_KEYS.bannerMenuFinca]);
   const banner = fincaActiva?.foto_url || fallbackBanner;
 
   const items: ModuloItem[] = [

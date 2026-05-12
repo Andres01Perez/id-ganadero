@@ -29,6 +29,7 @@ export const ASSET_KEYS = {
   bannerCrias: "categoria.banner.crias",
   bannerEmbriones: "categoria.banner.embriones",
   bannerFincas: "categoria.banner.fincas",
+  bannerMenuFinca: "categoria.banner.menu_finca",
 } as const;
 
 export const ASSET_FALLBACKS: Record<string, string> = {
@@ -46,6 +47,7 @@ export const ASSET_FALLBACKS: Record<string, string> = {
   [ASSET_KEYS.bannerCrias]: listaHeader,
   [ASSET_KEYS.bannerEmbriones]: listaHeader,
   [ASSET_KEYS.bannerFincas]: listaHeader,
+  [ASSET_KEYS.bannerMenuFinca]: listaHeader,
 };
 
 export const fincaAssetKey = (fincaId: string) => `finca.${fincaId}.foto`;
