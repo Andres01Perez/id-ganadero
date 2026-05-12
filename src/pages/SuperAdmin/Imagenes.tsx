@@ -6,7 +6,8 @@ import ImageCropDialog from "@/components/ImageCropDialog";
 import { useAllAppAssets } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS, fincaAssetKey } from "@/lib/asset-keys";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
+import { Upload, Eye } from "lucide-react";
+import AssetLocationDialog from "@/components/AssetLocationDialog";
 
 type Finca = { id: string; nombre: string; foto_url: string | null };
 
