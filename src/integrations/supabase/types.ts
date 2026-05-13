@@ -628,6 +628,33 @@ export type Database = {
         }
         Relationships: []
       }
+      galeria_fotos: {
+        Row: {
+          created_at: string
+          finca_id: string
+          id: string
+          storage_path: string
+          subido_por: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          finca_id: string
+          id?: string
+          storage_path: string
+          subido_por: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          finca_id?: string
+          id?: string
+          storage_path?: string
+          subido_por?: string
+          url?: string
+        }
+        Relationships: []
+      }
       inseminaciones: {
         Row: {
           animal_id: string
