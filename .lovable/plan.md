@@ -1,59 +1,46 @@
-## Objetivo
-En `/superadmin/imagenes` mostrar, junto a cada imagen editable, un **mockup de la pantalla real** donde aparece esa imagen, para que el superadmin vea exactamente dónde quedará posicionada.
+## Cambios
 
-## Enfoque
+### 1. Cambio de icono "Otros" → "Galería"
+- Copiar `user-uploads://ID_GANADERO_camara_1.webp` a `src/assets/menu-finca/galeria.webp`.
+- En `src/pages/MenuFinca.tsx`:
+  - Reemplazar import `imgOtros` por `imgGaleria`.
+  - Cambiar el sexto item: label `"Galería"`, `image: imgGaleria`, `to: \`/finca/${fincaId}/galeria\``, quitar `disabled`.
 
-Cada `AssetDropzone` añade un botón discreto **"Ver ubicación"** (o ícono `Eye`) que abre un `Dialog` con un mockup en marco de teléfono (mobile-first, igual que la app real) que pinta la pantalla correspondiente al asset, usando la imagen actual.
+### 2. Nueva página `/finca/:fincaId/galeria`
+- Crear `src/pages/finca/Galeria.tsx`, montar ruta en `src/App.tsx` envuelta con `RequireFinca`.
+- Layout coherente con otras páginas de finca: `FincaActivaChip`, header con título "Galería", `BottomTabBar`.
+- Tres acciones (botones grandes, mobile-first):
+  1. **Tomar foto** → `<input type="file" accept="image/*" capture="environment">` (abre cámara nativa en móvil).
+  2. **Subir desde galería** → `<input type="file" accept="image/*" multiple>` (selector nativo, permite múltiple).
+  3. (En desktop ambos inputs funcionan como file picker estándar.)
+- Cuadrícula tipo masonry/grid 3 columnas mostrando todas las fotos de la finca, ordenadas por `created_at desc`.
+- Tap sobre una foto → modal lightbox a pantalla completa con botón eliminar (visible solo si el usuario es el que la subió o es admin/super_admin).
+- Toasts de subida/eliminación, estado de carga por archivo, compresión opcional no incluida (mantener simple).
 
-No se reusan las páginas reales — se hacen **mocks ligeros y estáticos** con HTML+Tailwind: rectángulos de placeholder para los demás elementos (botones, textos, otras imágenes) y la imagen del asset destacada con un anillo dorado pulsante para llamar la atención.
+### 3. Backend (migración Supabase)
+- **Bucket** `galeria-finca` (público, igual que `animal-fotos`).
+- **Tabla** `galeria_fotos`:
+  - `id uuid pk`, `finca_id uuid not null`, `storage_path text not null`, `url text not null`, `subido_por uuid not null`, `created_at timestamptz default now()`.
+  - Índice por `(finca_id, created_at desc)`.
+- **RLS tabla**:
+  - SELECT: `user_has_finca(auth.uid(), finca_id)`.
+  - INSERT: `is_active_user(auth.uid()) AND subido_por = auth.uid() AND user_has_finca(auth.uid(), finca_id)`.
+  - DELETE: `subido_por = auth.uid() OR is_admin_or_super(auth.uid())`.
+  - UPDATE: ninguna (no se edita).
+- **RLS storage** sobre bucket `galeria-finca`:
+  - Estructura de path: `{finca_id}/{uuid}.{ext}`.
+  - SELECT público (bucket público, ya cubierto).
+  - INSERT: usuario activo con acceso a la finca (`user_has_finca` sobre primer segmento del path).
+  - DELETE: dueño del archivo (vía join con `galeria_fotos.subido_por`) o admin.
 
-## Mockups a crear
+### 4. Detalles técnicos
+- Uso de `supabase.storage.from('galeria-finca').upload(...)` seguido de `insert` en `galeria_fotos` con la URL pública.
+- Subida en paralelo con `Promise.all`, mostrando spinner por item.
+- No se requiere Capacitor: en móvil el `<input type="file" accept="image/*">` ya muestra la hoja nativa "Cámara / Fotos / Archivos"; con `capture="environment"` se fuerza cámara directa.
 
-Un componente `AssetLocationPreview` con un switch por `assetKey` que renderiza la plantilla correspondiente:
-
-1. **Logo (`global.logo`)** — barra superior + login: marco de teléfono con la barra negra superior y el logo centrado, más una mini vista del login con el logo arriba.
-2. **Login hero (`global.login_hero`)** — pantalla de login con la imagen ocupando la parte superior (3/4) y el formulario simulado abajo.
-3. **Banner del menú (`menu.banner`)** — pantalla `/menu`: banner arriba (aspect 865/503), saludo, y grid 2x3 de tarjetas placeholder.
-4. **Iconos del menú (`menu.icon.*`)** — grid del menú con las 6 tarjetas; la del icono editado se resalta con anillo dorado.
-5. **Banners de categoría (`categoria.banner.machos|hembras|crias|embriones|fincas`)** — pantalla de lista: banner arriba, lista de items placeholder; etiqueta con el nombre de la categoría.
-6. **Banner de menú-finca (`categoria.banner.menu_finca`)** — pantalla `/finca/:id/menu-finca`: banner arriba con label "fallback cuando la finca no tiene foto" + grid 2x3 de módulos.
-7. **Foto de finca (pestaña Fincas)** — tarjeta de finca dentro de una mini lista en `/fincas`, con la foto ocupando la cabecera de la card.
-
-## Cambios concretos
-
-### Nuevo archivo `src/components/AssetLocationPreview.tsx`
-- Recibe `assetKey`, `imageUrl`, `label`.
-- Renderiza un marco de teléfono (`w-[280px] aspect-[9/19] rounded-[2rem] border-8 border-foreground/80 bg-background overflow-hidden`).
-- Dentro, switch por `assetKey` que retorna una de las plantillas mock.
-- El elemento que representa la imagen real usa `<img src={imageUrl}>` con anillo dorado animado (`ring-2 ring-primary animate-pulse`).
-- Resto de elementos: barras `bg-muted`, círculos, textos placeholder con `bg-muted-foreground/20`.
-
-### Nuevo archivo `src/components/AssetLocationDialog.tsx`
-- `Dialog` de shadcn que envuelve `AssetLocationPreview`.
-- Header: "Ubicación en la app" + nombre del asset.
-- Footer pequeño explicando la ruta donde aparece (ej: "Visible en /menu, parte superior").
-
-### Editar `src/components/AssetDropzone.tsx`
-- Añadir prop opcional `previewKey?: string` (por defecto = `assetKey`).
-- En la cabecera del card añadir botón ícono `Eye` que abre el dialog.
-- Estado local `previewOpen`.
-
-### Editar `src/pages/SuperAdmin/Imagenes.tsx`
-- Sin cambios estructurales, sólo asegurar que cada `AssetDropzone` recibe el `assetKey` (ya lo hace).
-- Para la pestaña "Fotos de fincas", añadir el mismo botón en `FincaPhotoCard` con un `previewKey` especial tipo `"finca.foto"`.
-
-## Detalles de diseño
-- Marco mobile coherente con la app real (negro + dorado).
-- Mocks minimalistas, no realistas en contenido (sin imágenes externas) — todo con bloques de `bg-muted` y bordes redondeados.
-- La imagen editada **se ve real** dentro del mock.
-- Anillo dorado `ring-primary` + pequeña etiqueta "esta imagen" flotante con flecha.
-- Animación sutil de entrada del anillo.
-
-## Verificación
-- Ir a `/superadmin/imagenes`, hacer clic en `Eye` de "Banner del menú" → abre dialog con un teléfono mostrando `/menu` y el banner real arriba.
-- Probar con cada categoría de asset (logo, hero, iconos, banners, menú-finca, foto de finca) → cada uno muestra una pantalla diferente y reconocible.
-- Cambiar la imagen y reabrir el preview → el mock se actualiza con la nueva imagen.
-- En móvil (390px) el dialog encaja sin scroll horizontal.
-
-## Notas técnicas
-Sin cambios de base de datos, ni edge functions, ni nuevos assets. Todo es UI estática reutilizando shadcn `Dialog`, `lucide-react` (`Eye`), y los tokens del design system.
+### Archivos
+- nuevo: `src/assets/menu-finca/galeria.webp`
+- nuevo: `src/pages/finca/Galeria.tsx`
+- editado: `src/pages/MenuFinca.tsx`
+- editado: `src/App.tsx`
+- nueva migración: tabla `galeria_fotos` + bucket + policies
