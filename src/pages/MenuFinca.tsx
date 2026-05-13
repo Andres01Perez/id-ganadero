@@ -10,7 +10,7 @@ import imgPotreros from "@/assets/menu-finca/potreros.webp";
 import imgAnimales from "@/assets/menu-finca/animales.webp";
 import imgInventario from "@/assets/menu-finca/inventario.webp";
 import imgCompraVenta from "@/assets/menu-finca/compra-venta.webp";
-import imgOtros from "@/assets/menu-finca/otros.webp";
+import imgGaleria from "@/assets/menu-finca/galeria.webp";
 
 type ModuloItem = {
   label: string;
@@ -32,7 +32,7 @@ const MenuFinca = () => {
     { label: "Animales", to: `/finca/${fincaId}/animales-finca`, image: imgAnimales },
     { label: "Inventario", to: `/finca/${fincaId}/inventario`, image: imgInventario },
     { label: "Compra/Venta", to: `/finca/${fincaId}/compra-venta`, image: imgCompraVenta },
-    { label: "Otros", image: imgOtros, disabled: true },
+    { label: "Galería", to: `/finca/${fincaId}/galeria`, image: imgGaleria },
   ];
 
   return (

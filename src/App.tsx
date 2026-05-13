@@ -16,6 +16,7 @@ import MenuFinca from "./pages/MenuFinca";
 import FincaEmpleados from "./pages/finca/Empleados";
 import FincaPotreros from "./pages/finca/Potreros";
 import FincaAnimales from "./pages/finca/Animales";
+import FincaGaleria from "./pages/finca/Galeria";
 import GanadoInactivo from "./pages/gestion/GanadoInactivo";
 import Movimientos from "./pages/gestion/Movimientos";
 import CategoriaInventario from "./pages/CategoriaInventario";
@@ -121,6 +122,10 @@ const App = () => (
               <Route
                 path="/finca/:fincaId/inventario/producto/:id"
                 element={<ProtectedRoute><RequireFinca><InventarioProducto /></RequireFinca></ProtectedRoute>}
+              />
+              <Route
+                path="/finca/:fincaId/galeria"
+                element={<ProtectedRoute><RequireFinca><FincaGaleria /></RequireFinca></ProtectedRoute>}
               />
 
               <Route
