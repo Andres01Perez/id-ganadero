@@ -10,9 +10,25 @@ import { toast } from "sonner";
 
 type AnimalFinca = {
   id: string;
+  categoria: string | null;
+  subtipo: string | null;
   tipo: string;
   cantidad: number;
 };
+
+const CATEGORIA_LABEL: Record<string, string> = {
+  bovinos: "Bovinos",
+  equinos: "Equinos",
+};
+
+const SUBTIPO_LABEL: Record<string, string> = {
+  machos: "Machos",
+  hembras: "Hembras",
+  caballos: "Caballos",
+  yeguas: "Yeguas",
+};
+
+const CATEGORIA_ORDER = ["bovinos", "equinos", "_legacy"];
 
 const FincaAnimales = () => {
   const navigate = useNavigate();
@@ -28,9 +44,10 @@ const FincaAnimales = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("animales_finca")
-      .select("id, tipo, cantidad")
+      .select("id, categoria, subtipo, tipo, cantidad")
       .eq("finca_id", fincaActiva.id)
-      .order("tipo");
+      .order("categoria", { nullsFirst: false })
+      .order("subtipo");
     if (error) {
       toast.error(error.message);
       setAnimals([]);
@@ -83,18 +100,55 @@ const FincaAnimales = () => {
             </p>
           </div>
         ) : (
-          animals.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => openEdit(a.id)}
-              className="w-full flex items-center justify-between bg-card rounded-xl p-4 shadow-soft active:scale-[0.99] transition-transform text-left"
-            >
-              <p className="font-bold text-base text-ink capitalize">{a.tipo}</p>
-              <p className="font-bold text-2xl text-gold-deep tabular-nums">
-                {a.cantidad}
-              </p>
-            </button>
-          ))
+          (() => {
+            const groups = new Map<string, AnimalFinca[]>();
+            animals.forEach((a) => {
+              const key = a.categoria ?? "_legacy";
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(a);
+            });
+            const orderedKeys = Array.from(groups.keys()).sort(
+              (a, b) => CATEGORIA_ORDER.indexOf(a) - CATEGORIA_ORDER.indexOf(b),
+            );
+            return (
+              <div className="space-y-5">
+                {orderedKeys.map((key) => {
+                  const items = groups.get(key)!;
+                  const total = items.reduce((s, i) => s + (i.cantidad ?? 0), 0);
+                  const label =
+                    key === "_legacy"
+                      ? "Sin clasificar"
+                      : CATEGORIA_LABEL[key] ?? key;
+                  return (
+                    <section key={key} className="space-y-2">
+                      <div className="flex items-center justify-between bg-gold-solid text-ink rounded-lg px-3 py-2 uppercase tracking-jps font-semibold text-sm">
+                        <span>{label}</span>
+                        <span className="tabular-nums">{total}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {items.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => openEdit(a.id)}
+                            className="w-full flex items-center justify-between bg-card rounded-xl p-4 shadow-soft active:scale-[0.99] transition-transform text-left"
+                          >
+                            <p className="font-semibold text-base text-ink capitalize">
+                              {SUBTIPO_LABEL[a.subtipo ?? ""] ??
+                                a.subtipo ??
+                                a.tipo}
+                            </p>
+                            <p className="font-bold text-2xl text-gold-deep tabular-nums">
+                              {a.cantidad}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            );
+          })()
         )}
       </div>
 

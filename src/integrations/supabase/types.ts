@@ -102,28 +102,34 @@ export type Database = {
       animales_finca: {
         Row: {
           cantidad: number
+          categoria: string | null
           created_at: string
           created_by: string | null
           finca_id: string
           id: string
+          subtipo: string | null
           tipo: string
           updated_at: string
         }
         Insert: {
           cantidad?: number
+          categoria?: string | null
           created_at?: string
           created_by?: string | null
           finca_id: string
           id?: string
+          subtipo?: string | null
           tipo: string
           updated_at?: string
         }
         Update: {
           cantidad?: number
+          categoria?: string | null
           created_at?: string
           created_by?: string | null
           finca_id?: string
           id?: string
+          subtipo?: string | null
           tipo?: string
           updated_at?: string
         }
