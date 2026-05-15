@@ -13,6 +13,7 @@ type Potrero = {
   id: string;
   numero: string;
   estado: PotreroEstado;
+  hectareas: number | null;
   notas: string | null;
 };
 
