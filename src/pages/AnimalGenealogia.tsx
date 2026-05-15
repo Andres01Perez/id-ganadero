@@ -32,6 +32,7 @@ const AnimalGenealogia = () => {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [viewing, setViewing] = useState<Doc | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const load = async () => {
