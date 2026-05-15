@@ -1,24 +1,51 @@
-## Objetivo
-Cuando el usuario toca un archivo en Genealogía, abrir un visor dentro de la app (no salir a Supabase). Soporta imágenes y PDFs, con zoom/pellizco nativo, y botón de descarga.
+## Problema encontrado
 
-## Cambios
+La tabla `empleados` ya tiene una política para que `admin` y `super_admin` puedan crear empleados. También confirmé que los usuarios existentes sí tienen esos roles activos.
 
-### 1. Nuevo componente `src/components/FileViewerDialog.tsx`
-Dialog full-screen (usando `Dialog` de shadcn que ya está) con:
-- Header negro: botón cerrar (X) a la izquierda, nombre del archivo centrado truncado, botón descargar (icono `Download`) a la derecha.
-- Cuerpo:
-  - **Imágenes** (`mime_type` empieza con `image/`): `<img>` con `object-contain` y contenedor con `touch-action: pinch-zoom` + `overflow-auto`, fondo negro. Esto da el pinch-to-zoom nativo en iOS/Android sin librerías.
-  - **PDFs** (`application/pdf`): `<iframe src={file_url}>` ocupando todo. Los WebView de iOS/Android renderizan PDFs nativamente. Como fallback (algunos Android viejos no), si el iframe falla mostramos un botón "Abrir PDF" que dispara la descarga.
-  - **Otros**: icono + nombre + botón "Descargar".
-- Botón descarga: `fetch(url) → blob → URL.createObjectURL → <a download>` para forzar descarga real con el nombre original (en lugar de abrir en otra pestaña). Fallback: link directo con `download` attribute.
+El bloqueo viene de la forma en que se crea el empleado:
 
-### 2. `src/pages/AnimalGenealogia.tsx`
-- Reemplazar los dos `<a href={d.file_url} target="_blank">` por `<button onClick={() => setViewing(d)}>`.
-- Estado `viewing: Doc | null` y render del `<FileViewerDialog>` al final.
-- Mantener todo el resto (subida, borrado, lista) igual.
+1. Primero se inserta en `empleados`.
+2. Después se inserta la relación en `empleado_fincas`.
 
-## Notas técnicas
-- Trabajo solo en frontend/presentación, sin tocar tablas, RLS, ni el bucket (sigue público).
-- No agregamos dependencias (nada de pdf.js, react-pdf, etc.). Usamos el visor PDF nativo del navegador vía iframe — funciona en Safari iOS, Chrome Android y todos los desktop.
-- El pinch-to-zoom para imágenes se hace con `touch-action: pinch-zoom` + scroll, que es el comportamiento estándar de cualquier app móvil.
-- El botón descargar usa blob para garantizar el nombre del archivo y que en iOS no abra el archivo en una nueva pestaña.
+Eso deja una validación incompleta durante el primer paso: el empleado todavía no está asociado a una finca cuando se crea. Además, si se está usando un admin que no tiene fila en `user_finca_acceso`, algunas políticas dependientes de finca pueden quedar inconsistentes.
+
+## Cambio propuesto
+
+### 1. Crear una función segura en Supabase
+Crear una función `public.create_empleado_with_finca(...)` con `SECURITY DEFINER` que haga la operación completa de forma atómica:
+
+- Validar que el usuario actual sea `admin` o `super_admin`.
+- Crear el registro en `empleados`.
+- Crear inmediatamente la relación en `empleado_fincas` con la finca seleccionada.
+- Devolver el `id` del empleado creado.
+
+Esto evita el error de RLS porque la creación del empleado y su asociación a la finca ocurren juntas, desde una función controlada por la base de datos.
+
+### 2. Ajustar RLS de `empleados`
+Mantener la seguridad:
+
+- Solo `admin` y `super_admin` pueden crear/editar/eliminar empleados.
+- Los empleados se siguen viendo únicamente desde fincas permitidas.
+- No se abre la tabla a usuarios normales.
+
+### 3. Cambiar `EmpleadoForm.tsx`
+En creación nueva:
+
+- Reemplazar la inserción manual en `empleados` + `empleado_fincas` por una llamada a la función `create_empleado_with_finca`.
+- Mantener igual la edición, subida de foto y actualización de `foto_url`.
+
+### 4. Validación final
+Probar el flujo con:
+
+- Usuario `super_admin` (`admin1`).
+- Usuario `admin` (`Jorge Perez`).
+
+Resultado esperado:
+
+- Crear empleado no debe mostrar `new row violates row-level security policy for table "empleados"`.
+- El empleado queda asociado a la finca activa.
+- La lista de empleados de esa finca lo muestra correctamente.
+
+## Nota importante
+
+No voy a permitir creación de empleados a operarios ni a usuarios sin rol administrativo. La corrección mantiene el control administrativo y solo soluciona el bloqueo de RLS.
