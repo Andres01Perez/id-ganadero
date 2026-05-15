@@ -130,6 +130,9 @@ const FincaPotreros = () => {
                 >
                   {estadoLabel[p.estado]}
                 </span>
+                {p.hectareas != null && (
+                  <p className="text-xs text-muted-foreground mt-2">{p.hectareas} ha</p>
+                )}
                 {p.notas && (
                   <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{p.notas}</p>
                 )}
