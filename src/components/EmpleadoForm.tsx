@@ -327,6 +327,22 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
           <Button onClick={handleSubmit} disabled={submitting} className="w-full">
             {submitting ? "Guardando…" : "Guardar"}
           </Button>
+
+          {isEdit && isAdmin && (
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full"
+              onClick={() => {
+                setConfirmText("");
+                setConfirmOpen(true);
+              }}
+              disabled={submitting || deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Eliminar empleado
+            </Button>
+          )}
         </div>
       </SheetContent>
 
@@ -339,6 +355,38 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
         onConfirm={handleCropConfirm}
         onCancel={() => setCropFile(null)}
       />
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar empleado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible. Se eliminará el empleado y sus vínculos con todas las fincas.
+              Para confirmar, escribe el nombre completo del empleado:
+              <span className="block mt-1 font-semibold text-foreground">{nombre}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="Escribe el nombre completo"
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting || confirmText.trim() !== nombre.trim() || !nombre.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Eliminando…" : "Eliminar definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };
