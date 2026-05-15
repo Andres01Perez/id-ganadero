@@ -4,7 +4,7 @@ import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomTabBar from "@/components/BottomTabBar";
-import FileViewerDialog from "@/components/FileViewerDialog";
+import FileActionDialog from "@/components/FileActionDialog";
 import { toast } from "sonner";
 
 type Doc = {
@@ -202,12 +202,11 @@ const AnimalGenealogia = () => {
 
       <BottomTabBar />
 
-      <FileViewerDialog
+      <FileActionDialog
         open={!!viewing}
-        onClose={() => setViewing(null)}
+        onOpenChange={(o) => !o && setViewing(null)}
         fileUrl={viewing?.file_url ?? ""}
         fileName={viewing?.file_name ?? ""}
-        mimeType={viewing?.mime_type ?? null}
       />
     </div>
   );
