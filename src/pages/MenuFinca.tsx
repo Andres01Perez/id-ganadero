@@ -1,8 +1,13 @@
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { useFinca } from "@/contexts/FincaContext";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import BottomTabBar from "@/components/BottomTabBar";
 import FincaActivaChip from "@/components/FincaActivaChip";
+import ImageCropDialog from "@/components/ImageCropDialog";
 import { useAppAsset } from "@/hooks/useAppAsset";
 import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 import imgEmpleados from "@/assets/menu-finca/empleados.webp";
@@ -19,12 +24,20 @@ type ModuloItem = {
   disabled?: boolean;
 };
 
+const BANNER_ASPECT = 865 / 503;
+
 const MenuFinca = () => {
   const navigate = useNavigate();
   const { fincaId } = useParams<{ fincaId: string }>();
-  const { fincaActiva } = useFinca();
+  const { fincaActiva, reloadFincas } = useFinca();
+  const { roles } = useAuth();
+  const isAdmin = roles.includes("admin") || roles.includes("super_admin");
   const fallbackBanner = useAppAsset(ASSET_KEYS.bannerMenuFinca, ASSET_FALLBACKS[ASSET_KEYS.bannerMenuFinca]);
   const banner = fincaActiva?.foto_url || fallbackBanner;
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const items: ModuloItem[] = [
     { label: "Empleados", to: `/finca/${fincaId}/empleados`, image: imgEmpleados },
@@ -34,6 +47,40 @@ const MenuFinca = () => {
     { label: "Compra/Venta", to: `/finca/${fincaId}/compra-venta`, image: imgCompraVenta },
     { label: "Galería", to: `/finca/${fincaId}/galeria`, image: imgGaleria },
   ];
+
+  const handlePickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setCropFile(f);
+    e.target.value = "";
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropFile(null);
+    if (!fincaId) return;
+    setUploading(true);
+    try {
+      const path = `${fincaId}/${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("finca-fotos")
+        .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("finca-fotos").getPublicUrl(path);
+      const { error: dbErr } = await supabase
+        .from("fincas")
+        .update({ foto_url: data.publicUrl })
+        .eq("id", fincaId);
+      if (dbErr) throw dbErr;
+      await reloadFincas();
+      toast.success("Banner actualizado");
+    } catch (err) {
+      const e = err as { message?: string };
+      console.error(err);
+      toast.error(e.message ?? "No se pudo actualizar el banner");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="min-h-[100dvh] bg-background pb-safe-plus">
@@ -48,6 +95,25 @@ const MenuFinca = () => {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white disabled:opacity-50"
+              aria-label="Editar banner"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePickImage}
+            />
+          </>
+        )}
       </header>
 
       <div className="bg-gold-solid text-ink py-3 text-center tracking-jps font-semibold uppercase text-sm">
@@ -82,6 +148,16 @@ const MenuFinca = () => {
       </div>
 
       <BottomTabBar />
+
+      <ImageCropDialog
+        open={!!cropFile}
+        file={cropFile}
+        aspect={BANNER_ASPECT}
+        outputSize={{ width: 1730, height: 1006 }}
+        label="Banner de la finca"
+        onConfirm={handleCropConfirm}
+        onCancel={() => setCropFile(null)}
+      />
     </div>
   );
 };
