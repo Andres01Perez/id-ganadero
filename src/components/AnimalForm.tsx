@@ -260,9 +260,17 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       raza,
       color,
       finca_id: fincaId,
-      madre_id: madreId,
-      padre_id: padreId,
+      madre_id: "",
+      padre_id: "",
     });
+    const parseSel = (sel: string) => {
+      if (!sel) return { internal: null as string | null, external: null as string | null };
+      if (sel.startsWith("int:")) return { internal: sel.slice(4), external: null };
+      if (sel.startsWith("ext:")) return { internal: null, external: sel.slice(4) };
+      return { internal: null, external: null };
+    };
+    const madre = parseSel(madreSel);
+    const padre = parseSel(padreSel);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Datos inválidos");
       return;
