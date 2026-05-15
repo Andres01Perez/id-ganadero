@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Camera, Trash2 } from "lucide-react";
 import jpsLogo from "@/assets/jps-logo.webp";
+import ParienteExternoDialog from "@/components/ParienteExternoDialog";
 
 type AnimalTipo = "macho" | "hembra" | "cria" | "embrion" | "otro";
 type AnimalRaza = "Brahman";
