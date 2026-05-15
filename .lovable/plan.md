@@ -1,66 +1,47 @@
+## Diagnóstico
+
+La PWA instalada en el celular sigue mostrando la versión vieja aunque la recarga ocurra. El Service Worker (`public/sw.js`) está bien — sólo cachea imágenes, nunca HTML/JS/CSS. La causa real es una combinación de:
+
+1. **Tap corto en el footer no limpia nada.** Sólo hace `location.href = path + "?v=timestamp"`. En PWA standalone (iOS sobre todo), el shell instalado y el SW siguen activos y el bundle JS hasheado anterior puede seguir sirviéndose desde el HTTP cache del WebView.
+2. **`index.html` tiene meta tags `Cache-Control` / `Pragma` / `Expires`.** Estos meta tags no controlan el caché HTTP real (el proxy de Lovable ya envía `no-cache` correctamente) y pueden confundir el comportamiento del WebView en PWA. La guía oficial de Lovable indica explícitamente no agregarlos.
+3. **No hay forma de saber rápido si el HTML que recibe la PWA ya es el nuevo.** El footer muestra el `BUILD_ID` del bundle actualmente cargado, no del último publicado, así que el usuario no puede confirmar si "ya bajó la nueva".
+
+El comportamiento esperado tras este plan: el tap corto basta para traer la última versión publicada en cualquier dispositivo, sin necesidad de mantener pulsado.
+
 ## Cambios
 
-### 1. Base de datos (migración)
-
-**Nueva tabla `animal_genealogia`** — un registro por archivo subido:
-- `id uuid pk`
-- `animal_id uuid` (referencia al animal)
-- `file_url text` (URL pública)
-- `storage_path text` (ruta dentro del bucket, para borrar)
-- `file_name text` (nombre original)
-- `mime_type text` (`application/pdf`, `image/jpeg`, etc.)
-- `uploaded_by uuid`
-- `created_at timestamptz default now()`
-
-**RLS** (siguiendo el patrón existente):
-- `SELECT/INSERT`: usuarios activos con acceso a la finca del animal (`user_can_access_animal`).
-- `DELETE`: admin/super o el `uploaded_by` original.
-- `UPDATE`: no permitido (re-subir).
-
-**Bucket de storage `animal-genealogia` (público, lectura abierta)**:
-- Lectura pública (bucket público).
-- INSERT: cualquier usuario activo (la app ya restringe por animal en la tabla).
-- DELETE: admin/super o dueño del archivo (igual que galería).
-- Path convención: `${animal_id}/${timestamp}-${nombre}`.
-
-**Eliminar `campeonatos`**: `DROP TABLE public.campeonatos`. (Los registros existentes se pierden — confirmado por la intención del usuario de eliminar la opción.)
-
-### 2. `src/pages/HojaVidaAnimal.tsx`
-- En el array `pills`, reemplazar `{ label: "Campeonatos", slug: "campeonatos" }` por `{ label: "Genealogía", slug: "genealogia" }`.
-- Genealogía no usa el flujo `/seguimiento/:tipo`. Cambiar la navegación de esa pill (y solo esa) para ir a `/animal/:id/genealogia`. El resto sigue igual.
-
-### 3. Nueva página `src/pages/AnimalGenealogia.tsx`
-Página dedicada (mismo estilo header dorado + back que `Animales.tsx` de finca):
-
+### 1. `index.html` — quitar meta cache-control
+Eliminar las tres líneas:
 ```
-[< ] GENEALOGÍA
-─────────────────────────
-Tarjeta del animal (mini): número, nombre
-
-[ + Subir archivo ]  ← input file accept="image/*,application/pdf", multiple
-
-Lista de archivos:
-┌──────────────────────────────────┐
-│ [thumb / 📄]  nombre.pdf         │
-│               12 nov 2026   [🗑] │
-└──────────────────────────────────┘
+<meta http-equiv="Cache-Control" ... />
+<meta http-equiv="Pragma" ... />
+<meta http-equiv="Expires" ... />
 ```
+El proxy de Lovable ya manda los headers HTTP correctos.
 
-Comportamiento:
-- Carga: `select * from animal_genealogia where animal_id = :id order by created_at desc`.
-- Subir: por cada archivo seleccionado → `storage.upload` a `animal-genealogia/${animalId}/${Date.now()}-${nombre}` → `getPublicUrl` → `insert` en `animal_genealogia`. Toast de éxito y refresh.
-- Vista previa: imágenes como thumbnail cuadrado; PDFs ícono `FileText` dorado. Tap en la fila → abre la URL pública en nueva pestaña.
-- Eliminar (botón papelera): visible solo para admin/super o el `uploaded_by`. Borra del bucket por `storage_path` y de la tabla.
-- Estado vacío: "Aún no hay documentos de genealogía. Sube el certificado de ASOSEBÚ en PDF o foto."
-- Toda la subida y validación queda en frontend; sin lógica de negocio nueva fuera de almacenamiento.
+### 2. `src/components/VersionFooter.tsx` — tap corto = limpieza completa
+Unificar comportamiento: cualquier tap (corto o largo) hace lo que hoy hace el long-press, es decir:
+- `unregister()` de todos los Service Workers
+- borrar todos los `caches`
+- recargar con cache-bust
 
-### 4. `src/App.tsx`
-- Añadir ruta `/animal/:id/genealogia` → `<AnimalGenealogia />` envuelta en `ProtectedRoute`.
+Resultado: un solo tap garantiza traer la última versión. El long-press se elimina (deja de ser necesario y evita que un tap accidental "no limpie").
 
-### 5. Limpieza de referencias a `campeonatos`
-- `src/lib/seguimiento-config.ts`: quitar entrada `campeonatos` del config y del union `SeguimientoTipo`. Quitar import de `Award` si queda huérfano.
-- `src/lib/audit-format.ts`: quitar la entrada `campeonatos: "Campeonato"`.
+Visualmente seguimos mostrando `vX.Y.Z · BUILD_ID` para que el usuario vea cambiar el build después de actualizar.
 
-### 6. Notas
-- No hace falta tocar `src/integrations/supabase/types.ts`: se regenera tras la migración.
-- No se agrega lógica de inventario, animales ni roles. Permisos completos vía RLS.
+### 3. `src/hooks/useAppUpdate.tsx` — auto-recarga al detectar versión nueva
+Hoy muestra un toast "Nueva versión disponible" con botón Actualizar. El usuario reporta baja literacidad técnica — muchos no van a tocar el toast. Cambiar a:
+- Cuando se detecta nueva versión Y la app vuelve a estar visible (`visibilitychange → visible`), recargar automáticamente con limpieza de SW/caches.
+- En la primera detección durante la sesión activa, mantener el toast (no recargar bajo los pies del usuario mientras escribe), pero hacerlo no descartable hasta que toque "Actualizar".
+
+### 4. Verificación
+Tras desplegar:
+- Abrir la PWA → tocar versión en footer una vez → debe mostrar el nuevo BUILD_ID.
+- Cerrar y volver a abrir la PWA → si hay versión nueva publicada, se actualiza sola.
+
+## Notas técnicas
+
+- No tocamos `public/sw.js` — su comportamiento (sólo imágenes) es correcto.
+- No agregamos `vite-plugin-pwa` ni cambios al manifest. `start_url`/`scope` quedan congelados desde la instalación de cada usuario, no se pueden cambiar para PWAs ya instaladas.
+- El `useAppUpdate` sigue desactivado en iframe/preview de Lovable — sólo corre en producción.
+- Aclarar al usuario: los cambios de **frontend** sólo salen en vivo después de tocar "Update" en el diálogo de Publicar. Los cambios de **backend** (migraciones, edge functions) salen automáticos.
