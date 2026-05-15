@@ -11,6 +11,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import AnimalSeguimiento from "./pages/AnimalSeguimiento";
+import AnimalGenealogia from "./pages/AnimalGenealogia";
 import Fincas from "./pages/Fincas";
 import MenuFinca from "./pages/MenuFinca";
 import FincaEmpleados from "./pages/finca/Empleados";
