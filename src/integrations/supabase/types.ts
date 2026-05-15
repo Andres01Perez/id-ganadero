@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      animal_genealogia: {
+        Row: {
+          animal_id: string
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          mime_type: string | null
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          animal_id: string
+          created_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          animal_id?: string
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       animales: {
         Row: {
           activo: boolean
@@ -235,54 +268,6 @@ export type Database = {
           tabla?: string
           usuario_display_name?: string | null
           usuario_id?: string | null
-        }
-        Relationships: []
-      }
-      campeonatos: {
-        Row: {
-          animal_id: string
-          categoria: string | null
-          created_at: string
-          evidencia_url: string | null
-          fecha: string
-          id: string
-          juez: string | null
-          lugar: string | null
-          nombre: string
-          notas: string | null
-          responsable_id: string
-          resultado: string | null
-          updated_at: string
-        }
-        Insert: {
-          animal_id: string
-          categoria?: string | null
-          created_at?: string
-          evidencia_url?: string | null
-          fecha: string
-          id?: string
-          juez?: string | null
-          lugar?: string | null
-          nombre: string
-          notas?: string | null
-          responsable_id: string
-          resultado?: string | null
-          updated_at?: string
-        }
-        Update: {
-          animal_id?: string
-          categoria?: string | null
-          created_at?: string
-          evidencia_url?: string | null
-          fecha?: string
-          id?: string
-          juez?: string | null
-          lugar?: string | null
-          nombre?: string
-          notas?: string | null
-          responsable_id?: string
-          resultado?: string | null
-          updated_at?: string
         }
         Relationships: []
       }
