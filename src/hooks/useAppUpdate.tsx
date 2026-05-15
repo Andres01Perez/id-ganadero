@@ -44,7 +44,23 @@ export function useAppUpdate() {
       return;
     }
 
-    const checkUpdate = async () => {
+    const cleanAndReload = async () => {
+      try {
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch {
+        // ignore
+      }
+      window.location.replace(window.location.pathname + "?v=" + Date.now());
+    };
+
+    const checkUpdate = async (autoReload: boolean) => {
       if (updateDetectedRef.current) return;
       try {
         const res = await fetch(`/?_v=${Date.now()}`, { cache: "no-store" });
@@ -53,18 +69,21 @@ export function useAppUpdate() {
 
         if (!html.includes(currentHash)) {
           updateDetectedRef.current = true;
+
+          if (autoReload) {
+            // App vuelve a estar visible y hay versión nueva → recarga limpia, sin pedir nada
+            cleanAndReload();
+            return;
+          }
+
+          // Detección durante sesión activa: toast no descartable
           toast("Nueva versión disponible", {
-            description: "Actualiza para aplicar los últimos cambios.",
+            description: "Toca Actualizar para aplicar los últimos cambios.",
             duration: Infinity,
+            dismissible: false,
             action: {
               label: "Actualizar",
-              onClick: () => window.location.reload(),
-            },
-            cancel: {
-              label: "Después",
-              onClick: () => {
-                /* noop — el flag ya está en true, no volvemos a chequear */
-              },
+              onClick: cleanAndReload,
             },
           });
         }
@@ -73,19 +92,19 @@ export function useAppUpdate() {
       }
     };
 
-    // 1. Chequeo inicial diferido (no bloquea TTI)
-    const initialTimeout = window.setTimeout(checkUpdate, 3000);
+    // 1. Chequeo inicial diferido (no bloquea TTI) — toast, no auto
+    const initialTimeout = window.setTimeout(() => checkUpdate(false), 3000);
 
-    // 2. Cuando el usuario vuelve a la app
+    // 2. Cuando el usuario vuelve a la app → auto-recarga si hay versión nueva
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        checkUpdate();
+        checkUpdate(true);
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
 
-    // 3. Red de seguridad cada 2 horas
-    const intervalId = window.setInterval(checkUpdate, 2 * 60 * 60 * 1000);
+    // 3. Red de seguridad cada 2 horas (toast, no auto, usuario activo)
+    const intervalId = window.setInterval(() => checkUpdate(false), 2 * 60 * 60 * 1000);
 
     return () => {
       window.clearTimeout(initialTimeout);
