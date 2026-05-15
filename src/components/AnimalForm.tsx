@@ -194,8 +194,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setRaza("Brahman");
       setColor("");
       setFincaId(fincaActiva?.id ?? "");
-      setMadreId("");
-      setPadreId("");
+      setMadreSel("");
+      setPadreSel("");
       setCreatedBy(null);
       setFotoActualUrl(null);
       setBannerActualUrl(null);
