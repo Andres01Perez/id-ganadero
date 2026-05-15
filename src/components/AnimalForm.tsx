@@ -650,6 +650,23 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           }}
         />
       </SheetContent>
+
+      <ParienteExternoDialog
+        open={!!parienteDialog}
+        onOpenChange={(o) => {
+          if (!o) setParienteDialog(null);
+        }}
+        sexo={parienteDialog ?? "H"}
+        onCreated={(p) => {
+          if (parienteDialog === "H") {
+            setHembrasExt((prev) => [...prev, p].sort((a, b) => a.numero.localeCompare(b.numero)));
+            setMadreSel(`ext:${p.id}`);
+          } else {
+            setMachosExt((prev) => [...prev, p].sort((a, b) => a.numero.localeCompare(b.numero)));
+            setPadreSel(`ext:${p.id}`);
+          }
+        }}
+      />
     </Sheet>
   );
 };
