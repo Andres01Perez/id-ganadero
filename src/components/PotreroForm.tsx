@@ -41,6 +41,14 @@ type Props = {
 const schema = z.object({
   numero: z.string().trim().min(1, "Número obligatorio").max(40),
   estado: z.enum(["descargado", "cargado", "en_renovacion"]),
+  hectareas: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (v) => !v || (!isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 99999),
+      { message: "Hectáreas debe ser un número entre 0 y 99999" },
+    ),
   notas: z.string().max(500).optional().or(z.literal("")),
 });
 
@@ -51,6 +59,7 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
 
   const [numero, setNumero] = useState("");
   const [estado, setEstado] = useState<PotreroEstado>("descargado");
+  const [hectareas, setHectareas] = useState("");
   const [notas, setNotas] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -71,11 +80,13 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
         }
         setNumero(data.numero ?? "");
         setEstado((data.estado as PotreroEstado) ?? "descargado");
+        setHectareas(data.hectareas != null ? String(data.hectareas) : "");
         setNotas(data.notas ?? "");
       })();
     } else {
       setNumero("");
       setEstado("descargado");
+      setHectareas("");
       setNotas("");
     }
   }, [open, potreroId, onOpenChange]);
@@ -85,11 +96,12 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
       toast.error("Sesión inválida");
       return;
     }
-    const parsed = schema.safeParse({ numero, estado, notas });
+    const parsed = schema.safeParse({ numero, estado, hectareas, notas });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Datos inválidos");
       return;
     }
+    const hectareasNum = parsed.data.hectareas ? Number(parsed.data.hectareas) : null;
     setSubmitting(true);
     try {
       if (isEdit && potreroId) {
@@ -98,6 +110,7 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
           .update({
             numero: parsed.data.numero,
             estado: parsed.data.estado,
+            hectareas: hectareasNum,
             notas: parsed.data.notas || null,
           })
           .eq("id", potreroId);
@@ -106,6 +119,7 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
         const { error } = await supabase.from("potreros").insert({
           numero: parsed.data.numero,
           estado: parsed.data.estado,
+          hectareas: hectareasNum,
           notas: parsed.data.notas || null,
           finca_id: fincaActiva.id,
           created_by: user.id,
@@ -168,6 +182,19 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="ha">Hectáreas</Label>
+            <Input
+              id="ha"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={hectareas}
+              onChange={(e) => setHectareas(e.target.value)}
+              placeholder="Ej. 12.5"
+            />
           </div>
           <div>
             <Label htmlFor="notas">Notas</Label>

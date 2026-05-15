@@ -13,6 +13,7 @@ type Potrero = {
   id: string;
   numero: string;
   estado: PotreroEstado;
+  hectareas: number | null;
   notas: string | null;
 };
 
@@ -44,7 +45,7 @@ const FincaPotreros = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("potreros")
-      .select("id, numero, estado, notas")
+      .select("id, numero, estado, hectareas, notas")
       .eq("finca_id", fincaActiva.id)
       .order("numero");
     if (error) {
@@ -129,6 +130,9 @@ const FincaPotreros = () => {
                 >
                   {estadoLabel[p.estado]}
                 </span>
+                {p.hectareas != null && (
+                  <p className="text-xs text-muted-foreground mt-2">{p.hectareas} ha</p>
+                )}
                 {p.notas && (
                   <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{p.notas}</p>
                 )}
