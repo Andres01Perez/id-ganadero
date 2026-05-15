@@ -33,7 +33,7 @@ const pills = [
   { label: "Peso", slug: "peso" },
   { label: "Partos", slug: "partos" },
   { label: "Chequeo veterinario", slug: "chequeo" },
-  { label: "Campeonatos", slug: "campeonatos" },
+  { label: "Genealogía", slug: "genealogia" },
 ];
 
 const formatDate = (d: string | null) => {
