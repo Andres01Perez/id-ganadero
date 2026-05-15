@@ -96,11 +96,12 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
       toast.error("Sesión inválida");
       return;
     }
-    const parsed = schema.safeParse({ numero, estado, notas });
+    const parsed = schema.safeParse({ numero, estado, hectareas, notas });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Datos inválidos");
       return;
     }
+    const hectareasNum = parsed.data.hectareas ? Number(parsed.data.hectareas) : null;
     setSubmitting(true);
     try {
       if (isEdit && potreroId) {
@@ -109,6 +110,7 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
           .update({
             numero: parsed.data.numero,
             estado: parsed.data.estado,
+            hectareas: hectareasNum,
             notas: parsed.data.notas || null,
           })
           .eq("id", potreroId);
@@ -117,6 +119,7 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
         const { error } = await supabase.from("potreros").insert({
           numero: parsed.data.numero,
           estado: parsed.data.estado,
+          hectareas: hectareasNum,
           notas: parsed.data.notas || null,
           finca_id: fincaActiva.id,
           created_by: user.id,
