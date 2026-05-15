@@ -1,21 +1,28 @@
-## Plan
+# Modal Ver / Descargar para archivos de genealogía
 
-Reescribir las políticas RLS de `empleados` y `empleado_fincas` para que queden limpias y simples:
+## Problema
+El visor a pantalla completa actual (`FileViewerDialog`) no se ve bien al abrir desde la lista de Genealogía. Queremos un paso intermedio simple.
 
-### `empleados`
-- **SELECT**: admin/super_admin O usuario con acceso a alguna finca a la que el empleado pertenece.
-- **INSERT / UPDATE / DELETE**: solo admin o super_admin (en cualquier finca).
+## Solución
+Al tocar un archivo (miniatura o nombre) en `AnimalGenealogia`, abrir un pequeño modal centrado con dos acciones:
 
-### `empleado_fincas`
-- **SELECT**: admin/super_admin O usuario con acceso a esa finca.
-- **INSERT / DELETE**: solo admin o super_admin.
+- **Ver** → abre el archivo en una nueva pestaña del navegador (`window.open(file_url, "_blank")`). Se elimina el uso del visor a pantalla completa.
+- **Descargar** → descarga directamente el archivo al dispositivo (mismo flujo `fetch` + `Blob` + `<a download>` que ya tiene `FileViewerDialog.handleDownload`, con fallback a abrir en pestaña nueva si falla).
 
-### Ejecución
-1. `DROP POLICY` de las 4 políticas actuales en `empleados` y las 3 actuales en `empleado_fincas`.
-2. `CREATE POLICY` de nuevo con la lógica de arriba, todas `TO authenticated` y usando las funciones existentes `is_admin_or_super`, `is_active_user` y `user_has_finca`.
-3. Sin tocar el código del frontend — `EmpleadoForm.tsx` ya hace los dos inserts en orden correcto (`empleados` → `empleado_fincas`) y eso seguirá funcionando porque admin/super pasa ambas políticas.
+El modal se cierra al elegir cualquier acción o al tocar fuera / botón cerrar.
 
-### Verificación
-- Probar con `super_admin` (admin1) y `admin` (Jorge Perez) crear un empleado en `/finca/:id/empleados`.
-- Confirmar que el empleado aparece en la lista de la finca activa.
-- Confirmar que un operario sigue sin poder crear/editar/eliminar empleados.
+## Diseño
+- Componente nuevo: `src/components/FileActionDialog.tsx` usando `Dialog` de shadcn (identidad visual existente: fondo `bg-card`, botón principal dorado `bg-gold-solid text-ink`, botón secundario `variant="outline"`).
+- Título: nombre del archivo (truncado).
+- Dos botones grandes apilados, fáciles de tocar en móvil:
+  - `Ver archivo` (icono `Eye`)
+  - `Descargar` (icono `Download`, muestra spinner mientras descarga)
+
+## Archivos
+- **Nuevo**: `src/components/FileActionDialog.tsx`
+- **Editado**: `src/pages/AnimalGenealogia.tsx`
+  - Reemplazar `viewing` por `selected: Doc | null` y montar `<FileActionDialog>` en lugar de `<FileViewerDialog>`.
+  - Quitar import de `FileViewerDialog`.
+- **Sin cambios**: `FileViewerDialog.tsx` se deja en el repo por si se reutiliza luego (no se borra salvo que pidas lo contrario).
+
+¿Apruebo y procedo?
