@@ -56,6 +56,7 @@ const schema = z.object({
 
 type Finca = { id: string; nombre: string };
 type Parent = { id: string; numero: string; nombre: string | null };
+type ParienteExterno = { id: string; numero: string; nombre: string; numero_registro: string };
 type CropTarget = "avatar" | "banner";
 
 const AVATAR_CROP = { aspect: 1, output: { width: 512, height: 512 } };
