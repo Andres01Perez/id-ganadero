@@ -1,27 +1,15 @@
-import { useRef, useState } from "react";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-
-const LONG_PRESS_MS = 1500;
 
 const VersionFooter = () => {
   const version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
   const buildId = typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev";
-  const [reloading, setReloading] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  const longPressTimer = useRef<number | null>(null);
-  const longPressFiredRef = useRef(false);
+  const [working, setWorking] = useState(false);
 
-  const hardReload = () => {
-    if (reloading) return;
-    setReloading(true);
-    window.location.href = window.location.pathname + "?v=" + Date.now();
-  };
-
-  const clearAllCaches = async () => {
-    if (clearing) return;
-    setClearing(true);
-    longPressFiredRef.current = true;
+  const handleClick = async () => {
+    if (working) return;
+    setWorking(true);
     try {
       if ("serviceWorker" in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
@@ -31,64 +19,25 @@ const VersionFooter = () => {
         const keys = await caches.keys();
         await Promise.all(keys.map((k) => caches.delete(k)));
       }
-      toast.success("Caché limpiado, recargando…");
     } catch {
-      toast.error("No se pudo limpiar el caché");
+      toast.error("No se pudo limpiar el caché, recargando…");
     } finally {
       setTimeout(() => {
-        window.location.href = window.location.pathname + "?v=" + Date.now();
-      }, 400);
+        window.location.replace(window.location.pathname + "?v=" + Date.now());
+      }, 300);
     }
-  };
-
-  const startPress = () => {
-    longPressFiredRef.current = false;
-    longPressTimer.current = window.setTimeout(() => {
-      clearAllCaches();
-    }, LONG_PRESS_MS);
-  };
-
-  const cancelPress = () => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  const handleClick = () => {
-    // If the long-press already fired the cache clear, skip the normal click.
-    if (longPressFiredRef.current) {
-      longPressFiredRef.current = false;
-      return;
-    }
-    hardReload();
   };
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      onPointerDown={startPress}
-      onPointerUp={cancelPress}
-      onPointerLeave={cancelPress}
-      onPointerCancel={cancelPress}
-      onContextMenu={(e) => e.preventDefault()}
-      disabled={reloading || clearing}
+      disabled={working}
       className="w-full inline-flex items-center justify-center gap-1.5 pt-2 pb-1 text-[10px] text-muted-foreground/70 hover:text-gold active:scale-95 transition-all select-none tracking-wider font-mono-num cursor-pointer disabled:opacity-60"
-      aria-label="Recargar aplicación. Mantén pulsado para limpiar caché."
+      aria-label="Actualizar a la última versión"
     >
-      {clearing ? (
-        <Trash2 className="h-3 w-3 animate-pulse" />
-      ) : (
-        <RefreshCw className={`h-3 w-3 ${reloading ? "animate-spin" : ""}`} />
-      )}
-      <span>
-        {clearing
-          ? "Limpiando caché..."
-          : reloading
-            ? "Recargando..."
-            : `v${version} · ${buildId}`}
-      </span>
+      <RefreshCw className={`h-3 w-3 ${working ? "animate-spin" : ""}`} />
+      <span>{working ? "Actualizando…" : `v${version} · ${buildId}`}</span>
     </button>
   );
 };
