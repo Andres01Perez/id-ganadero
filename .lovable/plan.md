@@ -1,53 +1,66 @@
 ## Cambios
 
-### 1. Migración SQL
-- Añadir columnas `categoria text` y `subtipo text` a `animales_finca` (nullable).
-- Migrar datos existentes: `subtipo = tipo`, `categoria = NULL` (quedarán como "sin clasificar").
-- Quitar índice único anterior por `(finca_id, tipo)` si existe y crear uno nuevo `(finca_id, categoria, subtipo)` para evitar duplicados.
-- Mantener la columna `tipo` por compatibilidad (sin uso en código nuevo); se puede limpiar más adelante.
+### 1. Base de datos (migración)
 
-### 2. `src/components/AnimalFincaForm.tsx`
-Reemplazar inputs libres por dos `Select`:
+**Nueva tabla `animal_genealogia`** — un registro por archivo subido:
+- `id uuid pk`
+- `animal_id uuid` (referencia al animal)
+- `file_url text` (URL pública)
+- `storage_path text` (ruta dentro del bucket, para borrar)
+- `file_name text` (nombre original)
+- `mime_type text` (`application/pdf`, `image/jpeg`, etc.)
+- `uploaded_by uuid`
+- `created_at timestamptz default now()`
 
-```ts
-const OPCIONES = {
-  bovinos: [
-    { value: "machos", label: "Machos" },
-    { value: "hembras", label: "Hembras" },
-  ],
-  equinos: [
-    { value: "caballos", label: "Caballos" },
-    { value: "yeguas", label: "Yeguas" },
-  ],
-};
+**RLS** (siguiendo el patrón existente):
+- `SELECT/INSERT`: usuarios activos con acceso a la finca del animal (`user_can_access_animal`).
+- `DELETE`: admin/super o el `uploaded_by` original.
+- `UPDATE`: no permitido (re-subir).
+
+**Bucket de storage `animal-genealogia` (público, lectura abierta)**:
+- Lectura pública (bucket público).
+- INSERT: cualquier usuario activo (la app ya restringe por animal en la tabla).
+- DELETE: admin/super o dueño del archivo (igual que galería).
+- Path convención: `${animal_id}/${timestamp}-${nombre}`.
+
+**Eliminar `campeonatos`**: `DROP TABLE public.campeonatos`. (Los registros existentes se pierden — confirmado por la intención del usuario de eliminar la opción.)
+
+### 2. `src/pages/HojaVidaAnimal.tsx`
+- En el array `pills`, reemplazar `{ label: "Campeonatos", slug: "campeonatos" }` por `{ label: "Genealogía", slug: "genealogia" }`.
+- Genealogía no usa el flujo `/seguimiento/:tipo`. Cambiar la navegación de esa pill (y solo esa) para ir a `/animal/:id/genealogia`. El resto sigue igual.
+
+### 3. Nueva página `src/pages/AnimalGenealogia.tsx`
+Página dedicada (mismo estilo header dorado + back que `Animales.tsx` de finca):
+
 ```
+[< ] GENEALOGÍA
+─────────────────────────
+Tarjeta del animal (mini): número, nombre
 
-- Select 1 "Categoría": Bovinos / Equinos.
-- Select 2 "Subtipo": opciones dependientes (deshabilitado hasta elegir categoría; se resetea al cambiar categoría).
-- Input "Cantidad" (igual que ahora).
-- Validación: ambos campos obligatorios + cantidad ≥ 0 entera.
-- En insert/update guardar `categoria`, `subtipo` y también `tipo = subtipo` (para no romper backward compat con la columna NOT NULL).
-- En carga de edición, leer `categoria` y `subtipo`; si `categoria` es null (registro legacy), preseleccionar lo que se pueda inferir o dejar vacío para que el admin elija.
+[ + Subir archivo ]  ← input file accept="image/*,application/pdf", multiple
 
-### 3. `src/pages/finca/Animales.tsx` — visual
-Lista nueva, agrupada por categoría:
-
-```
+Lista de archivos:
 ┌──────────────────────────────────┐
-│ 🐄 BOVINOS                       │
-│   Machos                    24   │
-│   Hembras                   58   │
-├──────────────────────────────────┤
-│ 🐎 EQUINOS                       │
-│   Caballos                   3   │
-│   Yeguas                     5   │
+│ [thumb / 📄]  nombre.pdf         │
+│               12 nov 2026   [🗑] │
 └──────────────────────────────────┘
 ```
 
-- Header de grupo con banda dorada (`bg-gold-solid text-ink uppercase tracking-jps`).
-- Cada subtipo en card blanco con subtipo a la izquierda y cantidad grande dorada a la derecha.
-- Si quedan registros legacy sin categoría, agruparlos bajo "Sin clasificar".
-- Toda fila sigue siendo botón → abre form en modo edición.
-- Cambiar query a `select id, categoria, subtipo, tipo, cantidad`.
+Comportamiento:
+- Carga: `select * from animal_genealogia where animal_id = :id order by created_at desc`.
+- Subir: por cada archivo seleccionado → `storage.upload` a `animal-genealogia/${animalId}/${Date.now()}-${nombre}` → `getPublicUrl` → `insert` en `animal_genealogia`. Toast de éxito y refresh.
+- Vista previa: imágenes como thumbnail cuadrado; PDFs ícono `FileText` dorado. Tap en la fila → abre la URL pública en nueva pestaña.
+- Eliminar (botón papelera): visible solo para admin/super o el `uploaded_by`. Borra del bucket por `storage_path` y de la tabla.
+- Estado vacío: "Aún no hay documentos de genealogía. Sube el certificado de ASOSEBÚ en PDF o foto."
+- Toda la subida y validación queda en frontend; sin lógica de negocio nueva fuera de almacenamiento.
 
-Sin cambios en RLS (ya cubiertas).
+### 4. `src/App.tsx`
+- Añadir ruta `/animal/:id/genealogia` → `<AnimalGenealogia />` envuelta en `ProtectedRoute`.
+
+### 5. Limpieza de referencias a `campeonatos`
+- `src/lib/seguimiento-config.ts`: quitar entrada `campeonatos` del config y del union `SeguimientoTipo`. Quitar import de `Award` si queda huérfano.
+- `src/lib/audit-format.ts`: quitar la entrada `campeonatos: "Campeonato"`.
+
+### 6. Notas
+- No hace falta tocar `src/integrations/supabase/types.ts`: se regenera tras la migración.
+- No se agrega lógica de inventario, animales ni roles. Permisos completos vía RLS.
