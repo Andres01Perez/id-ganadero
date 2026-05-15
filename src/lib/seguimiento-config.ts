@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
-  Award,
   Baby,
   Beef,
   ClipboardPlus,
@@ -23,8 +22,7 @@ export type SeguimientoTipo =
   | "dieta"
   | "peso"
   | "partos"
-  | "chequeo"
-  | "campeonatos";
+  | "chequeo";
 
 export type SeguimientoField = {
   name: string;
