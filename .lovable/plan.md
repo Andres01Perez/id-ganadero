@@ -1,51 +1,21 @@
-## Problema encontrado
+## Plan
 
-La tabla `empleados` ya tiene una política para que `admin` y `super_admin` puedan crear empleados. También confirmé que los usuarios existentes sí tienen esos roles activos.
+Reescribir las políticas RLS de `empleados` y `empleado_fincas` para que queden limpias y simples:
 
-El bloqueo viene de la forma en que se crea el empleado:
+### `empleados`
+- **SELECT**: admin/super_admin O usuario con acceso a alguna finca a la que el empleado pertenece.
+- **INSERT / UPDATE / DELETE**: solo admin o super_admin (en cualquier finca).
 
-1. Primero se inserta en `empleados`.
-2. Después se inserta la relación en `empleado_fincas`.
+### `empleado_fincas`
+- **SELECT**: admin/super_admin O usuario con acceso a esa finca.
+- **INSERT / DELETE**: solo admin o super_admin.
 
-Eso deja una validación incompleta durante el primer paso: el empleado todavía no está asociado a una finca cuando se crea. Además, si se está usando un admin que no tiene fila en `user_finca_acceso`, algunas políticas dependientes de finca pueden quedar inconsistentes.
+### Ejecución
+1. `DROP POLICY` de las 4 políticas actuales en `empleados` y las 3 actuales en `empleado_fincas`.
+2. `CREATE POLICY` de nuevo con la lógica de arriba, todas `TO authenticated` y usando las funciones existentes `is_admin_or_super`, `is_active_user` y `user_has_finca`.
+3. Sin tocar el código del frontend — `EmpleadoForm.tsx` ya hace los dos inserts en orden correcto (`empleados` → `empleado_fincas`) y eso seguirá funcionando porque admin/super pasa ambas políticas.
 
-## Cambio propuesto
-
-### 1. Crear una función segura en Supabase
-Crear una función `public.create_empleado_with_finca(...)` con `SECURITY DEFINER` que haga la operación completa de forma atómica:
-
-- Validar que el usuario actual sea `admin` o `super_admin`.
-- Crear el registro en `empleados`.
-- Crear inmediatamente la relación en `empleado_fincas` con la finca seleccionada.
-- Devolver el `id` del empleado creado.
-
-Esto evita el error de RLS porque la creación del empleado y su asociación a la finca ocurren juntas, desde una función controlada por la base de datos.
-
-### 2. Ajustar RLS de `empleados`
-Mantener la seguridad:
-
-- Solo `admin` y `super_admin` pueden crear/editar/eliminar empleados.
-- Los empleados se siguen viendo únicamente desde fincas permitidas.
-- No se abre la tabla a usuarios normales.
-
-### 3. Cambiar `EmpleadoForm.tsx`
-En creación nueva:
-
-- Reemplazar la inserción manual en `empleados` + `empleado_fincas` por una llamada a la función `create_empleado_with_finca`.
-- Mantener igual la edición, subida de foto y actualización de `foto_url`.
-
-### 4. Validación final
-Probar el flujo con:
-
-- Usuario `super_admin` (`admin1`).
-- Usuario `admin` (`Jorge Perez`).
-
-Resultado esperado:
-
-- Crear empleado no debe mostrar `new row violates row-level security policy for table "empleados"`.
-- El empleado queda asociado a la finca activa.
-- La lista de empleados de esa finca lo muestra correctamente.
-
-## Nota importante
-
-No voy a permitir creación de empleados a operarios ni a usuarios sin rol administrativo. La corrección mantiene el control administrativo y solo soluciona el bloqueo de RLS.
+### Verificación
+- Probar con `super_admin` (admin1) y `admin` (Jorge Perez) crear un empleado en `/finca/:id/empleados`.
+- Confirmar que el empleado aparece en la lista de la finca activa.
+- Confirmar que un operario sigue sin poder crear/editar/eliminar empleados.
