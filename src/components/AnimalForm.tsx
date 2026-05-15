@@ -540,18 +540,36 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             <Label htmlFor="madre">Madre</Label>
             <select
               id="madre"
-              value={madreId}
-              onChange={(e) => setMadreId(e.target.value)}
+              value={madreSel}
+              onChange={(e) => {
+                if (e.target.value === "__new__") {
+                  setParienteDialog("H");
+                  return;
+                }
+                setMadreSel(e.target.value);
+              }}
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">— Ninguna —</option>
-              {hembras
-                .filter((h) => h.id !== animalId)
-                .map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.numero} {h.nombre ? `· ${h.nombre}` : ""}
-                  </option>
-                ))}
+              <optgroup label="De la base">
+                {hembras
+                  .filter((h) => h.id !== animalId)
+                  .map((h) => (
+                    <option key={h.id} value={`int:${h.id}`}>
+                      {h.numero} {h.nombre ? `· ${h.nombre}` : ""}
+                    </option>
+                  ))}
+              </optgroup>
+              {hembrasExt.length > 0 && (
+                <optgroup label="Externas">
+                  {hembrasExt.map((h) => (
+                    <option key={h.id} value={`ext:${h.id}`}>
+                      {h.numero} · {h.nombre} (externo)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="__new__">+ Otro (registrar nueva)</option>
             </select>
           </div>
 
@@ -559,18 +577,36 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             <Label htmlFor="padre">Padre</Label>
             <select
               id="padre"
-              value={padreId}
-              onChange={(e) => setPadreId(e.target.value)}
+              value={padreSel}
+              onChange={(e) => {
+                if (e.target.value === "__new__") {
+                  setParienteDialog("M");
+                  return;
+                }
+                setPadreSel(e.target.value);
+              }}
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">— Ninguno —</option>
-              {machos
-                .filter((m) => m.id !== animalId)
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.numero} {m.nombre ? `· ${m.nombre}` : ""}
-                  </option>
-                ))}
+              <optgroup label="De la base">
+                {machos
+                  .filter((m) => m.id !== animalId)
+                  .map((m) => (
+                    <option key={m.id} value={`int:${m.id}`}>
+                      {m.numero} {m.nombre ? `· ${m.nombre}` : ""}
+                    </option>
+                  ))}
+              </optgroup>
+              {machosExt.length > 0 && (
+                <optgroup label="Externos">
+                  {machosExt.map((m) => (
+                    <option key={m.id} value={`ext:${m.id}`}>
+                      {m.numero} · {m.nombre} (externo)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="__new__">+ Otro (registrar nuevo)</option>
             </select>
           </div>
 
