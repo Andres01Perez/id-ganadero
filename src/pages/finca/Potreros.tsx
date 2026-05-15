@@ -45,7 +45,7 @@ const FincaPotreros = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("potreros")
-      .select("id, numero, estado, notas")
+      .select("id, numero, estado, hectareas, notas")
       .eq("finca_id", fincaActiva.id)
       .order("numero");
     if (error) {
