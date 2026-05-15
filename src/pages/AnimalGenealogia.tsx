@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import BottomTabBar from "@/components/BottomTabBar";
+import FileViewerDialog from "@/components/FileViewerDialog";
 import { toast } from "sonner";
 
 type Doc = {
