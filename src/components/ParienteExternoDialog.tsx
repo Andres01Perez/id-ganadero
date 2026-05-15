@@ -41,7 +41,7 @@ const ParienteExternoDialog = ({ open, onOpenChange, sexo, onCreated }: Props) =
     }
   }, [open]);
 
-  const titulo = sexo === "F" ? "Nueva madre externa" : "Nuevo padre externo";
+  const titulo = sexo === "H" ? "Nueva madre externa" : "Nuevo padre externo";
 
   const handleSave = async () => {
     if (!user) return;
@@ -85,7 +85,7 @@ const ParienteExternoDialog = ({ open, onOpenChange, sexo, onCreated }: Props) =
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription>
-            Registra un animal externo para usarlo como {sexo === "F" ? "madre" : "padre"} en
+            Registra un animal externo para usarlo como {sexo === "H" ? "madre" : "padre"} en
             la genealogía. Quedará disponible en todas las fincas.
           </DialogDescription>
         </DialogHeader>
