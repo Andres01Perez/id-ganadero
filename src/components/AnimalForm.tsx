@@ -119,7 +119,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         .select("id, nombre")
         .eq("activo", true)
         .order("nombre");
-      const [h, m] = await Promise.all([
+      const [h, m, hExt, mExt] = await Promise.all([
         supabase
           .from("animales")
           .select("id, numero, nombre")
@@ -132,10 +132,22 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           .eq("tipo", "macho")
           .eq("activo", true)
           .order("numero"),
+        supabase
+          .from("parientes_externos")
+          .select("id, numero, nombre, numero_registro")
+          .eq("sexo", "H")
+          .order("numero"),
+        supabase
+          .from("parientes_externos")
+          .select("id, numero, nombre, numero_registro")
+          .eq("sexo", "M")
+          .order("numero"),
       ]);
       setFincas(fincasData ?? []);
       setHembras(h.data ?? []);
       setMachos(m.data ?? []);
+      setHembrasExt(hExt.data ?? []);
+      setMachosExt(mExt.data ?? []);
     })();
   }, [open, user, isAdmin]);
 
