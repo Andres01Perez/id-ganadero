@@ -1,24 +1,53 @@
 ## Cambios
 
-**1. Migración SQL — bucket `finca-fotos`**
-```sql
-INSERT INTO storage.buckets (id, name, public) VALUES ('finca-fotos', 'finca-fotos', true);
+### 1. Migración SQL
+- Añadir columnas `categoria text` y `subtipo text` a `animales_finca` (nullable).
+- Migrar datos existentes: `subtipo = tipo`, `categoria = NULL` (quedarán como "sin clasificar").
+- Quitar índice único anterior por `(finca_id, tipo)` si existe y crear uno nuevo `(finca_id, categoria, subtipo)` para evitar duplicados.
+- Mantener la columna `tipo` por compatibilidad (sin uso en código nuevo); se puede limpiar más adelante.
+
+### 2. `src/components/AnimalFincaForm.tsx`
+Reemplazar inputs libres por dos `Select`:
+
+```ts
+const OPCIONES = {
+  bovinos: [
+    { value: "machos", label: "Machos" },
+    { value: "hembras", label: "Hembras" },
+  ],
+  equinos: [
+    { value: "caballos", label: "Caballos" },
+    { value: "yeguas", label: "Yeguas" },
+  ],
+};
 ```
-Políticas en `storage.objects`:
-- SELECT público (bucket público)
-- INSERT/UPDATE/DELETE solo `is_admin_or_super(auth.uid())` y `bucket_id = 'finca-fotos'`
 
-**2. `src/pages/MenuFinca.tsx`**
-- Importar `useAuth`, `Pencil` de lucide, `useState`, `useRef`, `supabase`, `toast`, `ImageCropDialog`, `useFinca` (`reloadFincas`).
-- Mostrar botón lápiz en `top-3 right-3` del header (mismo estilo que el botón Volver: círculo `bg-black/40 backdrop-blur` con icono blanco), visible solo si `roles.includes('admin') || 'super_admin'`.
-- Click → abre `<input type="file" accept="image/*">` oculto.
-- Al seleccionar archivo → abre `ImageCropDialog` con `aspect={865/503}` y `outputSize={{width: 1730, height: 1006}}`.
-- Al confirmar crop:
-  - Subir blob a `finca-fotos/${fincaId}/${Date.now()}.jpg` con `upsert: true`.
-  - Obtener `getPublicUrl`.
-  - `update fincas set foto_url = url where id = fincaId`.
-  - `await reloadFincas()` para refrescar `fincaActiva`.
-  - Toast éxito.
-- Manejar errores con toast + `console.error`.
+- Select 1 "Categoría": Bovinos / Equinos.
+- Select 2 "Subtipo": opciones dependientes (deshabilitado hasta elegir categoría; se resetea al cambiar categoría).
+- Input "Cantidad" (igual que ahora).
+- Validación: ambos campos obligatorios + cantidad ≥ 0 entera.
+- En insert/update guardar `categoria`, `subtipo` y también `tipo = subtipo` (para no romper backward compat con la columna NOT NULL).
+- En carga de edición, leer `categoria` y `subtipo`; si `categoria` es null (registro legacy), preseleccionar lo que se pueda inferir o dejar vacío para que el admin elija.
 
-**Sin cambios** en otras vistas. Reutiliza patrón de `EmpleadoForm` y `ImageCropDialog` existente.
+### 3. `src/pages/finca/Animales.tsx` — visual
+Lista nueva, agrupada por categoría:
+
+```
+┌──────────────────────────────────┐
+│ 🐄 BOVINOS                       │
+│   Machos                    24   │
+│   Hembras                   58   │
+├──────────────────────────────────┤
+│ 🐎 EQUINOS                       │
+│   Caballos                   3   │
+│   Yeguas                     5   │
+└──────────────────────────────────┘
+```
+
+- Header de grupo con banda dorada (`bg-gold-solid text-ink uppercase tracking-jps`).
+- Cada subtipo en card blanco con subtipo a la izquierda y cantidad grande dorada a la derecha.
+- Si quedan registros legacy sin categoría, agruparlos bajo "Sin clasificar".
+- Toda fila sigue siendo botón → abre form en modo edición.
+- Cambiar query a `select id, categoria, subtipo, tipo, cantidad`.
+
+Sin cambios en RLS (ya cubiertas).
