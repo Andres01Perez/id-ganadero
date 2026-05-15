@@ -158,11 +158,11 @@ const AnimalGenealogia = () => {
                   key={d.id}
                   className="flex items-center gap-3 bg-card rounded-xl p-3 shadow-soft"
                 >
-                  <a
-                    href={d.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 h-14 w-14 rounded-lg bg-muted overflow-hidden flex items-center justify-center"
+                  <button
+                    type="button"
+                    onClick={() => setViewing(d)}
+                    className="shrink-0 h-14 w-14 rounded-lg bg-muted overflow-hidden flex items-center justify-center active:scale-95"
+                    aria-label={`Abrir ${d.file_name}`}
                   >
                     {isImage(d.mime_type) ? (
                       <img
@@ -173,18 +173,17 @@ const AnimalGenealogia = () => {
                     ) : (
                       <FileText className="h-7 w-7 text-gold-deep" />
                     )}
-                  </a>
-                  <a
-                    href={d.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 min-w-0"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewing(d)}
+                    className="flex-1 min-w-0 text-left active:opacity-70"
                   >
                     <p className="font-semibold text-sm text-ink truncate">{d.file_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(d.created_at)}
                     </p>
-                  </a>
+                  </button>
                   {canDelete && (
                     <button
                       onClick={() => handleDelete(d)}
@@ -202,6 +201,14 @@ const AnimalGenealogia = () => {
       </div>
 
       <BottomTabBar />
+
+      <FileViewerDialog
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        fileUrl={viewing?.file_url ?? ""}
+        fileName={viewing?.file_name ?? ""}
+        mimeType={viewing?.mime_type ?? null}
+      />
     </div>
   );
 };
