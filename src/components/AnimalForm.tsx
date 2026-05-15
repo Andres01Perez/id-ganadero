@@ -174,8 +174,9 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         setRaza(data.raza === "Brahman" ? data.raza : "");
         setColor(data.color === "Gris" || data.color === "Rojo" ? data.color : "");
         setFincaId(data.finca_id ?? "");
-        setMadreId(data.madre_id ?? "");
-        setPadreId(data.padre_id ?? "");
+        const d = data as typeof data & { madre_externa_id?: string | null; padre_externo_id?: string | null };
+        setMadreSel(d.madre_id ? `int:${d.madre_id}` : d.madre_externa_id ? `ext:${d.madre_externa_id}` : "");
+        setPadreSel(d.padre_id ? `int:${d.padre_id}` : d.padre_externo_id ? `ext:${d.padre_externo_id}` : "");
         setCreatedBy(data.created_by ?? null);
         setFotoActualUrl(data.foto_principal_url ?? null);
         setBannerActualUrl((data as { foto_banner_url?: string | null }).foto_banner_url ?? null);
