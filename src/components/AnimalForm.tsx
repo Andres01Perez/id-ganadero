@@ -99,6 +99,9 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [hembras, setHembras] = useState<Parent[]>([]);
   const [machos, setMachos] = useState<Parent[]>([]);
+  const [hembrasExt, setHembrasExt] = useState<ParienteExterno[]>([]);
+  const [machosExt, setMachosExt] = useState<ParienteExterno[]>([]);
+  const [parienteDialog, setParienteDialog] = useState<null | "M" | "H">(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
