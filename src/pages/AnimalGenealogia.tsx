@@ -202,12 +202,11 @@ const AnimalGenealogia = () => {
 
       <BottomTabBar />
 
-      <FileViewerDialog
+      <FileActionDialog
         open={!!viewing}
-        onClose={() => setViewing(null)}
+        onOpenChange={(o) => !o && setViewing(null)}
         fileUrl={viewing?.file_url ?? ""}
         fileName={viewing?.file_name ?? ""}
-        mimeType={viewing?.mime_type ?? null}
       />
     </div>
   );
