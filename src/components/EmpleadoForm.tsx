@@ -16,9 +16,19 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Camera, User } from "lucide-react";
+import { Camera, User, Trash2 } from "lucide-react";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import { hoyISO } from "@/lib/empleado-utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Props = {
   open: boolean;
@@ -64,6 +74,9 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
   const [cropFile, setCropFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -218,6 +231,50 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!empleadoId || !isAdmin) return;
+    setDeleting(true);
+    try {
+      const { error: linkErr } = await supabase
+        .from("empleado_fincas")
+        .delete()
+        .eq("empleado_id", empleadoId);
+      if (linkErr) throw linkErr;
+
+      const { error } = await supabase
+        .from("empleados")
+        .delete()
+        .eq("id", empleadoId);
+      if (error) throw error;
+
+      if (fotoActual) {
+        try {
+          const { data: files } = await supabase.storage
+            .from("empleado-fotos")
+            .list(empleadoId);
+          if (files && files.length > 0) {
+            await supabase.storage
+              .from("empleado-fotos")
+              .remove(files.map((f) => `${empleadoId}/${f.name}`));
+          }
+        } catch (imgErr) {
+          console.error("No se pudieron borrar las fotos:", imgErr);
+        }
+      }
+
+      toast.success("Empleado eliminado");
+      setConfirmOpen(false);
+      await onSaved?.();
+      onOpenChange(false);
+    } catch (err) {
+      const e = err as { message?: string };
+      console.error(err);
+      toast.error(e.message ?? "No se pudo eliminar");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const photoSrc = fotoPreview ?? fotoActual;
 
   return (
@@ -314,6 +371,22 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
           <Button onClick={handleSubmit} disabled={submitting} className="w-full">
             {submitting ? "Guardando…" : "Guardar"}
           </Button>
+
+          {isEdit && isAdmin && (
+            <Button
+              type="button"
+              variant="destructive"
+              className="w-full"
+              onClick={() => {
+                setConfirmText("");
+                setConfirmOpen(true);
+              }}
+              disabled={submitting || deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Eliminar empleado
+            </Button>
+          )}
         </div>
       </SheetContent>
 
@@ -326,6 +399,38 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
         onConfirm={handleCropConfirm}
         onCancel={() => setCropFile(null)}
       />
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar empleado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible. Se eliminará el empleado y sus vínculos con todas las fincas.
+              Para confirmar, escribe el nombre completo del empleado:
+              <span className="block mt-1 font-semibold text-foreground">{nombre}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="Escribe el nombre completo"
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting || confirmText.trim() !== nombre.trim() || !nombre.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Eliminando…" : "Eliminar definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 };
