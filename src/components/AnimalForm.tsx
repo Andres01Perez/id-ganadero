@@ -83,8 +83,9 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [raza, setRaza] = useState<AnimalRaza | "">("Brahman");
   const [color, setColor] = useState<AnimalColor | "">("");
   const [fincaId, setFincaId] = useState("");
-  const [madreId, setMadreId] = useState("");
-  const [padreId, setPadreId] = useState("");
+  // Valor con prefijo: "" | "int:<id>" | "ext:<id>"
+  const [madreSel, setMadreSel] = useState("");
+  const [padreSel, setPadreSel] = useState("");
   const [createdBy, setCreatedBy] = useState<string | null>(null);
   const [fotoActualUrl, setFotoActualUrl] = useState<string | null>(null);
   const [bannerActualUrl, setBannerActualUrl] = useState<string | null>(null);
