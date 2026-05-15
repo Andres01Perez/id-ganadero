@@ -287,8 +287,10 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         raza: parsed.data.raza || null,
         color: parsed.data.color || null,
         finca_id: parsed.data.finca_id || null,
-        madre_id: parsed.data.madre_id || null,
-        padre_id: parsed.data.padre_id || null,
+        madre_id: madre.internal,
+        madre_externa_id: madre.external,
+        padre_id: padre.internal,
+        padre_externo_id: padre.external,
         tipo,
       };
 
