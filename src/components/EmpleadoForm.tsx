@@ -231,6 +231,50 @@ const EmpleadoForm = ({ open, onOpenChange, empleadoId, onSaved }: Props) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!empleadoId || !isAdmin) return;
+    setDeleting(true);
+    try {
+      const { error: linkErr } = await supabase
+        .from("empleado_fincas")
+        .delete()
+        .eq("empleado_id", empleadoId);
+      if (linkErr) throw linkErr;
+
+      const { error } = await supabase
+        .from("empleados")
+        .delete()
+        .eq("id", empleadoId);
+      if (error) throw error;
+
+      if (fotoActual) {
+        try {
+          const { data: files } = await supabase.storage
+            .from("empleado-fotos")
+            .list(empleadoId);
+          if (files && files.length > 0) {
+            await supabase.storage
+              .from("empleado-fotos")
+              .remove(files.map((f) => `${empleadoId}/${f.name}`));
+          }
+        } catch (imgErr) {
+          console.error("No se pudieron borrar las fotos:", imgErr);
+        }
+      }
+
+      toast.success("Empleado eliminado");
+      setConfirmOpen(false);
+      await onSaved?.();
+      onOpenChange(false);
+    } catch (err) {
+      const e = err as { message?: string };
+      console.error(err);
+      toast.error(e.message ?? "No se pudo eliminar");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const photoSrc = fotoPreview ?? fotoActual;
 
   return (
