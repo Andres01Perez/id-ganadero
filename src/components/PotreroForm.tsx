@@ -59,6 +59,7 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
 
   const [numero, setNumero] = useState("");
   const [estado, setEstado] = useState<PotreroEstado>("descargado");
+  const [hectareas, setHectareas] = useState("");
   const [notas, setNotas] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
