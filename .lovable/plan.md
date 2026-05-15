@@ -1,46 +1,77 @@
-## Cambios
+## Problema
 
-### 1. Cambio de icono "Otros" → "Galería"
-- Copiar `user-uploads://ID_GANADERO_camara_1.webp` a `src/assets/menu-finca/galeria.webp`.
-- En `src/pages/MenuFinca.tsx`:
-  - Reemplazar import `imgOtros` por `imgGaleria`.
-  - Cambiar el sexto item: label `"Galería"`, `image: imgGaleria`, `to: \`/finca/${fincaId}/galeria\``, quitar `disabled`.
+`empleados` y otras tablas relacionadas con `/menu-finca` tienen políticas RLS inconsistentes. Algunas exigen `user_has_finca` incluso para admins, otras requieren que el `responsable_id` o `created_by` sea exactamente `auth.uid()` sin permitir override de admin. Esto bloquea operaciones legítimas de admin/super_admin.
 
-### 2. Nueva página `/finca/:fincaId/galeria`
-- Crear `src/pages/finca/Galeria.tsx`, montar ruta en `src/App.tsx` envuelta con `RequireFinca`.
-- Layout coherente con otras páginas de finca: `FincaActivaChip`, header con título "Galería", `BottomTabBar`.
-- Tres acciones (botones grandes, mobile-first):
-  1. **Tomar foto** → `<input type="file" accept="image/*" capture="environment">` (abre cámara nativa en móvil).
-  2. **Subir desde galería** → `<input type="file" accept="image/*" multiple>` (selector nativo, permite múltiple).
-  3. (En desktop ambos inputs funcionan como file picker estándar.)
-- Cuadrícula tipo masonry/grid 3 columnas mostrando todas las fotos de la finca, ordenadas por `created_at desc`.
-- Tap sobre una foto → modal lightbox a pantalla completa con botón eliminar (visible solo si el usuario es el que la subió o es admin/super_admin).
-- Toasts de subida/eliminación, estado de carga por archivo, compresión opcional no incluida (mantener simple).
+Verificado en BD:
+- Ambos admins (`admin1` super_admin y `Jorge Perez` admin) tienen `profiles.active = true`.
+- Jorge **no tiene filas en `user_finca_acceso`**. `user_has_finca` lo permite porque `is_admin_or_super` corta el OR. Pero esa dependencia es frágil y mezcla privilegio con pertenencia.
 
-### 3. Backend (migración Supabase)
-- **Bucket** `galeria-finca` (público, igual que `animal-fotos`).
-- **Tabla** `galeria_fotos`:
-  - `id uuid pk`, `finca_id uuid not null`, `storage_path text not null`, `url text not null`, `subido_por uuid not null`, `created_at timestamptz default now()`.
-  - Índice por `(finca_id, created_at desc)`.
-- **RLS tabla**:
-  - SELECT: `user_has_finca(auth.uid(), finca_id)`.
-  - INSERT: `is_active_user(auth.uid()) AND subido_por = auth.uid() AND user_has_finca(auth.uid(), finca_id)`.
-  - DELETE: `subido_por = auth.uid() OR is_admin_or_super(auth.uid())`.
-  - UPDATE: ninguna (no se edita).
-- **RLS storage** sobre bucket `galeria-finca`:
-  - Estructura de path: `{finca_id}/{uuid}.{ext}`.
-  - SELECT público (bucket público, ya cubierto).
-  - INSERT: usuario activo con acceso a la finca (`user_has_finca` sobre primer segmento del path).
-  - DELETE: dueño del archivo (vía join con `galeria_fotos.subido_por`) o admin.
+## Auditoría de tablas de `/menu-finca`
 
-### 4. Detalles técnicos
-- Uso de `supabase.storage.from('galeria-finca').upload(...)` seguido de `insert` en `galeria_fotos` con la URL pública.
-- Subida en paralelo con `Promise.all`, mostrando spinner por item.
-- No se requiere Capacitor: en móvil el `<input type="file" accept="image/*">` ya muestra la hoja nativa "Cámara / Fotos / Archivos"; con `capture="environment"` se fuerza cámara directa.
+| Tabla | INSERT | UPDATE | DELETE | Riesgo |
+|---|---|---|---|---|
+| `empleados` | admin | admin | admin | OK estructura, posible falla por trigger faltante de `created_by` |
+| `empleado_fincas` | admin + user_has_finca | — (sin UPDATE) | admin | OK |
+| `fincas` | admin | admin | admin | OK |
+| `potreros` | active + user_has_finca | user_has_finca | user_has_finca | Admin sin acceso a finca depende de short-circuit |
+| `animales` | active + created_by=uid | active | active | OK pero global, no por finca |
+| `animales_finca` | active + user_has_finca | user_has_finca | user_has_finca | Igual que potreros |
+| `inventario_productos` | active + created_by + user_has_finca | user_has_finca | user_has_finca | Igual |
+| `inventario_movimientos` | active + responsable_id=uid + producto accesible | producto accesible | producto accesible | OK |
+| `galeria_fotos` | active + subido_por=uid + user_has_finca | — | dueño o admin | OK |
 
-### Archivos
-- nuevo: `src/assets/menu-finca/galeria.webp`
-- nuevo: `src/pages/finca/Galeria.tsx`
-- editado: `src/pages/MenuFinca.tsx`
-- editado: `src/App.tsx`
-- nueva migración: tabla `galeria_fotos` + bucket + policies
+## Cambios propuestos (migración SQL)
+
+**1. Normalizar override de admin en TODAS las políticas de escritura** de las tablas de `/menu-finca`. Patrón:
+
+```sql
+-- Ejemplo para potreros INSERT
+DROP POLICY "insert potreros by finca" ON public.potreros;
+CREATE POLICY "insert potreros by finca"
+  ON public.potreros FOR INSERT TO authenticated
+  WITH CHECK (
+    is_admin_or_super(auth.uid())
+    OR (is_active_user(auth.uid()) AND user_has_finca(auth.uid(), finca_id))
+  );
+```
+
+Aplicar mismo patrón a INSERT/UPDATE/DELETE de:
+- `potreros`
+- `animales_finca`
+- `inventario_productos`
+- `inventario_movimientos` (vía `producto_id`)
+- `galeria_fotos`
+- `empleado_fincas` (ya está bien, dejar)
+- `empleados` (ya está bien, dejar)
+
+**2. SELECT también con override de admin** en las mismas tablas, para que un admin pueda ver datos de cualquier finca aunque no esté en `user_finca_acceso`:
+
+```sql
+DROP POLICY "view potreros by finca" ON public.potreros;
+CREATE POLICY "view potreros by finca"
+  ON public.potreros FOR SELECT TO authenticated
+  USING (is_admin_or_super(auth.uid()) OR user_has_finca(auth.uid(), finca_id));
+```
+
+**3. `fincas` SELECT** actualmente exige `user_has_finca(auth.uid(), id)`. Aunque el helper ya cubre admin por short-circuit, lo hago explícito:
+
+```sql
+DROP POLICY "Authenticated can view fincas" ON public.fincas;
+CREATE POLICY "Authenticated can view fincas"
+  ON public.fincas FOR SELECT TO authenticated
+  USING (is_admin_or_super(auth.uid()) OR (is_active_user(auth.uid()) AND user_has_finca(auth.uid(), id)));
+```
+
+**4. Diagnóstico adicional para empleados**: dado que la política actual ya permite a Jorge crear empleados, el error reportado podría venir de otro lado (ej. el insert posterior a `empleado_fincas` cuando el admin no tiene la finca activa cargada). Después de aplicar el override, revalidaremos.
+
+## Lo que no se cambia
+
+- Reglas de `responsable_id = auth.uid()` en eventos médicos (vacunaciones, pesajes, etc.) — son de auditoría y se mantienen.
+- Roles en `user_roles` — siguen restringidas a super_admin.
+- Lógica del frontend — solo cambia BD.
+
+## Verificación post-migración
+
+1. Ejecutar `supabase--linter` para confirmar que no quedan warnings nuevos.
+2. Probar como Jorge: crear empleado, crear potrero, crear producto inventario en una finca a la que no está vinculado.
+3. Si el error original persiste tras la migración, pediré al usuario el mensaje exacto de la consola para investigar más.
