@@ -230,28 +230,6 @@ export const seguimientoConfigs: Record<SeguimientoTipo, SeguimientoConfig> = {
     primary: (r) => String(r.estado ?? r.diagnostico ?? "Chequeo registrado"),
     details: (r) => [formatDate(String(r.fecha ?? "")), String(r.veterinario ?? ""), String(r.notas ?? "")],
   },
-  campeonatos: {
-    tipo: "campeonatos",
-    title: "Campeonatos",
-    subtitle: "Participaciones, resultados y evidencias.",
-    table: "campeonatos",
-    animalField: "animal_id",
-    orderField: "fecha",
-    icon: Award,
-    evidenceFolder: "campeonatos",
-    fields: [
-      { name: "fecha", label: "Fecha", type: "date", required: true },
-      { name: "nombre", label: "Nombre del campeonato", type: "text", required: true },
-      { name: "lugar", label: "Lugar", type: "text" },
-      { name: "categoria", label: "Categoría", type: "text" },
-      { name: "resultado", label: "Resultado / puesto obtenido", type: "text" },
-      { name: "juez", label: "Juez", type: "text" },
-      { name: "evidencia_url", label: "Foto / evidencia", type: "file" },
-      { name: "notas", label: "Notas", type: "textarea" },
-    ],
-    primary: (r) => String(r.nombre ?? "Campeonato"),
-    details: (r) => [formatDate(String(r.fecha ?? "")), String(r.categoria ?? ""), String(r.resultado ?? ""), r.evidencia_url ? "Evidencia disponible" : ""],
-  },
 };
 
 export const seguimientoTipos = Object.keys(seguimientoConfigs) as SeguimientoTipo[];
