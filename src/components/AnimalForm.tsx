@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Camera, Trash2 } from "lucide-react";
 import jpsLogo from "@/assets/jps-logo.webp";
+import ParienteExternoDialog from "@/components/ParienteExternoDialog";
 
 type AnimalTipo = "macho" | "hembra" | "cria" | "embrion" | "otro";
 type AnimalRaza = "Brahman";
@@ -55,6 +56,7 @@ const schema = z.object({
 
 type Finca = { id: string; nombre: string };
 type Parent = { id: string; numero: string; nombre: string | null };
+type ParienteExterno = { id: string; numero: string; nombre: string; numero_registro: string };
 type CropTarget = "avatar" | "banner";
 
 const AVATAR_CROP = { aspect: 1, output: { width: 512, height: 512 } };
@@ -81,8 +83,9 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [raza, setRaza] = useState<AnimalRaza | "">("Brahman");
   const [color, setColor] = useState<AnimalColor | "">("");
   const [fincaId, setFincaId] = useState("");
-  const [madreId, setMadreId] = useState("");
-  const [padreId, setPadreId] = useState("");
+  // Valor con prefijo: "" | "int:<id>" | "ext:<id>"
+  const [madreSel, setMadreSel] = useState("");
+  const [padreSel, setPadreSel] = useState("");
   const [createdBy, setCreatedBy] = useState<string | null>(null);
   const [fotoActualUrl, setFotoActualUrl] = useState<string | null>(null);
   const [bannerActualUrl, setBannerActualUrl] = useState<string | null>(null);
@@ -96,6 +99,9 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [hembras, setHembras] = useState<Parent[]>([]);
   const [machos, setMachos] = useState<Parent[]>([]);
+  const [hembrasExt, setHembrasExt] = useState<ParienteExterno[]>([]);
+  const [machosExt, setMachosExt] = useState<ParienteExterno[]>([]);
+  const [parienteDialog, setParienteDialog] = useState<null | "M" | "H">(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -113,7 +119,7 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         .select("id, nombre")
         .eq("activo", true)
         .order("nombre");
-      const [h, m] = await Promise.all([
+      const [h, m, hExt, mExt] = await Promise.all([
         supabase
           .from("animales")
           .select("id, numero, nombre")
@@ -126,10 +132,22 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           .eq("tipo", "macho")
           .eq("activo", true)
           .order("numero"),
+        supabase
+          .from("parientes_externos")
+          .select("id, numero, nombre, numero_registro")
+          .eq("sexo", "H")
+          .order("numero"),
+        supabase
+          .from("parientes_externos")
+          .select("id, numero, nombre, numero_registro")
+          .eq("sexo", "M")
+          .order("numero"),
       ]);
       setFincas(fincasData ?? []);
       setHembras(h.data ?? []);
       setMachos(m.data ?? []);
+      setHembrasExt(hExt.data ?? []);
+      setMachosExt(mExt.data ?? []);
     })();
   }, [open, user, isAdmin]);
 
@@ -156,8 +174,9 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         setRaza(data.raza === "Brahman" ? data.raza : "");
         setColor(data.color === "Gris" || data.color === "Rojo" ? data.color : "");
         setFincaId(data.finca_id ?? "");
-        setMadreId(data.madre_id ?? "");
-        setPadreId(data.padre_id ?? "");
+        const d = data as typeof data & { madre_externa_id?: string | null; padre_externo_id?: string | null };
+        setMadreSel(d.madre_id ? `int:${d.madre_id}` : d.madre_externa_id ? `ext:${d.madre_externa_id}` : "");
+        setPadreSel(d.padre_id ? `int:${d.padre_id}` : d.padre_externo_id ? `ext:${d.padre_externo_id}` : "");
         setCreatedBy(data.created_by ?? null);
         setFotoActualUrl(data.foto_principal_url ?? null);
         setBannerActualUrl((data as { foto_banner_url?: string | null }).foto_banner_url ?? null);
@@ -175,8 +194,8 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       setRaza("Brahman");
       setColor("");
       setFincaId(fincaActiva?.id ?? "");
-      setMadreId("");
-      setPadreId("");
+      setMadreSel("");
+      setPadreSel("");
       setCreatedBy(null);
       setFotoActualUrl(null);
       setBannerActualUrl(null);
@@ -241,9 +260,17 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
       raza,
       color,
       finca_id: fincaId,
-      madre_id: madreId,
-      padre_id: padreId,
+      madre_id: "",
+      padre_id: "",
     });
+    const parseSel = (sel: string) => {
+      if (!sel) return { internal: null as string | null, external: null as string | null };
+      if (sel.startsWith("int:")) return { internal: sel.slice(4), external: null };
+      if (sel.startsWith("ext:")) return { internal: null, external: sel.slice(4) };
+      return { internal: null, external: null };
+    };
+    const madre = parseSel(madreSel);
+    const padre = parseSel(padreSel);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Datos inválidos");
       return;
@@ -260,8 +287,10 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
         raza: parsed.data.raza || null,
         color: parsed.data.color || null,
         finca_id: parsed.data.finca_id || null,
-        madre_id: parsed.data.madre_id || null,
-        padre_id: parsed.data.padre_id || null,
+        madre_id: madre.internal,
+        madre_externa_id: madre.external,
+        padre_id: padre.internal,
+        padre_externo_id: padre.external,
         tipo,
       };
 
@@ -511,18 +540,36 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             <Label htmlFor="madre">Madre</Label>
             <select
               id="madre"
-              value={madreId}
-              onChange={(e) => setMadreId(e.target.value)}
+              value={madreSel}
+              onChange={(e) => {
+                if (e.target.value === "__new__") {
+                  setParienteDialog("H");
+                  return;
+                }
+                setMadreSel(e.target.value);
+              }}
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">— Ninguna —</option>
-              {hembras
-                .filter((h) => h.id !== animalId)
-                .map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.numero} {h.nombre ? `· ${h.nombre}` : ""}
-                  </option>
-                ))}
+              <optgroup label="De la base">
+                {hembras
+                  .filter((h) => h.id !== animalId)
+                  .map((h) => (
+                    <option key={h.id} value={`int:${h.id}`}>
+                      {h.numero} {h.nombre ? `· ${h.nombre}` : ""}
+                    </option>
+                  ))}
+              </optgroup>
+              {hembrasExt.length > 0 && (
+                <optgroup label="Externas">
+                  {hembrasExt.map((h) => (
+                    <option key={h.id} value={`ext:${h.id}`}>
+                      {h.numero} · {h.nombre} (externo)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="__new__">+ Otro (registrar nueva)</option>
             </select>
           </div>
 
@@ -530,18 +577,36 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
             <Label htmlFor="padre">Padre</Label>
             <select
               id="padre"
-              value={padreId}
-              onChange={(e) => setPadreId(e.target.value)}
+              value={padreSel}
+              onChange={(e) => {
+                if (e.target.value === "__new__") {
+                  setParienteDialog("M");
+                  return;
+                }
+                setPadreSel(e.target.value);
+              }}
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">— Ninguno —</option>
-              {machos
-                .filter((m) => m.id !== animalId)
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.numero} {m.nombre ? `· ${m.nombre}` : ""}
-                  </option>
-                ))}
+              <optgroup label="De la base">
+                {machos
+                  .filter((m) => m.id !== animalId)
+                  .map((m) => (
+                    <option key={m.id} value={`int:${m.id}`}>
+                      {m.numero} {m.nombre ? `· ${m.nombre}` : ""}
+                    </option>
+                  ))}
+              </optgroup>
+              {machosExt.length > 0 && (
+                <optgroup label="Externos">
+                  {machosExt.map((m) => (
+                    <option key={m.id} value={`ext:${m.id}`}>
+                      {m.numero} · {m.nombre} (externo)
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="__new__">+ Otro (registrar nuevo)</option>
             </select>
           </div>
 
@@ -585,6 +650,23 @@ const AnimalForm = ({ open, onOpenChange, tipo, animalId, onSaved }: Props) => {
           }}
         />
       </SheetContent>
+
+      <ParienteExternoDialog
+        open={!!parienteDialog}
+        onOpenChange={(o) => {
+          if (!o) setParienteDialog(null);
+        }}
+        sexo={parienteDialog ?? "H"}
+        onCreated={(p) => {
+          if (parienteDialog === "H") {
+            setHembrasExt((prev) => [...prev, p].sort((a, b) => a.numero.localeCompare(b.numero)));
+            setMadreSel(`ext:${p.id}`);
+          } else {
+            setMachosExt((prev) => [...prev, p].sort((a, b) => a.numero.localeCompare(b.numero)));
+            setPadreSel(`ext:${p.id}`);
+          }
+        }}
+      />
     </Sheet>
   );
 };

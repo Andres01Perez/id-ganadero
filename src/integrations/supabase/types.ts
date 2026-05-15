@@ -58,10 +58,12 @@ export type Database = {
           foto_banner_url: string | null
           foto_principal_url: string | null
           id: string
+          madre_externa_id: string | null
           madre_id: string | null
           nombre: string | null
           numero: string
           numero_registro: string | null
+          padre_externo_id: string | null
           padre_id: string | null
           raza: string | null
           sexo: Database["public"]["Enums"]["animal_sexo"] | null
@@ -78,10 +80,12 @@ export type Database = {
           foto_banner_url?: string | null
           foto_principal_url?: string | null
           id?: string
+          madre_externa_id?: string | null
           madre_id?: string | null
           nombre?: string | null
           numero: string
           numero_registro?: string | null
+          padre_externo_id?: string | null
           padre_id?: string | null
           raza?: string | null
           sexo?: Database["public"]["Enums"]["animal_sexo"] | null
@@ -98,10 +102,12 @@ export type Database = {
           foto_banner_url?: string | null
           foto_principal_url?: string | null
           id?: string
+          madre_externa_id?: string | null
           madre_id?: string | null
           nombre?: string | null
           numero?: string
           numero_registro?: string | null
+          padre_externo_id?: string | null
           padre_id?: string | null
           raza?: string | null
           sexo?: Database["public"]["Enums"]["animal_sexo"] | null
@@ -117,10 +123,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "animales_madre_externa_id_fkey"
+            columns: ["madre_externa_id"]
+            isOneToOne: false
+            referencedRelation: "parientes_externos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "animales_madre_id_fkey"
             columns: ["madre_id"]
             isOneToOne: false
             referencedRelation: "animales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animales_padre_externo_id_fkey"
+            columns: ["padre_externo_id"]
+            isOneToOne: false
+            referencedRelation: "parientes_externos"
             referencedColumns: ["id"]
           },
           {
@@ -899,6 +919,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      parientes_externos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          nombre: string
+          numero: string
+          numero_registro: string
+          sexo: Database["public"]["Enums"]["animal_sexo"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre: string
+          numero: string
+          numero_registro: string
+          sexo: Database["public"]["Enums"]["animal_sexo"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre?: string
+          numero?: string
+          numero_registro?: string
+          sexo?: Database["public"]["Enums"]["animal_sexo"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       partos: {
         Row: {
