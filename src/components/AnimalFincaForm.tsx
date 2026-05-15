@@ -10,6 +10,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,12 +28,29 @@ type Props = {
   onSaved?: () => void | Promise<void>;
 };
 
+const OPCIONES: Record<string, { value: string; label: string }[]> = {
+  bovinos: [
+    { value: "machos", label: "Machos" },
+    { value: "hembras", label: "Hembras" },
+  ],
+  equinos: [
+    { value: "caballos", label: "Caballos" },
+    { value: "yeguas", label: "Yeguas" },
+  ],
+};
+
+const CATEGORIAS = [
+  { value: "bovinos", label: "Bovinos" },
+  { value: "equinos", label: "Equinos" },
+];
+
 const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
   const { user } = useAuth();
   const { fincaActiva } = useFinca();
   const isEdit = !!animalId;
 
-  const [tipo, setTipo] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [subtipo, setSubtipo] = useState("");
   const [cantidad, setCantidad] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -37,7 +61,7 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
       (async () => {
         const { data, error } = await supabase
           .from("animales_finca")
-          .select("tipo, cantidad")
+          .select("categoria, subtipo, tipo, cantidad")
           .eq("id", animalId)
           .maybeSingle();
         if (error || !data) {
@@ -45,25 +69,40 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
           onOpenChange(false);
           return;
         }
-        setTipo(data.tipo ?? "");
+        setCategoria(data.categoria ?? "");
+        setSubtipo(data.subtipo ?? data.tipo ?? "");
         setCantidad(String(data.cantidad ?? 0));
       })();
     } else {
-      setTipo("");
+      setCategoria("");
+      setSubtipo("");
       setCantidad("");
     }
   }, [open, animalId, onOpenChange]);
 
+  const handleCategoriaChange = (val: string) => {
+    setCategoria(val);
+    setSubtipo("");
+  };
+
   const handleSubmit = async () => {
     if (!user || !fincaActiva) return;
 
-    const tipoTrim = tipo.trim();
-    if (!tipoTrim) {
-      toast.error("Escribe el tipo de animal");
+    if (!categoria) {
+      toast.error("Selecciona la categoría");
+      return;
+    }
+    if (!subtipo) {
+      toast.error("Selecciona el subtipo");
       return;
     }
     const cantNum = Number(cantidad);
-    if (cantidad === "" || !Number.isFinite(cantNum) || cantNum < 0 || !Number.isInteger(cantNum)) {
+    if (
+      cantidad === "" ||
+      !Number.isFinite(cantNum) ||
+      cantNum < 0 ||
+      !Number.isInteger(cantNum)
+    ) {
       toast.error("Cantidad inválida");
       return;
     }
@@ -73,12 +112,14 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
       if (isEdit && animalId) {
         const { error } = await supabase
           .from("animales_finca")
-          .update({ tipo: tipoTrim, cantidad: cantNum })
+          .update({ categoria, subtipo, tipo: subtipo, cantidad: cantNum })
           .eq("id", animalId);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("animales_finca").insert({
-          tipo: tipoTrim,
+          categoria,
+          subtipo,
+          tipo: subtipo,
           cantidad: cantNum,
           finca_id: fincaActiva.id,
           created_by: user.id,
@@ -92,7 +133,7 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
       const e = err as { message?: string; code?: string };
       console.error(err);
       if (e.code === "23505") {
-        toast.error("Ya existe un registro con ese tipo en esta finca");
+        toast.error("Ya existe un registro con esa categoría y subtipo en esta finca");
       } else {
         toast.error(e.message ?? "No se pudo guardar");
       }
@@ -119,9 +160,14 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
     onOpenChange(false);
   };
 
+  const subtipos = categoria ? OPCIONES[categoria] ?? [] : [];
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto max-h-[90dvh] overflow-y-auto rounded-t-2xl">
+      <SheetContent
+        side="bottom"
+        className="h-auto max-h-[90dvh] overflow-y-auto rounded-t-2xl"
+      >
         <SheetHeader>
           <SheetTitle>{isEdit ? "Editar registro" : "Nuevo registro"}</SheetTitle>
           <SheetDescription>
@@ -131,13 +177,43 @@ const AnimalFincaForm = ({ open, onOpenChange, animalId, onSaved }: Props) => {
 
         <div className="space-y-4 mt-4 pb-6">
           <div>
-            <Label htmlFor="tipo">Animal *</Label>
-            <Input
-              id="tipo"
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              placeholder="Ej. Caballos, Novillos, Gallinas"
-            />
+            <Label>Categoría *</Label>
+            <Select value={categoria} onValueChange={handleCategoriaChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona la categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Subtipo *</Label>
+            <Select
+              value={subtipo}
+              onValueChange={setSubtipo}
+              disabled={!categoria}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    categoria ? "Selecciona el subtipo" : "Elige categoría primero"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {subtipos.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
