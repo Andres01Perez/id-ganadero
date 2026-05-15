@@ -16,9 +16,19 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Camera, User } from "lucide-react";
+import { Camera, User, Trash2 } from "lucide-react";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import { hoyISO } from "@/lib/empleado-utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Props = {
   open: boolean;
