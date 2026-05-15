@@ -41,6 +41,14 @@ type Props = {
 const schema = z.object({
   numero: z.string().trim().min(1, "Número obligatorio").max(40),
   estado: z.enum(["descargado", "cargado", "en_renovacion"]),
+  hectareas: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (v) => !v || (!isNaN(Number(v)) && Number(v) >= 0 && Number(v) <= 99999),
+      { message: "Hectáreas debe ser un número entre 0 y 99999" },
+    ),
   notas: z.string().max(500).optional().or(z.literal("")),
 });
 

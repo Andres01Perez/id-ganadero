@@ -1,0 +1,1 @@
+ALTER TABLE public.potreros ADD COLUMN IF NOT EXISTS hectareas numeric;

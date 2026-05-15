@@ -1010,6 +1010,7 @@ export type Database = {
           created_by: string | null
           estado: Database["public"]["Enums"]["potrero_estado"]
           finca_id: string
+          hectareas: number | null
           id: string
           notas: string | null
           numero: string
@@ -1020,6 +1021,7 @@ export type Database = {
           created_by?: string | null
           estado?: Database["public"]["Enums"]["potrero_estado"]
           finca_id: string
+          hectareas?: number | null
           id?: string
           notas?: string | null
           numero: string
@@ -1030,6 +1032,7 @@ export type Database = {
           created_by?: string | null
           estado?: Database["public"]["Enums"]["potrero_estado"]
           finca_id?: string
+          hectareas?: number | null
           id?: string
           notas?: string | null
           numero?: string
