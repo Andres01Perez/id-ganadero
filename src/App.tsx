@@ -11,6 +11,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import CategoriaAnimales from "./pages/CategoriaAnimales";
 import HojaVidaAnimal from "./pages/HojaVidaAnimal";
 import AnimalSeguimiento from "./pages/AnimalSeguimiento";
+import AnimalGenealogia from "./pages/AnimalGenealogia";
 import Fincas from "./pages/Fincas";
 import MenuFinca from "./pages/MenuFinca";
 import FincaEmpleados from "./pages/finca/Empleados";
@@ -90,6 +91,7 @@ const App = () => (
               <Route path="/categoria/:tipo" element={<ProtectedRoute><CategoriaAnimales /></ProtectedRoute>} />
               <Route path="/animal/:id" element={<ProtectedRoute><HojaVidaAnimal /></ProtectedRoute>} />
               <Route path="/animal/:id/seguimiento/:tipo" element={<ProtectedRoute><AnimalSeguimiento /></ProtectedRoute>} />
+              <Route path="/animal/:id/genealogia" element={<ProtectedRoute><AnimalGenealogia /></ProtectedRoute>} />
 
               {/* Selección de finca */}
               <Route path="/fincas" element={<ProtectedRoute><Fincas /></ProtectedRoute>} />

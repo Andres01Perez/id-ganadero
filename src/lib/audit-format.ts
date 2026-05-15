@@ -25,7 +25,7 @@ const tablaLabel: Record<string, string> = {
   dietas: "Dieta",
   ciclos_calor: "Ciclo de calor",
   aspiraciones: "Aspiración",
-  campeonatos: "Campeonato",
+  
   embriones_recolectados: "Embriones recolectados",
   embriones_detalle: "Detalle de embrión",
 };
