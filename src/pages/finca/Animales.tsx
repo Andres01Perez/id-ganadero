@@ -10,9 +10,25 @@ import { toast } from "sonner";
 
 type AnimalFinca = {
   id: string;
+  categoria: string | null;
+  subtipo: string | null;
   tipo: string;
   cantidad: number;
 };
+
+const CATEGORIA_LABEL: Record<string, string> = {
+  bovinos: "Bovinos",
+  equinos: "Equinos",
+};
+
+const SUBTIPO_LABEL: Record<string, string> = {
+  machos: "Machos",
+  hembras: "Hembras",
+  caballos: "Caballos",
+  yeguas: "Yeguas",
+};
+
+const CATEGORIA_ORDER = ["bovinos", "equinos", "_legacy"];
 
 const FincaAnimales = () => {
   const navigate = useNavigate();
