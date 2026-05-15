@@ -44,9 +44,10 @@ const FincaAnimales = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("animales_finca")
-      .select("id, tipo, cantidad")
+      .select("id, categoria, subtipo, tipo, cantidad")
       .eq("finca_id", fincaActiva.id)
-      .order("tipo");
+      .order("categoria", { nullsFirst: false })
+      .order("subtipo");
     if (error) {
       toast.error(error.message);
       setAnimals([]);
