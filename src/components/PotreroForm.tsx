@@ -80,11 +80,13 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
         }
         setNumero(data.numero ?? "");
         setEstado((data.estado as PotreroEstado) ?? "descargado");
+        setHectareas(data.hectareas != null ? String(data.hectareas) : "");
         setNotas(data.notas ?? "");
       })();
     } else {
       setNumero("");
       setEstado("descargado");
+      setHectareas("");
       setNotas("");
     }
   }, [open, potreroId, onOpenChange]);
