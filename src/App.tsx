@@ -91,6 +91,7 @@ const App = () => (
               <Route path="/categoria/:tipo" element={<ProtectedRoute><CategoriaAnimales /></ProtectedRoute>} />
               <Route path="/animal/:id" element={<ProtectedRoute><HojaVidaAnimal /></ProtectedRoute>} />
               <Route path="/animal/:id/seguimiento/:tipo" element={<ProtectedRoute><AnimalSeguimiento /></ProtectedRoute>} />
+              <Route path="/animal/:id/genealogia" element={<ProtectedRoute><AnimalGenealogia /></ProtectedRoute>} />
 
               {/* Selección de finca */}
               <Route path="/fincas" element={<ProtectedRoute><Fincas /></ProtectedRoute>} />
