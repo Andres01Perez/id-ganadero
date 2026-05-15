@@ -184,6 +184,19 @@ const PotreroForm = ({ open, onOpenChange, potreroId, onSaved }: Props) => {
             </Select>
           </div>
           <div>
+            <Label htmlFor="ha">Hectáreas</Label>
+            <Input
+              id="ha"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={hectareas}
+              onChange={(e) => setHectareas(e.target.value)}
+              placeholder="Ej. 12.5"
+            />
+          </div>
+          <div>
             <Label htmlFor="notas">Notas</Label>
             <Textarea id="notas" value={notas} onChange={(e) => setNotas(e.target.value)} rows={3} />
           </div>
