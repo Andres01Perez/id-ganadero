@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SeguimientoConfig } from "@/lib/seguimiento-config";
 
@@ -7,9 +7,11 @@ type Props = {
   animalNumber: string;
   config: SeguimientoConfig;
   onBack: () => void;
+  onExport?: () => void;
+  canExport?: boolean;
 };
 
-const SeguimientoHeader = ({ animalName, animalNumber, config, onBack }: Props) => {
+const SeguimientoHeader = ({ animalName, animalNumber, config, onBack, onExport, canExport }: Props) => {
   const Icon = config.icon;
 
   return (
@@ -25,6 +27,19 @@ const SeguimientoHeader = ({ animalName, animalNumber, config, onBack }: Props) 
             <h1 className="text-xl font-semibold truncate">{config.title}</h1>
           </div>
         </div>
+        {onExport ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onExport}
+            disabled={!canExport}
+            aria-label="Exportar a Excel"
+            title={canExport ? "Exportar a Excel" : "Sin registros para exportar"}
+            className="shrink-0 rounded-full"
+          >
+            <Download className="h-5 w-5" />
+          </Button>
+        ) : null}
       </div>
     </header>
   );
