@@ -603,6 +603,39 @@ export type Database = {
         }
         Relationships: []
       }
+      export_plantillas: {
+        Row: {
+          compartida: boolean
+          config: Json
+          created_at: string
+          created_by: string
+          descripcion: string | null
+          id: string
+          nombre: string
+          updated_at: string
+        }
+        Insert: {
+          compartida?: boolean
+          config: Json
+          created_at?: string
+          created_by: string
+          descripcion?: string | null
+          id?: string
+          nombre: string
+          updated_at?: string
+        }
+        Update: {
+          compartida?: boolean
+          config?: Json
+          created_at?: string
+          created_by?: string
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fincas: {
         Row: {
           activo: boolean
