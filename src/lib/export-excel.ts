@@ -234,9 +234,10 @@ async function fetchPotrerosRows(
   fincaMap: Map<string, string>,
 ): Promise<Record<string, unknown>[]> {
   if (fincaIds.length === 0) return [];
-  const rows = await fetchAll<Record<string, unknown>>(() =>
-    supabase.from("potreros").select("*").in("finca_id", fincaIds).order("numero"),
+  const rows = await fetchAll<Record<string, unknown>>((from, to) =>
+    supabase.from("potreros").select("*").in("finca_id", fincaIds).order("numero").range(from, to),
   );
+
   const fieldDefs = block.fields.filter((f) => sel.campos.includes(f.key));
   return rows.map((r) => {
     const out: Record<string, unknown> = {};
