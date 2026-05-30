@@ -46,21 +46,18 @@ const formatCell = (value: unknown, field: ExportField): string | number | boole
   return String(value);
 };
 
-/** Pagina toda una tabla en lotes de 1000 */
+/** Pagina toda una tabla en lotes de 1000.
+ *  El builder recibe (from, to) y devuelve la query Supabase ya rangeada. */
 async function fetchAll<T>(
-  builder: () => ReturnType<typeof supabase.from extends (t: string) => infer R ? R : never>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _typeMarker?: T,
+  builder: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>,
 ): Promise<T[]> {
   const PAGE = 1000;
   let from = 0;
   const all: T[] = [];
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const q = (builder() as any).range(from, from + PAGE - 1);
-    const { data, error } = await q;
-    if (error) throw error;
+    const { data, error } = await builder(from, from + PAGE - 1);
+    if (error) throw error as Error;
     const chunk = (data ?? []) as T[];
     all.push(...chunk);
     if (chunk.length < PAGE) break;
@@ -68,6 +65,7 @@ async function fetchAll<T>(
   }
   return all;
 }
+
 
 async function loadAnimales(fincaIds: string[]): Promise<AnimalLite[]> {
   if (fincaIds.length === 0) return [];
