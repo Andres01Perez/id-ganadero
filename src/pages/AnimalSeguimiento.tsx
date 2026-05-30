@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { seguimientoConfigs, type SeguimientoTipo } from "@/lib/seguimiento-config";
+import { exportSeguimientoToExcel } from "@/lib/export-seguimiento-excel";
 
 type Animal = { id: string; numero: string; nombre: string | null; tipo: string; finca_id?: string };
 type Row = Record<string, unknown>;
@@ -197,7 +198,21 @@ const AnimalSeguimiento = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background pb-safe-plus">
-      <SeguimientoHeader animalName={animal.nombre ?? "Sin nombre"} animalNumber={animal.numero} config={config} onBack={() => navigate(`/animal/${id}`)} />
+      <SeguimientoHeader
+        animalName={animal.nombre ?? "Sin nombre"}
+        animalNumber={animal.numero}
+        config={config}
+        onBack={() => navigate(`/animal/${id}`)}
+        onExport={() => {
+          try {
+            exportSeguimientoToExcel({ config, animal: { numero: animal.numero, nombre: animal.nombre }, rows });
+            toast.success("Excel generado");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "No se pudo exportar");
+          }
+        }}
+        canExport={rows.length > 0}
+      />
 
       <main className="px-4 py-4 space-y-4">
         <section className="bg-card border border-border rounded-lg p-4">
