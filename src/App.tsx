@@ -20,6 +20,8 @@ import FincaAnimales from "./pages/finca/Animales";
 import FincaGaleria from "./pages/finca/Galeria";
 import GanadoInactivo from "./pages/gestion/GanadoInactivo";
 import Movimientos from "./pages/gestion/Movimientos";
+import ExportarInformacion from "./pages/gestion/ExportarInformacion";
+
 import CategoriaInventario from "./pages/CategoriaInventario";
 import InventarioLista from "./pages/InventarioLista";
 import InventarioProducto from "./pages/InventarioProducto";

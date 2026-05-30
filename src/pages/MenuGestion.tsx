@@ -7,7 +7,9 @@ import { ASSET_KEYS, ASSET_FALLBACKS } from "@/lib/asset-keys";
 const opciones: { label: string; to: string }[] = [
   { label: "Ganado Inactivo", to: "/gestion/ganado-inactivo" },
   { label: "Movimientos", to: "/gestion/movimientos" },
+  { label: "Exportar información", to: "/gestion/exportar" },
 ];
+
 
 const MenuGestion = () => {
   const navigate = useNavigate();
