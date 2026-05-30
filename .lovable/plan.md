@@ -1,28 +1,15 @@
-# Modal Ver / Descargar para archivos de genealogía
+# Más espacio inferior bajo el menú flotante
 
 ## Problema
-El visor a pantalla completa actual (`FileViewerDialog`) no se ve bien al abrir desde la lista de Genealogía. Queremos un paso intermedio simple.
+El menú inferior (BottomTabBar) es fijo y tapa contenido en pantallas pequeñas/grandes, sin permitir scroll suficiente.
 
 ## Solución
-Al tocar un archivo (miniatura o nombre) en `AnimalGenealogia`, abrir un pequeño modal centrado con dos acciones:
+Aumentar el padding inferior de las utilidades globales que ya usan todas las páginas, en `src/index.css`:
 
-- **Ver** → abre el archivo en una nueva pestaña del navegador (`window.open(file_url, "_blank")`). Se elimina el uso del visor a pantalla completa.
-- **Descargar** → descarga directamente el archivo al dispositivo (mismo flujo `fetch` + `Blob` + `<a download>` que ya tiene `FileViewerDialog.handleDownload`, con fallback a abrir en pestaña nueva si falla).
+- `.pb-safe-plus`: de `5rem` → `7rem` (≈ +32px extra de scroll bajo el menú)
+- `.pb-safe-plus-lg`: de `6rem` → `8rem` (consistencia)
 
-El modal se cierra al elegir cualquier acción o al tocar fuera / botón cerrar.
+Como prácticamente todas las páginas (`Menu`, `MenuGestion`, `CategoriaAnimales`, `HojaVidaAnimal`, `Fincas`, `MenuFinca`, inventario, etc.) ya usan `pb-safe-plus`, el ajuste se propaga automáticamente sin tocar archivo por archivo.
 
-## Diseño
-- Componente nuevo: `src/components/FileActionDialog.tsx` usando `Dialog` de shadcn (identidad visual existente: fondo `bg-card`, botón principal dorado `bg-gold-solid text-ink`, botón secundario `variant="outline"`).
-- Título: nombre del archivo (truncado).
-- Dos botones grandes apilados, fáciles de tocar en móvil:
-  - `Ver archivo` (icono `Eye`)
-  - `Descargar` (icono `Download`, muestra spinner mientras descarga)
-
-## Archivos
-- **Nuevo**: `src/components/FileActionDialog.tsx`
-- **Editado**: `src/pages/AnimalGenealogia.tsx`
-  - Reemplazar `viewing` por `selected: Doc | null` y montar `<FileActionDialog>` en lugar de `<FileViewerDialog>`.
-  - Quitar import de `FileViewerDialog`.
-- **Sin cambios**: `FileViewerDialog.tsx` se deja en el repo por si se reutiliza luego (no se borra salvo que pidas lo contrario).
-
-¿Apruebo y procedo?
+## Detalle técnico
+Único archivo editado: `src/index.css` (dos valores). Sin cambios en componentes ni en `BottomTabBar`.
