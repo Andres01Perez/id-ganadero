@@ -271,9 +271,10 @@ async function fetchEmpleadosRows(
   });
   const empleadoIds = Array.from(empleadoFincaMap.keys());
   if (empleadoIds.length === 0) return [];
-  const empleados = await fetchAll<Record<string, unknown>>(() =>
-    supabase.from("empleados").select("*").in("id", empleadoIds).order("nombre_completo"),
+  const empleados = await fetchAll<Record<string, unknown>>((from, to) =>
+    supabase.from("empleados").select("*").in("id", empleadoIds).order("nombre_completo").range(from, to),
   );
+
   const fieldDefs = block.fields.filter((f) => sel.campos.includes(f.key));
   return empleados.map((e) => {
     const out: Record<string, unknown> = {};
