@@ -90,6 +90,8 @@ const App = () => (
               <Route path="/menu/gestion" element={<ProtectedRoute><MenuGestion /></ProtectedRoute>} />
               <Route path="/gestion/ganado-inactivo" element={<ProtectedRoute><GanadoInactivo /></ProtectedRoute>} />
               <Route path="/gestion/movimientos" element={<ProtectedRoute><Movimientos /></ProtectedRoute>} />
+              <Route path="/gestion/exportar" element={<ProtectedRoute><ExportarInformacion /></ProtectedRoute>} />
+
               <Route path="/categoria/:tipo" element={<ProtectedRoute><CategoriaAnimales /></ProtectedRoute>} />
               <Route path="/animal/:id" element={<ProtectedRoute><HojaVidaAnimal /></ProtectedRoute>} />
               <Route path="/animal/:id/seguimiento/:tipo" element={<ProtectedRoute><AnimalSeguimiento /></ProtectedRoute>} />
