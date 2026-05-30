@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { seguimientoConfigs, type SeguimientoTipo } from "@/lib/seguimiento-config";
+import { exportSeguimientoToExcel } from "@/lib/export-seguimiento-excel";
 
 type Animal = { id: string; numero: string; nombre: string | null; tipo: string; finca_id?: string };
 type Row = Record<string, unknown>;
