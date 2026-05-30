@@ -69,18 +69,18 @@ async function fetchAll<T>(
 
 async function loadAnimales(fincaIds: string[]): Promise<AnimalLite[]> {
   if (fincaIds.length === 0) return [];
-  const data = await fetchAll<AnimalLite>(
-    () =>
-      supabase
-        .from("animales")
-        .select(
-          "id, numero, nombre, tipo, sexo, raza, color, fecha_nacimiento, numero_registro, activo, finca_id, padre_id, madre_id, padre_externo_id, madre_externa_id",
-        )
-        .in("finca_id", fincaIds)
-        .order("numero"),
+  return fetchAll<AnimalLite>((from, to) =>
+    supabase
+      .from("animales")
+      .select(
+        "id, numero, nombre, tipo, sexo, raza, color, fecha_nacimiento, numero_registro, activo, finca_id, padre_id, madre_id, padre_externo_id, madre_externa_id",
+      )
+      .in("finca_id", fincaIds)
+      .order("numero")
+      .range(from, to),
   );
-  return data;
 }
+
 
 async function loadFincasMap(fincaIds: string[]): Promise<Map<string, string>> {
   if (fincaIds.length === 0) return new Map();
