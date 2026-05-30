@@ -196,20 +196,21 @@ async function fetchSeguimientoRows(
   // fetch en chunks de 200 ids para no exceder URL
   const CHUNK = 200;
   const collected: Record<string, unknown>[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any;
   for (let i = 0; i < ids.length; i += CHUNK) {
     const slice = ids.slice(i, i + CHUNK);
-    const rows = await fetchAll<Record<string, unknown>>(() => {
-      let q = supabase.from(block.table).select("*").in(animalField, slice);
-      if (block.fechaField && sel.fechaDesde) {
-        q = q.gte(block.fechaField, sel.fechaDesde);
-      }
-      if (block.fechaField && sel.fechaHasta) {
-        q = q.lte(block.fechaField, sel.fechaHasta);
-      }
-      return q.order(block.fechaField ?? "created_at", { ascending: false });
+    const rows = await fetchAll<Record<string, unknown>>((from, to) => {
+      let q = sb.from(block.table).select("*").in(animalField, slice);
+      if (block.fechaField && sel.fechaDesde) q = q.gte(block.fechaField, sel.fechaDesde);
+      if (block.fechaField && sel.fechaHasta) q = q.lte(block.fechaField, sel.fechaHasta);
+      return q
+        .order(block.fechaField ?? "created_at", { ascending: false })
+        .range(from, to);
     });
     collected.push(...rows);
   }
+
 
   const fieldDefs = block.fields.filter((f) => sel.campos.includes(f.key));
   return collected.map((r) => {
